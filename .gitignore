@@ -1,0 +1,6 @@
+.DS_Store
+*.log
+node_modules/
+
+# Machine-local Claude Code settings — never publish
+.claude/settings.local.json
