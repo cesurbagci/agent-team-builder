@@ -40,7 +40,7 @@ export function validate(doc) {
       agentNames.add(a.name);
     }
 
-    // targets: verildiyse {claude,codex} alt kümesi ve boş olmamalı
+    // targets: verildiyse {claude,codex,opencode} alt kümesi ve boş olmamalı
     const hasTargets = a && a.targets !== undefined;
     if (hasTargets) {
       if (!Array.isArray(a.targets) || a.targets.length === 0) {
@@ -54,9 +54,21 @@ export function validate(doc) {
       }
     }
 
+    // Etkin hedefler: agent'ın kendi targets'ı, yoksa kök targetsDefault.
+    // Varsayılan ekosistem YOKTUR — ikisi de yoksa hata.
+    const effectiveTargets = Array.isArray(a && a.targets)
+      ? a.targets
+      : Array.isArray(doc.targetsDefault)
+        ? doc.targetsDefault
+        : null;
+    if (!effectiveTargets || effectiveTargets.length === 0) {
+      errors.push(
+        `${label}: hedef belirtilmeli — agents[].targets ya da kök targetsDefault (claude|codex|opencode)`
+      );
+    }
+
     // model: verildiyse ve claude hedefliyse {opus,sonnet,haiku}
-    const targetsClaude =
-      !hasTargets || (Array.isArray(a.targets) && a.targets.includes("claude"));
+    const targetsClaude = (effectiveTargets ?? []).includes("claude");
     if (a && a.model !== undefined && targetsClaude) {
       if (!MODELS.includes(a.model)) {
         errors.push(`${label}: model geçersiz "${a.model}" (opus|sonnet|haiku)`);
@@ -73,8 +85,7 @@ export function validate(doc) {
     }
 
     // opencode_model: verildiyse provider/model formatında string olmalı
-    const targetsOpencode =
-      Array.isArray(a && a.targets) && a.targets.includes("opencode");
+    const targetsOpencode = (effectiveTargets ?? []).includes("opencode");
     if (a && a.opencode_model !== undefined) {
       if (
         typeof a.opencode_model !== "string" ||
@@ -242,6 +253,55 @@ if (process.argv.includes("--selftest")) {
     }
   } catch (e) {
     console.error("SELFTEST FAIL: valid manifest rejected:", e.message);
+    ok = false;
+  }
+
+  // 3) opencode-only kabul edilir: targetsDefault ["opencode"], agent'lar targets
+  //    yazmaz. Claude model kuralı UYGULANMAMALI (model alanı hiç yok), OpenCode
+  //    kuralı targetsDefault üzerinden UYGULANMALI.
+  const opencodeOnly = {
+    targetsDefault: ["opencode"],
+    lead: "architect",
+    agents: [
+      { name: "architect", opencode_model: "openai/gpt-5", writesCode: false },
+    ],
+  };
+  try {
+    if (validate(opencodeOnly) !== true) {
+      console.error("SELFTEST FAIL: opencode-only manifest rejected (no true)");
+      ok = false;
+    }
+  } catch (e) {
+    console.error("SELFTEST FAIL: opencode-only manifest rejected:", e.message);
+    ok = false;
+  }
+
+  // 4) targetsDefault üzerinden opencode hedefliyken model/opencode_model yoksa
+  //    reddedilmeli (eskiden targetsDefault yok sayıldığı için kaçıyordu).
+  let missingModelRejected = false;
+  try {
+    validate({
+      targetsDefault: ["opencode"],
+      lead: "architect",
+      agents: [{ name: "architect" }],
+    });
+  } catch {
+    missingModelRejected = true;
+  }
+  if (!missingModelRejected) {
+    console.error("SELFTEST FAIL: opencode target without model accepted");
+    ok = false;
+  }
+
+  // 5) hiçbir hedef yok (ne targets ne targetsDefault) → reddedilmeli.
+  let noTargetRejected = false;
+  try {
+    validate({ lead: "architect", agents: [{ name: "architect" }] });
+  } catch {
+    noTargetRejected = true;
+  }
+  if (!noTargetRejected) {
+    console.error("SELFTEST FAIL: manifest without any target accepted");
     ok = false;
   }
 
