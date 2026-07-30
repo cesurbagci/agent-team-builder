@@ -5,14 +5,16 @@
   Copies the skill directories in this repo into the Claude, Codex and/or
   OpenCode global skills directory.
 .PARAMETER Target
-  claude (default) | codex | opencode | both | all
+  claude | codex | opencode | both | all
+  There is no default — omit it to be prompted.
 .EXAMPLE
-  .\install.ps1
+  .\install.ps1             # interactive picker
+  .\install.ps1 claude
   .\install.ps1 codex
   .\install.ps1 opencode
   .\install.ps1 both        # claude + codex
   .\install.ps1 all         # claude + codex + opencode
-  $env:CLAUDE_SKILLS_DIR = "D:\skills"; .\install.ps1
+  $env:CLAUDE_SKILLS_DIR = "D:\skills"; .\install.ps1 claude
 .NOTES
   macOS / Linux users: run ./install.sh instead.
   If you get an execution-policy error, run:
@@ -20,11 +22,30 @@
 #>
 param(
   [ValidateSet('claude', 'codex', 'opencode', 'both', 'all')]
-  [string]$Target = 'claude'
+  [string]$Target
 )
 
 $ErrorActionPreference = 'Stop'
 $SrcDir = $PSScriptRoot
+
+# No target given → ask, so the install never silently picks an ecosystem.
+if (-not $Target) {
+  Write-Host 'Which tool should team-builder be installed for?'
+  Write-Host '  1) claude    -> ~\.claude\skills'
+  Write-Host '  2) codex     -> ~\.codex\skills'
+  Write-Host '  3) opencode  -> ~\.config\opencode\skills'
+  Write-Host '  4) both      -> claude + codex'
+  Write-Host '  5) all       -> claude + codex + opencode'
+  $reply = Read-Host 'Choice [1-5]'
+  $Target = switch ($reply) {
+    { $_ -in '1', 'claude' }   { 'claude' }
+    { $_ -in '2', 'codex' }    { 'codex' }
+    { $_ -in '3', 'opencode' } { 'opencode' }
+    { $_ -in '4', 'both' }     { 'both' }
+    { $_ -in '5', 'all' }      { 'all' }
+    default { throw "Invalid choice: $reply" }
+  }
+}
 
 # Rewrite the skill's OWN install path so its internal references resolve under
 # the target ecosystem's skills dir. Only team-builder/architecture-advisor
@@ -76,4 +97,11 @@ switch ($Target) {
   'all'      { Install-Claude; Install-Codex; Install-OpenCode }
 }
 
-Write-Host "Done ($Target). Open Claude Code and run /team-builder-setup to begin."
+$openIn = switch ($Target) {
+  'claude'   { 'Claude Code' }
+  'codex'    { 'Codex' }
+  'opencode' { 'OpenCode' }
+  default    { 'any of the installed tools' }
+}
+
+Write-Host "Done ($Target). Open $openIn and run /team-builder-setup to begin."

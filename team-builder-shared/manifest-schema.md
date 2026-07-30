@@ -18,7 +18,7 @@ Generated dosyalar **elle değiştirilmez**; kaynak burasıdır.
 
 | Alan | Tip | Zorunlu | Açıklama |
 |---|---|---|---|
-| `targetsDefault` | `string[]` | Hayır | `targets` belirtmeyen agent'lar için varsayılan hedef ekosistem. `{claude, codex, opencode}` alt kümesi (örn. `["claude"]`, `["claude","codex"]`, `["claude","opencode"]`). Default: `["claude"]`. |
+| `targetsDefault` | `string[]` | Koşullu | `targets` belirtmeyen agent'lar için hedef ekosistem(ler). `{claude, codex, opencode}` alt kümesi, boş olamaz (örn. `["opencode"]`, `["claude","codex"]`, `["claude","opencode"]`). **Varsayılan YOKTUR** — bir agent'ın ne kendi `targets`'ı ne de `targetsDefault` varsa manifest geçersizdir. |
 | `topology` | `string` | Hayır | Claude hedefi için takım topolojisi: `subagent` (hiyerarşik, lead dağıtır — varsayılan) veya `native` (deneysel agent teams, peer-to-peer). Bkz. `topologies.md`. Default: `subagent`. |
 | `docLanguage` | `string` | Hayır | Doküman ve cevap dili (örn. `tr`, `en`). Dil & yorum standardını (anayasa preset 4) besler. Default: proje analizinden tahmin (`tr`). |
 | `architectureDocs` | `object` | Hayır | Mimari doküman ağacının kökü ve düzeni. Bkz. `architecture-docs.md`. |

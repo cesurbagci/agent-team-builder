@@ -3,19 +3,50 @@
 # Copies the skill directories in this repo into the Claude, Codex and/or
 # OpenCode global skills directory.
 #
+# There is no default target — pick one explicitly, or run with no argument to
+# be prompted.
+#
 # Usage:
-#   ./install.sh                 # claude (default)  -> ~/.claude/skills
+#   ./install.sh                 # interactive picker
+#   ./install.sh claude          # claude            -> ~/.claude/skills
 #   ./install.sh codex           # codex             -> ~/.codex/skills
 #   ./install.sh opencode        # opencode          -> ~/.config/opencode/skills
 #   ./install.sh both            # claude + codex
 #   ./install.sh all             # claude + codex + opencode
-#   CLAUDE_SKILLS_DIR=/path ./install.sh   # custom claude target
+#   CLAUDE_SKILLS_DIR=/path ./install.sh claude   # custom claude target
 #
 # Windows users: run install.ps1 from PowerShell instead.
 set -euo pipefail
 
 SRC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-TARGET="${1:-claude}"
+
+# No argument → ask. Non-interactive (piped/CI) runs must name a target so the
+# install never silently picks an ecosystem for the user.
+choose_target() {
+  if [ ! -t 0 ]; then
+    echo "No target given. Pass one of: claude | codex | opencode | both | all" >&2
+    exit 1
+  fi
+  echo "Which tool should team-builder be installed for?" >&2
+  echo "  1) claude    -> ~/.claude/skills" >&2
+  echo "  2) codex     -> ~/.codex/skills" >&2
+  echo "  3) opencode  -> ~/.config/opencode/skills" >&2
+  echo "  4) both      -> claude + codex" >&2
+  echo "  5) all       -> claude + codex + opencode" >&2
+  local reply
+  read -r -p "Choice [1-5]: " reply
+  case "$reply" in
+    1|claude)   echo claude ;;
+    2|codex)    echo codex ;;
+    3|opencode) echo opencode ;;
+    4|both)     echo both ;;
+    5|all)      echo all ;;
+    *) echo "Invalid choice: $reply" >&2; exit 1 ;;
+  esac
+}
+
+TARGET="${1:-}"
+[ -n "$TARGET" ] || TARGET="$(choose_target)"
 
 # Rewrite the skill's OWN install path so its internal references resolve under
 # the target ecosystem's skills dir (e.g. ~/.claude/skills/team-builder-shared ->
@@ -65,4 +96,11 @@ case "$TARGET" in
     ;;
 esac
 
-echo "Done ($TARGET). Open Claude Code and run /team-builder-setup to begin."
+case "$TARGET" in
+  claude)   OPEN_IN="Claude Code" ;;
+  codex)    OPEN_IN="Codex" ;;
+  opencode) OPEN_IN="OpenCode" ;;
+  *)        OPEN_IN="any of the installed tools" ;;
+esac
+
+echo "Done ($TARGET). Open $OPEN_IN and run /team-builder-setup to begin."

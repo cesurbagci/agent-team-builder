@@ -35,7 +35,6 @@ async function loadValidate() {
 }
 
 const GENERATED_HEADER = '# This file is generated from .agent-source. Run sync.\n'
-const DEFAULT_TARGETS = ['claude', 'codex']
 const VALID_TARGETS = new Set(['claude', 'codex', 'opencode'])
 
 // Fallback map when an opencode-targeted agent has no explicit `opencode_model`.
@@ -183,10 +182,14 @@ function createContext({ root, checkOnly }) {
 // ---------------------------------------------------------------------------
 
 function agentTargets(agent, manifest) {
-  const fallback = manifest.targetsDefault ?? DEFAULT_TARGETS
-  const targets = agent.targets ?? fallback
+  // No implicit ecosystem: the target set is always an explicit choice, taken
+  // from the agent or from the manifest-wide default.
+  const targets = agent.targets ?? manifest.targetsDefault
   if (!Array.isArray(targets) || targets.length === 0) {
-    throw new Error(`Agent ${agent.name} targets must be a non-empty array.`)
+    throw new Error(
+      `Agent ${agent.name} has no targets: set agents[].targets or the ` +
+        `manifest-wide targetsDefault (subset of ${[...VALID_TARGETS].join('|')}).`
+    )
   }
   for (const target of targets) {
     if (!VALID_TARGETS.has(target)) {
@@ -197,10 +200,11 @@ function agentTargets(agent, manifest) {
 }
 
 function projectHasTarget(manifest, target) {
-  return manifest.agents.some(agent => {
-    const targets = agent.targets ?? manifest.targetsDefault ?? DEFAULT_TARGETS
-    return Array.isArray(targets) && targets.includes(target)
-  })
+  return manifest.agents.some(agent => agentTargets(agent, manifest).has(target))
+}
+
+function projectHasClaude(manifest) {
+  return projectHasTarget(manifest, 'claude')
 }
 
 function projectHasCodex(manifest) {
@@ -363,9 +367,12 @@ async function syncProjectFiles(ctx, manifest) {
   // Project files are templated/compiled generated outputs → prepend header.
   const withHeader = source => GENERATED_HEADER + source
 
-  const claudeSource = ctx.resolveSource('project', 'CLAUDE.md')
-  if (await pathExists(claudeSource)) {
-    await ctx.copyExpected(claudeSource, ctx.resolveRoot('CLAUDE.md'), withHeader)
+  // CLAUDE.md is a Claude-only output — no target selection implies it.
+  if (projectHasClaude(manifest)) {
+    const claudeSource = ctx.resolveSource('project', 'CLAUDE.md')
+    if (await pathExists(claudeSource)) {
+      await ctx.copyExpected(claudeSource, ctx.resolveRoot('CLAUDE.md'), withHeader)
+    }
   }
 
   const hasCodex = projectHasCodex(manifest)
@@ -397,8 +404,10 @@ async function syncProjectFiles(ctx, manifest) {
   }
 
   // project/opencode-* → .opencode/* and root opencode.json (only if present).
-  // opencode.json is JSON and cannot carry the `#` generated header, so it is
-  // copied verbatim (the source file should embed a "//" generated note).
+  // opencode.json is copied verbatim and carries NO generated marker: it cannot
+  // take the `#` header, and OpenCode validates its config strictly — an
+  // unknown key (including a "//" comment key) makes it reject the file with
+  // "Unrecognized key". Drift (`--check`) is the guard against hand-edits here.
   if (hasOpencode) {
     const ocConfig = ctx.resolveSource('project', 'opencode.json')
     if (await pathExists(ocConfig)) {
@@ -500,12 +509,17 @@ async function syncAgents(ctx, manifest, projectName) {
 }
 
 async function syncSkills(ctx, manifest) {
+  const hasClaude = projectHasClaude(manifest)
   const hasOpencode = projectHasOpencode(manifest)
   const skillsSource = ctx.resolveSource('skills')
   const files = await listFiles(skillsSource)
   for (const filePath of files) {
     const relative = path.relative(skillsSource, filePath)
-    await ctx.copyExpected(filePath, ctx.resolveRoot('.claude', 'skills', relative))
+    if (hasClaude) {
+      await ctx.copyExpected(filePath, ctx.resolveRoot('.claude', 'skills', relative))
+    }
+    // .agents/skills is the ecosystem-neutral mirror: Codex and OpenCode both
+    // discover it, so it is written regardless of which of the two is targeted.
     await ctx.copyExpected(filePath, ctx.resolveRoot('.agents', 'skills', relative))
     if (hasOpencode) {
       await ctx.copyExpected(filePath, ctx.resolveRoot('.opencode', 'skills', relative))
@@ -650,7 +664,7 @@ async function runSelftest() {
   await fs.writeFile(path.join(sourceRoot, 'project', 'AGENTS.md'), agentsMd)
 
   const opencodeJson =
-    '{\n  "//": "generated from .agent-source, run sync",\n  "$schema": "https://opencode.ai/config.json",\n  "instructions": ["AGENTS.md"]\n}\n'
+    '{\n  "$schema": "https://opencode.ai/config.json",\n  "instructions": ["AGENTS.md"]\n}\n'
   await fs.writeFile(path.join(sourceRoot, 'project', 'opencode.json'), opencodeJson)
   const opencodeTeam = '# OpenCode Team\n\nTakim sozlesmesi.\n'
   await fs.writeFile(path.join(sourceRoot, 'project', 'opencode-team.md'), opencodeTeam)
@@ -842,9 +856,99 @@ async function runSelftest() {
   // Cleanup.
   await fs.rm(fixtureRoot, { recursive: true, force: true })
 
+  await runOpencodeOnlySelftest()
+
   // Reset exitCode (the --check drift runs above set process.exitCode = 1).
   process.exitCode = 0
   console.log('SELFTEST PASS')
+}
+
+// OpenCode-only project: no ecosystem is implied, so nothing Claude-specific
+// may be emitted even though the source tree still carries a CLAUDE.md.
+async function runOpencodeOnlySelftest() {
+  const fixtureRoot = path.join(os.tmpdir(), 'tb-sync-selftest-opencode')
+  const sourceRoot = path.join(fixtureRoot, '.agent-source')
+
+  await fs.rm(fixtureRoot, { recursive: true, force: true })
+  await fs.mkdir(path.join(sourceRoot, 'agents'), { recursive: true })
+  await fs.mkdir(path.join(sourceRoot, 'project'), { recursive: true })
+  await fs.mkdir(path.join(sourceRoot, 'skills', 'demo-skill'), { recursive: true })
+
+  // targetsDefault is the only target declaration — agents omit `targets`.
+  const manifest = {
+    targetsDefault: ['opencode'],
+    docLanguage: 'tr',
+    lead: 'architect',
+    agents: [
+      {
+        name: 'architect',
+        description: 'Mimari kararlar icin.',
+        opencode_model: 'openai/gpt-5',
+        writesCode: false,
+        consults: [],
+        extra_instructions: [],
+      },
+    ],
+  }
+  await fs.writeFile(
+    path.join(sourceRoot, 'agents', 'manifest.json'),
+    JSON.stringify(manifest, null, 2)
+  )
+  await fs.writeFile(
+    path.join(sourceRoot, 'agents', 'architect.md'),
+    '---\nname: architect\nmodel: opus\n---\n\n# Architect\n\nSkill: .claude/skills/demo-skill/SKILL.md\n'
+  )
+  // Present in the source but must NOT be emitted: claude is not a target.
+  await fs.writeFile(path.join(sourceRoot, 'project', 'CLAUDE.md'), '# CLAUDE\n')
+  await fs.writeFile(path.join(sourceRoot, 'project', 'AGENTS.md'), '# AGENTS\n')
+  await fs.writeFile(
+    path.join(sourceRoot, 'project', 'opencode.json'),
+    '{\n  "$schema": "https://opencode.ai/config.json"\n}\n'
+  )
+  await fs.writeFile(path.join(sourceRoot, 'skills', 'demo-skill', 'SKILL.md'), '# Demo\n')
+
+  await silentGenerate({ root: fixtureRoot, checkOnly: false })
+  const exists = rel => pathExists(path.join(fixtureRoot, rel))
+
+  // Claude outputs must be absent.
+  assert(!(await exists('CLAUDE.md')), 'opencode-only: CLAUDE.md must not be generated')
+  assert(
+    !(await exists('.claude/agents/architect.md')),
+    'opencode-only: .claude/agents must not be generated'
+  )
+  assert(
+    !(await exists('.claude/skills/demo-skill/SKILL.md')),
+    'opencode-only: .claude/skills must not be generated'
+  )
+
+  // OpenCode outputs must be present — driven by targetsDefault alone.
+  assert(
+    await exists('.opencode/agents/architect.md'),
+    'opencode-only: .opencode/agents/architect.md missing'
+  )
+  assert(await exists('opencode.json'), 'opencode-only: opencode.json missing')
+  // OpenCode validates opencode.json strictly: any key outside its schema — a
+  // "//" note key included — makes it refuse to start with "Unrecognized key".
+  const ocConfig = JSON.parse(await readText(path.join(fixtureRoot, 'opencode.json')))
+  const noteKeys = Object.keys(ocConfig).filter(k => k.startsWith('/'))
+  assert(
+    noteKeys.length === 0,
+    `opencode-only: opencode.json must carry no comment key (found: ${noteKeys.join(', ')})`
+  )
+  assert(await exists('AGENTS.md'), 'opencode-only: AGENTS.md missing')
+  assert(
+    await exists('.opencode/skills/demo-skill/SKILL.md'),
+    'opencode-only: .opencode/skills mirror missing'
+  )
+  assert(
+    await exists('.agents/skills/demo-skill/SKILL.md'),
+    'opencode-only: .agents/skills mirror missing'
+  )
+
+  const check = await silentGenerate({ root: fixtureRoot, checkOnly: true })
+  assert(check.ok === true, 'opencode-only: --check should be clean after generate')
+
+  await fs.rm(fixtureRoot, { recursive: true, force: true })
 }
 
 // ---------------------------------------------------------------------------

@@ -19,7 +19,13 @@ olup henüz yüklü olmayanlar. Sadece yüklülerle sınırlı kalma.
 
 1. **Projeyi analiz et:** paket/manifest dosyaları (package.json, *.csproj, pubspec.yaml, Cargo.toml, go.mod, requirements.txt, *.xcodeproj, build.gradle ...), dizin desenleri, dil/framework izleri. Rolün domain'ini + stack'i çıkar.
 
-2. **Yüklü skill'leri tara:** `ls ~/.claude/skills/`, proje `.claude/skills/`, varsa repo `.agents/skills/`. Role/stack'e uyanları **"✅ Zaten yüklü"** olarak işaretle.
+2. **Yüklü skill'leri tara — kullanılan araca göre TÜM global dizinleri gez**, yalnız Claude'unkini değil:
+   - `~/.claude/skills/` (Claude Code; **OpenCode da bu dizini native okur**)
+   - `~/.config/opencode/skills/` ve `~/.agents/skills/` (OpenCode)
+   - `~/.codex/skills/` (Codex)
+   - proje içi: `.claude/skills/`, `.opencode/skills/`, `.agents/skills/`
+
+   Olmayan dizinleri sessizce atla. Role/stack'e uyanları **"✅ Zaten yüklü"** olarak işaretle.
 
 3. **Public/popüler skill ara (ATLAMA):** role + stack için yüklü olmayan ama değerli, community'si yüksek skill'leri öner.
    - **WebSearch/WebFetch varsa kullan:** güncel popüler skill'leri ara (örn. "claude code skills <stack>", GitHub `awesome-claude-code`/skill repoları, marketplace'ler). Yıldız/indirme gibi popülerlik sinyali varsa belirt.
@@ -30,9 +36,9 @@ olup henüz yüklü olmayanlar. Sadece yüklülerle sınırlı kalma.
    **Her skill tam olarak şu formatta (iki satır):**
    ```
    • <skill-adı> — <bu projede ne işe yarar (tek cümle)>
-     Kaynak: <✅ ~/.claude/skills/<name>  |  [owner/repo](https://github.com/owner/repo)  |  marketplace/eklenti adı>
+     Kaynak: <✅ <bulunduğu kurulu yol>  |  [owner/repo](https://github.com/owner/repo)  |  marketplace/eklenti adı>
    ```
-   - **yüklü** → `Kaynak: ✅ ~/.claude/skills/<name>` (kurulu yol).
+   - **yüklü** → `Kaynak: ✅ <skill'i bulduğun gerçek yol>` (örn. `~/.claude/skills/<name>` ya da `~/.config/opencode/skills/<name>`) — Claude yolunu varsayma, Adım 2'de nerede bulduysan onu yaz.
    - **public (yüklü değil)** → `Kaynak:` satırına **tıklanabilir tam adres** (markdown link `[owner/repo](https://github.com/owner/repo)`; WebSearch'ten bulduysan URL'i birebir) ya da marketplace/eklenti adı.
 
    **Sonra her skill için TEK TEK seçtir** (tekli seçim, 3 seçenek; alan adı/jargon gösterme):
@@ -42,14 +48,19 @@ olup henüz yüklü olmayanlar. Sadece yüklülerle sınırlı kalma.
 
 5. **Seçilenleri OTOMATİK KUR** (`autoInstall`):
    Kullanıcı işaretleyince, yüklü olmayan her seçili skill'i kur:
-   1. **Scope sor (bir kez):** kullanıcı seviyesi `~/.claude/skills/` mi, proje `.claude/skills/` mi? (Varsayılan: kullanıcı seviyesi — her projede kullanılsın.)
+   1. **Scope sor (bir kez):** kullanıcı seviyesi mi, proje seviyesi mi? (Varsayılan: kullanıcı seviyesi — her projede kullanılsın.) **Dizini araca göre seç**, Claude'u varsayma:
+      - Claude Code → `~/.claude/skills/` · proje `.claude/skills/`
+      - OpenCode → `~/.config/opencode/skills/` · proje `.opencode/skills/`
+      - Codex → `~/.codex/skills/` · proje `.agents/skills/`
+
+      Birden çok hedef seçildiyse skill'i hepsinin dizinine kopyala. (Not: OpenCode `~/.claude/skills/` ve `.claude/skills/` dizinlerini de native okur; Claude + OpenCode birlikte kullanılıyorsa Claude yoluna kurmak ikisine birden yeter.)
    2. **git kaynağı için:**
       ```bash
       tmp="$(mktemp -d)"
       git clone --depth 1 <git-url> "$tmp"
       # SKILL.md içeren dizini bul (repo kökü ya da skills/<name>/ olabilir)
       src="$(dirname "$(find "$tmp" -name SKILL.md | head -1)")"
-      dest="<scope>/<skill-name>"            # ~/.claude/skills/<name> veya .claude/skills/<name>
+      dest="<scope>/<skill-name>"            # Adım 1'de seçilen araç/scope dizini
       rm -rf "$dest" && mkdir -p "$dest" && cp -R "$src/." "$dest/"
       rm -rf "$tmp"
       test -f "$dest/SKILL.md" && echo "kuruldu: $dest"

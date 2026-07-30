@@ -67,13 +67,16 @@ permission:
 
 ## 2. `opencode.json` (team config)
 
-Minimal team config. **JSON olduğu için `#` generated-header taşımaz**; kaynak dosya
-(`.agent-source/project/opencode.json`) bir `"//"` notu gömer ve generator **verbatim**
-kopyalar. Örnek:
+Minimal team config. Generator **verbatim** kopyalar.
+
+> **DİKKAT — bu dosyaya yorum/işaret KOYMA.** OpenCode `opencode.json`'ı **katı** doğrular:
+> şemada olmayan herhangi bir anahtar (bir `"//"` not anahtarı dahil) config'i **geçersiz**
+> kılar ve OpenCode `Unrecognized key: //` diyerek başlamaz. JSON `#` header de taşıyamaz.
+> Dolayısıyla `opencode.json`, generated-header taşımayan **tek** çıktıdır; elle düzenlemeye
+> karşı koruma `--check` **drift** kontrolüdür.
 
 ```json
 {
-  "//": "generated from .agent-source, run sync",
   "$schema": "https://opencode.ai/config.json",
   "instructions": ["AGENTS.md", "docs/mimari/**/*.md"],
   "permission": { "edit": "allow", "bash": "ask" }

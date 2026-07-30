@@ -55,17 +55,19 @@ GENERATED'dır**; elle düzenlenmez, kaynaktan üretilir.
 | `agents/<role>.md` | `.codex/agent-definitions/<role>.md` | agent `targets` içinde `codex` varsa (verbatim kopya) |
 | `agents/manifest.json` | `.codex/agents/<role>.toml` | `codex` target'lı agent'lar için (metadata + `developer_instructions`) |
 | `agents/<role>.md` + manifest | `.opencode/agents/<role>.md` | agent `targets` içinde `opencode` varsa (OpenCode frontmatter + kaynak gövde) |
-| `project/CLAUDE.md` | `CLAUDE.md` | her zaman |
+| `project/CLAUDE.md` | `CLAUDE.md` | Claude hedefi seçiliyse |
 | `project/AGENTS.md` | `AGENTS.md` | Codex **veya** OpenCode hedefi seçiliyse |
 | `project/codex-config.toml` | `.codex/config.toml` | Codex hedefi seçiliyse |
 | `project/codex-team.md` | `.codex/team.md` | Codex hedefi seçiliyse |
 | `project/migration-map.md` | `.codex/migration-map.md` | varsa |
 | `project/opencode.json` | `opencode.json` | OpenCode hedefi seçiliyse |
 | `project/opencode-team.md` | `.opencode/team.md` | OpenCode hedefi seçiliyse |
-| `skills/<skill>/SKILL.md` | `.claude/skills/` **ve** `.agents/skills/` (+ OpenCode hedefi varsa `.opencode/skills/`) | varsa |
+| `skills/<skill>/SKILL.md` | `.agents/skills/` (her zaman — Codex ve OpenCode ikisi de okur) + Claude hedefi varsa `.claude/skills/` + OpenCode hedefi varsa `.opencode/skills/` | varsa |
 
 - `agents/<role>.md`'nin hangi hedeflere gideceği o agent'ın **`targets`** alanına
-  bağlıdır: `["claude"]`, `["codex"]` veya `["claude","codex"]`.
+  bağlıdır (yoksa kök `targetsDefault`): örn. `["claude"]`, `["opencode"]`,
+  `["claude","codex"]`. **Varsayılan ekosistem yoktur** — hedef her zaman açık bir seçimdir;
+  Claude seçilmediyse `CLAUDE.md` ve `.claude/*` üretilmez.
 - `manifest.json`, Codex target'ı olan her agent için bir `*.toml` üretir; bu TOML
   metadata (`name`, `description`, `model_reasoning_effort`, `sandbox_mode`,
   `nickname_candidates`) ile `developer_instructions` bloğunu içerir.

@@ -67,10 +67,14 @@ git clone https://github.com/cesurbagci/agent-team-builder.git
 cd agent-team-builder
 ```
 
+**There is no default target.** Run the script with no argument and it asks which
+tool to install for; pass a target explicitly to skip the prompt.
+
 ### macOS / Linux
 
 ```bash
-./install.sh            # Claude (default)  -> ~/.claude/skills
+./install.sh            # interactive picker
+./install.sh claude     # Claude            -> ~/.claude/skills
 ./install.sh codex      # Codex             -> ~/.codex/skills
 ./install.sh opencode   # OpenCode          -> ~/.config/opencode/skills
 ./install.sh both       # Claude + Codex
@@ -80,7 +84,7 @@ cd agent-team-builder
 Custom Claude target:
 
 ```bash
-CLAUDE_SKILLS_DIR=/custom/path ./install.sh
+CLAUDE_SKILLS_DIR=/custom/path ./install.sh claude
 ```
 
 ### Windows
@@ -88,7 +92,8 @@ CLAUDE_SKILLS_DIR=/custom/path ./install.sh
 In PowerShell:
 
 ```powershell
-.\install.ps1           # Claude (default)
+.\install.ps1           # interactive picker
+.\install.ps1 claude    # Claude
 .\install.ps1 codex     # Codex
 .\install.ps1 opencode  # OpenCode
 .\install.ps1 both      # Claude + Codex
@@ -118,9 +123,17 @@ cp -R team-builder-setup team-builder-sync architecture-advisor team-builder-sha
 > `.claude/skills/team-builder*` self-paths to `.codex/skills/...` or
 > `.config/opencode/skills/...` (the script does this automatically).
 
+> **OpenCode note:** OpenCode discovers Claude Code's skill directories natively —
+> `~/.claude/skills/` and a project's `.claude/skills/` — in addition to its own
+> `~/.config/opencode/skills/`, `~/.agents/skills/` and project `.opencode/skills/`.
+> So if you install for Claude, the skills already show up in OpenCode. Install for
+> `opencode` when you want OpenCode to be self-contained (or you disabled that
+> discovery with `OPENCODE_DISABLE_CLAUDE_CODE_SKILLS`).
+
 ## Verify the install
 
-Open Claude Code and confirm these appear in the skill list:
+Open the tool you installed for (Claude Code, Codex or OpenCode) and confirm these
+appear in the skill list:
 
 ```
 /team-builder-setup
@@ -128,7 +141,8 @@ Open Claude Code and confirm these appear in the skill list:
 /architecture-advisor
 ```
 
-You can also smoke-test the generator:
+You can also smoke-test the generator (swap the path for the directory you installed
+into — `~/.codex/skills` or `~/.config/opencode/skills`):
 
 ```bash
 node ~/.claude/skills/team-builder-shared/validate-manifest.mjs --selftest
@@ -136,12 +150,15 @@ node ~/.claude/skills/team-builder-shared/validate-manifest.mjs --selftest
 
 ## Quick start
 
-1. Open Claude Code at the root of the project you want a team for.
+1. Open your agent tool (Claude Code, Codex or OpenCode) at the root of the project you
+   want a team for.
 2. Type `/team-builder-setup`.
-3. The wizard walks you through it step by step: target (Claude/Codex/OpenCode), topology,
-   doc language, architecture root, constitution presets, roles, and per-role model/effort/skill.
-4. On confirmation it generates `.agent-source/` + `CLAUDE.md` + `.claude/agents/*` (and, if
-   Codex is selected, `AGENTS.md` + `.codex/*`).
+3. The wizard walks you through it step by step: target (Claude/Codex/OpenCode — **no
+   default, you pick; any single one is valid**), topology, doc language, architecture
+   root, constitution presets, roles, and per-role model/effort/skill.
+4. On confirmation it generates `.agent-source/` plus **only the outputs for the targets you
+   picked** — Claude → `CLAUDE.md` + `.claude/agents/*`; Codex → `AGENTS.md` + `.codex/*`;
+   OpenCode → `AGENTS.md` + `opencode.json` + `.opencode/*`.
 5. At the end the wizard can offer to write the first architecture docs with you via
    `/architecture-advisor`.
 
@@ -153,9 +170,9 @@ node ~/.claude/skills/team-builder-shared/validate-manifest.mjs --selftest
 The single source of truth is `.agent-source/`:
 
 ```
-.agent-source/  ──(sync)──►  CLAUDE.md
-   (canonical)               AGENTS.md          (if Codex or OpenCode target is selected)
-                             .claude/agents/*    (rich agent md per role)
+.agent-source/  ──(sync)──►  CLAUDE.md           (if Claude target is selected)
+   (canonical)               .claude/agents/*    (if Claude target is selected)
+                             AGENTS.md           (if Codex or OpenCode target is selected)
                              .codex/*            (if Codex target is selected)
                              opencode.json + .opencode/*   (if OpenCode target is selected)
 ```
@@ -255,10 +272,14 @@ git clone https://github.com/cesurbagci/agent-team-builder.git
 cd agent-team-builder
 ```
 
+**Varsayılan hedef yoktur.** Script'i argümansız çalıştırırsan hangi araç için
+kurulacağını sorar; hedefi doğrudan yazarsan soruyu atlar.
+
 ### macOS / Linux
 
 ```bash
-./install.sh            # Claude (varsayılan)  -> ~/.claude/skills
+./install.sh            # seçim ekranı
+./install.sh claude     # Claude               -> ~/.claude/skills
 ./install.sh codex      # Codex                -> ~/.codex/skills
 ./install.sh opencode   # OpenCode             -> ~/.config/opencode/skills
 ./install.sh both       # Claude + Codex
@@ -268,7 +289,7 @@ cd agent-team-builder
 Farklı bir Claude hedefi için:
 
 ```bash
-CLAUDE_SKILLS_DIR=/özel/yol ./install.sh
+CLAUDE_SKILLS_DIR=/özel/yol ./install.sh claude
 ```
 
 ### Windows
@@ -276,7 +297,8 @@ CLAUDE_SKILLS_DIR=/özel/yol ./install.sh
 PowerShell'de:
 
 ```powershell
-.\install.ps1           # Claude (varsayılan)
+.\install.ps1           # seçim ekranı
+.\install.ps1 claude    # Claude
 .\install.ps1 codex     # Codex
 .\install.ps1 opencode  # OpenCode
 .\install.ps1 both      # Claude + Codex
@@ -306,9 +328,17 @@ cp -R team-builder-setup team-builder-sync architecture-advisor team-builder-sha
 > sırasıyla `.codex/skills/...` veya `.config/opencode/skills/...` olarak güncellemen gerekir
 > (script bunu otomatik yapar).
 
+> **OpenCode notu:** OpenCode, kendi dizinlerinin (`~/.config/opencode/skills/`,
+> `~/.agents/skills/`, proje `.opencode/skills/`) yanı sıra **Claude Code'un skill
+> dizinlerini de native okur** — `~/.claude/skills/` ve proje `.claude/skills/`.
+> Yani Claude için kurarsan skill'ler OpenCode'da da görünür. `opencode` hedefine
+> kurmak, OpenCode'un kendi başına yeterli olmasını istediğinde (ya da bu keşfi
+> `OPENCODE_DISABLE_CLAUDE_CODE_SKILLS` ile kapattığında) anlamlıdır.
+
 ## Kurulumu doğrula
 
-Claude Code'u aç ve skill listesinde şunların göründüğünü kontrol et:
+Kurduğun aracı aç (Claude Code, Codex ya da OpenCode) ve skill listesinde şunların
+göründüğünü kontrol et:
 
 ```
 /team-builder-setup
@@ -316,7 +346,8 @@ Claude Code'u aç ve skill listesinde şunların göründüğünü kontrol et:
 /architecture-advisor
 ```
 
-Generator'ın sağlığını da test edebilirsin:
+Generator'ın sağlığını da test edebilirsin (yolu kurduğun dizinle değiştir —
+`~/.codex/skills` ya da `~/.config/opencode/skills`):
 
 ```bash
 node ~/.claude/skills/team-builder-shared/validate-manifest.mjs --selftest
@@ -324,12 +355,15 @@ node ~/.claude/skills/team-builder-shared/validate-manifest.mjs --selftest
 
 ## Hızlı başlangıç
 
-1. Takımını kurmak istediğin projenin kök dizininde Claude Code'u aç.
+1. Takımını kurmak istediğin projenin kök dizininde aracını aç (Claude Code, Codex ya da
+   OpenCode).
 2. `/team-builder-setup` yaz.
-3. Sihirbaz seni adım adım götürür: hedef (Claude/Codex/OpenCode), topoloji, doküman dili, mimari kök,
+3. Sihirbaz seni adım adım götürür: hedef (Claude/Codex/OpenCode — **varsayılan yok, sen
+   seçersin; tek bir hedef seçmek de geçerli**), topoloji, doküman dili, mimari kök,
    anayasa presetleri, roller ve her rol için model/effort/skill.
-4. Onayladığında `.agent-source/` + `CLAUDE.md` + `.claude/agents/*` (ve Codex seçiliyse
-   `AGENTS.md` + `.codex/*`) üretilir.
+4. Onayladığında `.agent-source/` ve **yalnız seçtiğin hedeflerin çıktıları** üretilir —
+   Claude → `CLAUDE.md` + `.claude/agents/*`; Codex → `AGENTS.md` + `.codex/*`;
+   OpenCode → `AGENTS.md` + `opencode.json` + `.opencode/*`.
 5. İstersen sihirbaz sonunda `/architecture-advisor` ile ilk mimari dokümanları birlikte
    yazmayı teklif eder.
 
@@ -341,9 +375,9 @@ node ~/.claude/skills/team-builder-shared/validate-manifest.mjs --selftest
 Tek gerçek kaynak `.agent-source/`'tur:
 
 ```
-.agent-source/  ──(sync)──►  CLAUDE.md
-   (canonical)               AGENTS.md          (Codex veya OpenCode hedefi seçiliyse)
-                             .claude/agents/*    (her rol için zengin agent md)
+.agent-source/  ──(sync)──►  CLAUDE.md           (Claude hedefi seçiliyse)
+   (canonical)               .claude/agents/*    (Claude hedefi seçiliyse)
+                             AGENTS.md           (Codex veya OpenCode hedefi seçiliyse)
                              .codex/*            (Codex hedefi seçiliyse)
                              opencode.json + .opencode/*   (OpenCode hedefi seçiliyse)
 ```

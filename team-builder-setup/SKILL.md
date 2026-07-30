@@ -1,6 +1,6 @@
 ---
 name: team-builder-setup
-description: Bir projede governance kuralları gömülü kalıcı agent takımı konfigürasyonu kurar (bir kez çalışır; .agent-source, CLAUDE.md, .claude/agents, varsa AGENTS.md, .codex ve .opencode üretir). Soru sorarak hedef (Claude/Codex/OpenCode), topoloji, doküman dili, mimari kök, anayasa, path-routing, domain-split roller ve model/effort/skill belirler. Tetikleyiciler — "team builder", "agent takımı yapılandır", "agent takımı konfigürasyonunu kur", "governance takımı kur". Bir işi paralel takımla yaptırmak ya da native agent team başlatmak için kullanma (o, Claude'un yerleşik özelliğidir); bu skill yalnız konfigürasyon üretir, iş çalıştırmaz.
+description: Bir projede governance kuralları gömülü kalıcı agent takımı konfigürasyonu kurar (bir kez çalışır; .agent-source her zaman, ardından SEÇİLEN hedeflere göre CLAUDE.md + .claude/agents, AGENTS.md + .codex, opencode.json + .opencode üretir). Soru sorarak hedef (Claude/Codex/OpenCode — varsayılan yok, kullanıcı seçer), topoloji, doküman dili, mimari kök, anayasa, path-routing, domain-split roller ve model/effort/skill belirler. Tetikleyiciler — "team builder", "agent takımı yapılandır", "agent takımı konfigürasyonunu kur", "governance takımı kur". Bir işi paralel takımla yaptırmak ya da native agent team başlatmak için kullanma (o, Claude'un yerleşik özelliğidir); bu skill yalnız konfigürasyon üretir, iş çalıştırmaz.
 ---
 
 # Team Builder Setup (v2 Sihirbaz)
@@ -15,7 +15,7 @@ Bu skill **takım KONFİGÜRASYONU kurmak** içindir (bir kez; dosya üretir) �
 
 ## Genel Bakış
 
-Bu skill, bulunulan projede **governance kuralları gömülü, çok hedefli bir agent takımı** kurar. Sihirbaz akışıyla, her adımda kullanıcıya **tek tek soru sorarak** ilerlersin. Sonuç olarak **tek bir canonical kaynak** (`.agent-source/`) üretilir; tüm hedef dosyalar (`CLAUDE.md`, `.claude/agents/*.md`; Codex seçiliyse `AGENTS.md` + `.codex/*`; OpenCode seçiliyse `AGENTS.md` + `opencode.json` + `.opencode/*`) bu kaynaktan `sync-agent-config.mjs` ile **generate** edilir.
+Bu skill, bulunulan projede **governance kuralları gömülü, çok hedefli bir agent takımı** kurar. Sihirbaz akışıyla, her adımda kullanıcıya **tek tek soru sorarak** ilerlersin. Sonuç olarak **tek bir canonical kaynak** (`.agent-source/`) üretilir; hedef dosyalar **yalnız seçilen ekosistemler için** (Claude seçiliyse `CLAUDE.md` + `.claude/agents/*.md`; Codex seçiliyse `AGENTS.md` + `.codex/*`; OpenCode seçiliyse `AGENTS.md` + `opencode.json` + `.opencode/*`) bu kaynaktan `sync-agent-config.mjs` ile **generate** edilir. **Hiçbir ekosistem varsayılan değildir** — Claude dahil hepsi kullanıcının seçimidir.
 
 **Temel ilke:** Hiçbir şeyi varsaymadan üretme. Önce sor → kullanıcı onaylasın/değiştirsin → sonra yaz. `.agent-source/` tek gerçek kaynaktır; generated dosyalar elle değiştirilmez, kaynaktan türetilir ve `--check` ile drift'siz tutulur.
 
@@ -78,15 +78,15 @@ Adımları **bu sırayla** uygula. Her adımda kullanıcıya sor, cevabı al, so
 
 ### Adım 2 — Hedefler + Topoloji
 
-İki ayrı şey sor: **(A) hangi ekosistem(ler)e** üretelim, **(B) Claude tarafında hangi takım topolojisi.**
+İki ayrı şey sor: **(A) hangi ekosistem(ler)e** üretelim, **(B) (yalnız Claude seçiliyse) hangi takım topolojisi.**
 
-**A) Hedef ekosistem(ler):** Sade dille sor — "Bu takımı hangi araçlar için kurayım? (birden çok seçilebilir)":
-- **Claude varsayılan hedeftir** ve her zaman üretilir (`CLAUDE.md` + `.claude/agents/*.md`).
-- **Codex?** EVET ise takım ek olarak `AGENTS.md` + `.codex/config.toml` + `.codex/team.md` + her codex hedefli agent için `.codex/agents/<name>.toml` ve `.codex/agent-definitions/<name>.md` ile kurulur. (Detay: `~/.claude/skills/team-builder-shared/codex-target.md`.)
-- **OpenCode?** EVET ise takım ek olarak `AGENTS.md` (Codex ile paylaşılır) + `opencode.json` + `.opencode/team.md` + her opencode hedefli agent için `.opencode/agents/<name>.md` (OpenCode frontmatter + kaynak gövde) ile kurulur. (Detay: `~/.claude/skills/team-builder-shared/opencode-target.md`.)
-- Manifest kök `targetsDefault`: seçilen ekosistemlerin birleşimi (örn. `["claude","codex","opencode"]`, `["claude","opencode"]`). (Üye bazında `targets` Adım 5'te daraltılabilir.)
+**A) Hedef ekosistem(ler):** **Varsayılan hedef YOKTUR — hiçbirini önceden seçili varsayma.** Sade dille, çoklu-seçim olarak sor: "Bu takımı hangi araçlar için kurayım? (birden çok seçilebilir)". Üç seçenek de eşittir; **en az biri seçilmelidir** (hiçbiri seçilmezse tekrar sor, kendin seçme):
+- **Claude?** EVET ise takım `CLAUDE.md` + her claude hedefli agent için `.claude/agents/<name>.md` ile kurulur.
+- **Codex?** EVET ise takım `AGENTS.md` + `.codex/config.toml` + `.codex/team.md` + her codex hedefli agent için `.codex/agents/<name>.toml` ve `.codex/agent-definitions/<name>.md` ile kurulur. (Detay: `~/.claude/skills/team-builder-shared/codex-target.md`.)
+- **OpenCode?** EVET ise takım `AGENTS.md` (Codex ile paylaşılır) + `opencode.json` + `.opencode/team.md` + her opencode hedefli agent için `.opencode/agents/<name>.md` (OpenCode frontmatter + kaynak gövde) ile kurulur. (Detay: `~/.claude/skills/team-builder-shared/opencode-target.md`.)
+- Manifest kök `targetsDefault`: seçilen ekosistemlerin birleşimi (örn. `["opencode"]`, `["claude","opencode"]`, `["claude","codex","opencode"]`). **Tek hedef seçmek geçerlidir** — örn. yalnız `["opencode"]` seçilirse `CLAUDE.md` ve `.claude/agents/*` **üretilmez**. (Üye bazında `targets` Adım 5'te daraltılabilir.)
 
-**B) Topoloji (Claude için)** — `~/.claude/skills/team-builder-shared/topologies.md`. Kullanıcıya **sade** sor:
+**B) Topoloji — YALNIZCA Claude seçildiyse sor; Claude seçilmediyse bu adımı tamamen ATLA** (`topology` manifest'e `subagent` yazılır). `~/.claude/skills/team-builder-shared/topologies.md`. Kullanıcıya **sade** sor:
 > "Claude tarafında agent'lar nasıl çalışsın?
 > **1) subagent (önerilen):** Bir lider dağıtır, agent'lar işi yapıp lidere döner. Kararlı, ek ayar yok.
 > **2) native takım (deneysel):** Agent'lar birbirine doğrudan mesajlaşıp paylaşılan görev listesiyle koordine olur. Yeni Claude Code sürümü ister, deneysel."
@@ -203,10 +203,10 @@ Tüm cevaplar toplandı; şimdi kaynağı yaz, doğrula ve generate et. Sırayla
 - `.agent-source/agents/manifest.json` — kök alanlar (`targetsDefault`, `topology`, `docLanguage`, `architectureDocs`, `constitution`, `focus[]`, `routing[]`, `codeDocSync[]`, `lead`) + `agents[]`; `~/.claude/skills/team-builder-shared/manifest-schema.md` şemasına birebir uygun.
 - **Kalite odaklarından kısıt dosyaları** (Adım 7A, `quality-dimensions.md`): seçili boyutlardan somut olanlar için `docs/<arch-root>/constraints/<konu>.md`'yi `templates/constraint.md` standardıyla üret — örn. `code-design` → `file-size.md` (max satır eşiğiyle), `security` → `secrets.md`, `testing` → `coverage.md`.
 - `.agent-source/agents/<name>.md` — her üye için zengin rol talimatı (`~/.claude/skills/team-builder-shared/agent-md-rich.md` kalıbı, docLanguage dilinde). **`İletişim` bölümü topolojiye göre yazılır** (`subagent` → lead'e raporla; `native` → peer-to-peer mesajlaş — `topologies.md`).
-- `.agent-source/project/CLAUDE.md` — Claude proje talimatı kaynağı (routing + code-doc sync + anayasa + mimari kaynaklar dahil). **`topology: native` ise** ek bir "Takımı başlatma" bölümü ekle: takımın doğal dille nasıl kurulacağına dair kısa örnek (örn. "X, Y, Z rolleriyle bir agent takımı oluştur") ve teammate'lerin peer-to-peer koordine olduğu notu.
+- **Claude hedefi seçildiyse:** `.agent-source/project/CLAUDE.md` — Claude proje talimatı kaynağı (routing + code-doc sync + anayasa + mimari kaynaklar dahil). Claude seçilmediyse bu dosyayı **YAZMA** (generator zaten üretmez). **`topology: native` ise** ek bir "Takımı başlatma" bölümü ekle: takımın doğal dille nasıl kurulacağına dair kısa örnek (örn. "X, Y, Z rolleriyle bir agent takımı oluştur") ve teammate'lerin peer-to-peer koordine olduğu notu.
 - Codex **veya** OpenCode hedefi seçildiyse: `.agent-source/project/AGENTS.md` (ikisi de native okur).
 - Codex hedefi seçildiyse ayrıca: `.agent-source/project/codex-config.toml`, `.agent-source/project/codex-team.md` (`~/.claude/skills/team-builder-shared/codex-target.md`).
-- OpenCode hedefi seçildiyse ayrıca: `.agent-source/project/opencode.json` (içine `"//": "generated…"` notu göm — JSON `#` header taşıyamaz; `$schema` + `instructions` [AGENTS.md + mimari docs] + `permission` default'ları) ve `.agent-source/project/opencode-team.md` (`~/.claude/skills/team-builder-shared/opencode-target.md`).
+- OpenCode hedefi seçildiyse ayrıca: `.agent-source/project/opencode.json` (**yalnız geçerli şema anahtarları**: `$schema` + `instructions` [AGENTS.md + mimari docs] + `permission` default'ları — **`"//"` gibi not anahtarı EKLEME**, OpenCode şemayı katı doğrular ve `Unrecognized key` ile başlamaz) ve `.agent-source/project/opencode-team.md` (`~/.claude/skills/team-builder-shared/opencode-target.md`).
 - `.agent-source/skills/<skill>/SKILL.md` — repo skill kaynakları (varsa).
 - `.agent-source/README.md` — "generated'ı elleme; burayı güncelle + sync çalıştır" notu.
 - Ayrıca `~/.claude/skills/team-builder-shared/architecture-docs.md`'deki "İskelet üretimi" kuralına göre `docs/<arch-root>/` iskeletini üret: `adr/` `constraints/` `design/` dizinleri + `ilkeler.md`. **README ve standart şablonları `~/.claude/skills/team-builder-shared/templates/` standardından kopyala:** `templates/architecture-readme.md` → `docs/<arch-root>/README.md`; `templates/{doc-standard.md, adr.md, constraint.md, design.md}` → `docs/<arch-root>/templates/`. Böylece dokümanlar **tek standartta** yazılır ve agent'lar bu standarda göre okur (`doc-standard.md`). per-module ise modül-docs şablonu da eklenir.
@@ -242,8 +242,8 @@ Tüm cevaplar toplandı; şimdi kaynağı yaz, doğrula ve generate et. Sırayla
 
 Üretim bitince kullanıcıya net bir özet ver:
 
-- **Ne üretildi:** hedefler (Claude [+ Codex]), docLanguage, arch-root + layout, açık anayasa presetleri, routing satır sayısı, üye sayısı/rolleri, `lead`.
-- **Üretilen yollar:** canonical kaynak `.agent-source/` (manifest.json + agents/*.md + project/* + skills); generated hedefler `CLAUDE.md`, `.claude/agents/*.md`, (Codex ise) `AGENTS.md` + `.codex/*`, (OpenCode ise) `AGENTS.md` + `opencode.json` + `.opencode/*`; mimari iskelet `docs/<arch-root>/...`.
+- **Ne üretildi:** seçilen hedefler (Adım 2'de ne seçildiyse — yalnız onları yaz), docLanguage, arch-root + layout, açık anayasa presetleri, routing satır sayısı, üye sayısı/rolleri, `lead`.
+- **Üretilen yollar:** canonical kaynak `.agent-source/` (manifest.json + agents/*.md + project/* + skills); generated hedefler **yalnız seçilenler için** — (Claude ise) `CLAUDE.md` + `.claude/agents/*.md`, (Codex ise) `AGENTS.md` + `.codex/*`, (OpenCode ise) `AGENTS.md` + `opencode.json` + `.opencode/*`; mimari iskelet `docs/<arch-root>/...`.
 - **Doğrulama sonucu:** manifest geçerli; sync drift temiz.
 - **Sıradaki adımlar:** üye eklemek için `/team-builder-add`, takımı düzenlemek için `/team-builder-edit`, yeniden generate + drift kontrol için `/team-builder-sync`. **Hatırlat:** generated dosyalar elle değiştirilmez; her değişiklik `.agent-source/` üzerinde yapılır, sonra sync.
 

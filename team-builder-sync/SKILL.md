@@ -1,6 +1,6 @@
 ---
 name: team-builder-sync
-description: Bir projedeki agent konfigürasyonunu canonical kaynaktan (.agent-source/) yeniden üretir ve drift kontrolü yapar. Generated dosyalar (CLAUDE.md, AGENTS.md, .claude/agents/*, .codex/*) ile kaynak arasındaki farkı tespit eder. Kullanıcı "takımı senkronla", "agent sync", "drift kontrol", "agent config güncelle" dediğinde tetiklenir.
+description: Bir projedeki agent konfigürasyonunu canonical kaynaktan (.agent-source/) yeniden üretir ve drift kontrolü yapar. Generated dosyalar (hedefe göre CLAUDE.md + .claude/agents/*, AGENTS.md + .codex/*, opencode.json + .opencode/*) ile kaynak arasındaki farkı tespit eder. Kullanıcı "takımı senkronla", "agent sync", "drift kontrol", "agent config güncelle" dediğinde tetiklenir.
 ---
 
 # team-builder-sync
@@ -12,10 +12,12 @@ dosyalarını **yeniden üretir** (sync) ve/veya **drift** kontrol eder (`--chec
 Gerçek iş `team-builder-shared/sync-agent-config.mjs` generator'ında yapılır; bu
 skill onu doğru sırada çağırıp sonucu raporlar.
 
-**Tek doğru kaynak `.agent-source/`'tır.** Generated hedefler (`CLAUDE.md`,
-`AGENTS.md`, `.claude/agents/*.md`, `.codex/agents/*.toml`,
-`.codex/agent-definitions/*.md`, `.codex/*`) **elle değiştirilmez**. Değişiklik
-gerektiğinde `.agent-source/` güncellenir, sonra bu skill ile sync çalıştırılır.
+**Tek doğru kaynak `.agent-source/`'tır.** Generated hedefler **elle değiştirilmez** —
+manifest'te hangi ekosistemler hedeflenmişse yalnız onlar üretilir: Claude ise
+`CLAUDE.md` + `.claude/agents/*.md`; Codex ise `AGENTS.md` + `.codex/agents/*.toml` +
+`.codex/agent-definitions/*.md` + `.codex/*`; OpenCode ise `AGENTS.md` + `opencode.json`
++ `.opencode/agents/*.md` + `.opencode/team.md`. Değişiklik gerektiğinde
+`.agent-source/` güncellenir, sonra bu skill ile sync çalıştırılır.
 
 Referans dokümanlar (kurulu yol): `~/.claude/skills/team-builder-shared/` altında
 `sync-pipeline.md` (generator davranış sözleşmesi) ve `canonical-source.md`
@@ -120,7 +122,7 @@ sonrası doğrudan Adım 4'teki `--check`'i çalıştır, yazma adımını (Adı
 
 | Hata | Doğrusu |
 |---|---|
-| Generated dosyayı (CLAUDE.md, .claude/agents/*) elle düzeltmek | `.agent-source/` kaynağını düzelt, sonra sync çalıştır. Elle değişiklik bir sonraki sync'te ezilir ve `--check`'te drift olur. |
+| Generated dosyayı (CLAUDE.md, .claude/agents/*, opencode.json, .opencode/agents/* …) elle düzeltmek | `.agent-source/` kaynağını düzelt, sonra sync çalıştır. Elle değişiklik bir sonraki sync'te ezilir ve `--check`'te drift olur. |
 | Manifest doğrulamadan generate etmek | Önce `validate-manifest.mjs`, sonra generate. Bozuk manifest yanlış çıktı üretir. |
 | `--root` vermeyi unutmak | `--root <proje>` verilmezse generator cwd'yi kök sayar; yanlış dizine yazabilir. Her zaman projenin mutlak yolunu ver. |
 | `--check` exit ≠ 0'ı yok saymak | Drift gerçek bir uyumsuzluktur; mismatch listesindeki dosyaları incele ve kaynaktan tekrar üret. |
