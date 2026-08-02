@@ -1,10 +1,10 @@
-# Generated Dosya Defteri Implementation Plan
+# Generated Dosya Defteri (rapor-only) Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** `sync`'in kullanıcının elle yazdığı agent dosyalarını silmesini durdurmak, kaynaktan çıkarılan skill mirror'larının ortada kalmasını önlemek — ikisini de sync'in ürettiklerini kaydettiği bir deftere bağlayarak.
+**Goal:** `sync`'in dosya silmesini tamamen durdurmak — kullanıcının elle yazdığı agent dosyalarının silinmesi bugün canlı bir veri kaybı bug'ı. Yerine sync ürettiklerinin defterini tutar ve bayatlayanları raporlar.
 
-**Architecture:** `createContext` üretilen her generated yolu bir `produced` kümesinde toplar. `generate()` sonunda bu küme `.agent-source/generated-files.json` defteriyle karşılaştırılır: defterde olup artık üretilmeyen dosyalar silinir, defterde olmayanlara dokunulmaz. Dizin+uzantı tabanlı `removeOrphans` tamamen kaldırılır.
+**Architecture:** `createContext` üretilen her generated yolu bir `produced` kümesinde toplar. `generate()` sonunda önceki defterle karşılaştırır: defterde olup artık üretilmeyen ve diskte duran dosyalar `(stale)` mismatch'i olarak raporlanır. Hiçbir dosya silinmez; `removeOrphans` ve `removeFile` kaldırılır.
 
 **Tech Stack:** Node.js ≥18 (harici bağımlılık yok), repo'nun kendi selftest harness'ı (`--selftest`, test framework'ü yok).
 
@@ -13,206 +13,54 @@
 - **Doküman dili Türkçe.** Kod, dosya adı ve commit mesajı İngilizce.
 - **Harici bağımlılık eklenmez.** Yalnız Node stdlib.
 - **Her kod değişikliği sonrası** `node team-builder-shared/sync-agent-config.mjs --selftest` → `SELFTEST PASS`.
-- **`--check` hiçbir şey silmez.** Silinmesi gereken her dosyayı `<yol> (orphan)` biçiminde mismatch olarak raporlar. Bu mevcut sözleşmedir, korunur.
-- **Defter yoksa hiçbir şey silinmez.** Geçiş güvenliği; mevcut projelerde ani veri kaybı olmamalı.
-- **Defter yolları repo köküne göre POSIX ayraçlıdır** — mevcut `toPosix()` ile aynı biçim.
+- **Sync hiçbir dosya silmez.** Uygulama bittiğinde kod tabanında `fs.unlink` / `fs.rm` / `fs.rmdir` çağrısı **kalmamalıdır** (fixture temizliği yapan selftest kodu hariç).
+- **`--check` hiçbir şey yazmaz ve silmez.** Defter dosyasının byte'larını da değiştirmez.
+- **Defter yolları repo köküne göre POSIX ayraçlı ve sıralıdır** — mevcut `toPosix()` ile aynı biçim.
+- **Bozuk/eksik defter hata vermez**, yalnız o turda bayat rapor üretilmez.
 - **Spec:** `docs/superpowers/specs/2026-08-03-generated-ledger-design.md` — çelişki olursa spec geçerlidir.
 
 ---
 
-### Task 1: Üretilen yolları topla ve defteri yaz
+### Task 1: Silme yolunu kaldır
 
-Mevcut silme davranışını **değiştirmez**. Yalnız defteri oluşturur; bu güvenli ara adımdır.
+Asıl bug fix, ve bilerek ilk sırada: bu commit'ten sonra sync artık hiçbir kullanıcı dosyasını silemez. Defter henüz yok, dolayısıyla bayat raporu da yok — bu ara durum kabul edilir çünkü bugünkü davranış zaten yanlış siliyor.
 
 **Files:**
-- Modify: `team-builder-shared/sync-agent-config.mjs` (`createContext`, `generate`, `runSelftest`)
+- Modify: `team-builder-shared/sync-agent-config.mjs` (`createContext`, `syncAgents`, `runSelftest`)
 
 **Interfaces:**
 - Consumes: yok (ilk task)
-- Produces: `ctx.produced` — `Set<string>`, üretilen generated yolların POSIX biçimi. `LEDGER_RELATIVE = '.agent-source/generated-files.json'` sabiti. Task 2 bunları kullanır.
+- Produces: `ctx.removeOrphans` ve `ctx.removeFile` **artık yoktur**. Task 2 bunların yokluğuna dayanır.
 
 - [ ] **Step 1: Failing test yaz**
 
 `team-builder-shared/sync-agent-config.mjs` içinde `runSelftest` fonksiyonunda, `// --check should be clean right after generate (idempotent).` yorumundan **önce** ekle:
 
 ```javascript
-  // Defter: sync urettigi tum generated yollari kaydeder.
-  assert(
-    await exists('.agent-source/generated-files.json'),
-    'ledger .agent-source/generated-files.json must be written'
-  )
-  const ledger = JSON.parse(await read('.agent-source/generated-files.json'))
-  assert(Array.isArray(ledger.files), 'ledger must have a files array')
-  assert(
-    ledger.files.includes('.claude/agents/architect.md'),
-    'ledger must list generated agent files'
-  )
-  assert(
-    ledger.files.includes('CLAUDE.md'),
-    'ledger must list generated project files'
-  )
-  assert(
-    ledger.files.includes('.claude/skills/demo-skill/SKILL.md'),
-    'ledger must list generated skill mirrors'
-  )
-  assert(
-    !ledger.files.includes('.agent-source/generated-files.json'),
-    'ledger must not list itself'
-  )
-  assert(
-    ledger.files.every((f, i) => i === 0 || ledger.files[i - 1] <= f),
-    'ledger files must be sorted for stable diffs'
-  )
-```
-
-- [ ] **Step 2: Testi çalıştır, fail ettiğini gör**
-
-```bash
-node team-builder-shared/sync-agent-config.mjs --selftest
-```
-
-Beklenen: `SELFTEST FAIL: ledger .agent-source/generated-files.json must be written`
-
-- [ ] **Step 3: Sabiti ekle**
-
-`team-builder-shared/sync-agent-config.mjs` içinde `const VALID_TARGETS = ...` satırının **hemen üstüne** ekle:
-
-```javascript
-// Sync's own record of what it generated. Cleanup compares against this, so a
-// file the user wrote by hand is never mistaken for a stale generated target.
-const LEDGER_RELATIVE = path.join('.agent-source', 'generated-files.json')
-```
-
-- [ ] **Step 4: `createContext`'e `produced` kümesini ekle**
-
-`createContext` içinde `const writes = []` satırının **hemen altına** ekle:
-
-```javascript
-  // Every generated path this run produced — whether it changed on disk or not.
-  const produced = new Set()
-```
-
-Ardından `writeExpected` imzasını ve ilk satırını değiştir. Mevcut hâli:
-
-```javascript
-  async function writeExpected(filePath, expected) {
-    const normalizedExpected = normalizeText(expected)
-```
-
-Şununla değiştir:
-
-```javascript
-  async function writeExpected(filePath, expected, { track = true } = {}) {
-    if (track) {
-      produced.add(toPosix(filePath))
-    }
-    const normalizedExpected = normalizeText(expected)
-```
-
-`copyExpected`'ı da opsiyonları geçirecek şekilde değiştir. Mevcut hâli:
-
-```javascript
-  async function copyExpected(sourcePath, targetPath, transform = text => text) {
-    const source = await readText(sourcePath)
-    await writeExpected(targetPath, transform(source))
-  }
-```
-
-Şununla değiştir:
-
-```javascript
-  async function copyExpected(sourcePath, targetPath, transform = text => text, options) {
-    const source = await readText(sourcePath)
-    await writeExpected(targetPath, transform(source), options)
-  }
-```
-
-Son olarak `return { ... }` bloğuna `produced,` ekle — `writes,` satırının hemen altına.
-
-- [ ] **Step 5: Defter yazımını `generate()`'e ekle**
-
-`generate()` içinde `await syncSkills(ctx, manifest)` satırının **hemen altına** ekle:
-
-```javascript
-  // Ledger is generated too, but it must not list itself — track: false.
-  const ledgerPath = ctx.resolveRoot(LEDGER_RELATIVE)
-  const ledgerBody = JSON.stringify({ files: [...ctx.produced].sort() }, null, 2) + '\n'
-  await ctx.writeExpected(ledgerPath, ledgerBody, { track: false })
-```
-
-- [ ] **Step 6: Testi çalıştır, geçtiğini gör**
-
-```bash
-node team-builder-shared/sync-agent-config.mjs --selftest
-```
-
-Beklenen: `SELFTEST PASS`
-
-- [ ] **Step 7: Gerçek projede elle doğrula**
-
-```bash
-rm -rf /tmp/tb-ledger && mkdir -p /tmp/tb-ledger/.agent-source/agents /tmp/tb-ledger/.agent-source/project && printf '{ "targetsDefault": ["claude"], "lead": "architect", "agents": [ { "name": "architect", "model": "opus" } ] }' > /tmp/tb-ledger/.agent-source/agents/manifest.json && printf -- '---\nname: architect\n---\n\n# A\n' > /tmp/tb-ledger/.agent-source/agents/architect.md && printf '# CLAUDE\n' > /tmp/tb-ledger/.agent-source/project/CLAUDE.md && node team-builder-shared/sync-agent-config.mjs --root /tmp/tb-ledger >/dev/null && cat /tmp/tb-ledger/.agent-source/generated-files.json
-```
-
-Beklenen çıktı:
-
-```json
-{
-  "files": [
-    ".claude/agents/architect.md",
-    "CLAUDE.md"
-  ]
-}
-```
-
-- [ ] **Step 8: Commit**
-
-```bash
-git add team-builder-shared/sync-agent-config.mjs
-git commit -m "feat: record generated paths in a sync ledger"
-```
-
----
-
-### Task 2: Temizliği deftere bağla
-
-Asıl bug fix. `removeOrphans` kaldırılır, yerine defter farkına dayanan temizlik gelir.
-
-**Files:**
-- Modify: `team-builder-shared/sync-agent-config.mjs` (`createContext`, `syncAgents`, `generate`, `runSelftest`)
-
-**Interfaces:**
-- Consumes: Task 1'in `ctx.produced` kümesi ve `LEDGER_RELATIVE` sabiti
-- Produces: `removeStaleGenerated(ctx, ledgerPath)` — `generate()` içinde, defter yazımından **önce** çağrılır. `ctx.removeOrphans` artık yoktur.
-
-- [ ] **Step 1: Failing test yaz — kullanıcı dosyası korunmalı**
-
-`runSelftest` içinde, Task 1'de eklediğin defter assert'lerinden **sonra** ekle:
-
-```javascript
-  // Kullanicinin elle yazdigi agent dosyasina ASLA dokunulmaz (defterde yok).
+  // Kullanicinin elle yazdigi dosyalara ASLA dokunulmaz.
   const handWritten = path.join(fixtureRoot, '.claude', 'agents', 'my-helper.md')
-  await fs.writeFile(handWritten, '---\nname: my-helper\n---\n\n# Elle yazdigim\n')
-  await silentGenerate({ root: fixtureRoot, checkOnly: false })
-  assert(
-    await exists('.claude/agents/my-helper.md'),
-    'hand-written agent must survive sync (it is not in the ledger)'
-  )
-  assert(
-    normalizeText(await read('.claude/agents/my-helper.md')) ===
-      normalizeText('---\nname: my-helper\n---\n\n# Elle yazdigim\n'),
-    'hand-written agent must not be rewritten'
-  )
-
-  // Kullanicinin elle yazdigi skill de korunur.
+  const handWrittenBody = '---\nname: my-helper\n---\n\n# Elle yazdigim\n'
+  await fs.writeFile(handWritten, handWrittenBody)
   await fs.mkdir(path.join(fixtureRoot, '.claude', 'skills', 'my-own-skill'), {
     recursive: true,
   })
+  const handSkillBody = '---\nname: my-own-skill\ndescription: elle\n---\n\n# Elle\n'
   await fs.writeFile(
     path.join(fixtureRoot, '.claude', 'skills', 'my-own-skill', 'SKILL.md'),
-    '---\nname: my-own-skill\ndescription: elle\n---\n\n# Elle\n'
+    handSkillBody
   )
+
   await silentGenerate({ root: fixtureRoot, checkOnly: false })
+
+  assert(
+    await exists('.claude/agents/my-helper.md'),
+    'hand-written agent must survive sync'
+  )
+  assert(
+    normalizeText(await read('.claude/agents/my-helper.md')) ===
+      normalizeText(handWrittenBody),
+    'hand-written agent must not be rewritten'
+  )
   assert(
     await exists('.claude/skills/my-own-skill/SKILL.md'),
     'hand-written skill must survive sync'
@@ -225,15 +73,24 @@ Asıl bug fix. `removeOrphans` kaldırılır, yerine defter farkına dayanan tem
 node team-builder-shared/sync-agent-config.mjs --selftest
 ```
 
-Beklenen: `SELFTEST FAIL: hand-written agent must survive sync (it is not in the ledger)`
+Beklenen: `SELFTEST FAIL: hand-written agent must survive sync`
 
 Sebep: `removeOrphans` `.claude/agents/` içindeki manifest'te olmayan her `.md` dosyasını siliyor.
 
-- [ ] **Step 3: `removeOrphans`'ı kaldır**
+- [ ] **Step 3: `removeOrphans` ve `removeFile`'ı kaldır**
 
-`createContext` içinden şu fonksiyonun tamamını **sil**:
+`createContext` içinden şu iki fonksiyonun **tamamını sil**:
 
 ```javascript
+  async function removeFile(filePath) {
+    if (checkOnly) {
+      mismatches.push(`${toPosix(filePath)} (orphan)`)
+      return
+    }
+    await fs.unlink(filePath)
+    writes.push(`${toPosix(filePath)} (removed)`)
+  }
+
   // Remove generated files in dirPath that are not in expectedFileNames and
   // match one of allowedExtensions. Subdirs / other files are left untouched.
   async function removeOrphans(dirPath, expectedFileNames, allowedExtensions) {
@@ -256,7 +113,7 @@ Sebep: `removeOrphans` `.claude/agents/` içindeki manifest'te olmayan her `.md`
 
 - [ ] **Step 4: `syncAgents`'taki orphan çağrılarını ve beklenen-ad kümelerini kaldır**
 
-`syncAgents` içinden şu bloğun tamamını **sil**:
+`syncAgents` içinden şu bloğun **tamamını sil**:
 
 ```javascript
   // Orphan cleanup for generated agent target dirs.
@@ -282,66 +139,14 @@ Sebep: `removeOrphans` `.claude/agents/` içindeki manifest'te olmayan her `.md`
   )
 ```
 
-Bu blok silinince `expectedClaudeAgents`, `expectedCodexDefinitions`, `expectedCodexToml`, `expectedOpencodeAgents` kümeleri kullanılmaz hâle gelir. Onları da sil: `syncAgents` başındaki dört `const expected... = new Set()` satırı ve döngü içindeki dört `expected....add(fileName)` / `.add(definitionFileName)` / `.add(tomlFileName)` satırı.
+Bu blok silinince dört küme kullanılmaz hâle gelir. Onları da sil:
+- `syncAgents` başındaki `const expectedClaudeAgents = new Set()`, `const expectedCodexDefinitions = new Set()`, `const expectedCodexToml = new Set()`, `const expectedOpencodeAgents = new Set()` satırları
+- Döngü içindeki `expectedClaudeAgents.add(fileName)`, `expectedCodexDefinitions.add(definitionFileName)`, `expectedCodexToml.add(tomlFileName)`, `expectedOpencodeAgents.add(fileName)` satırları
+- Bu `.add(...)` satırlarının hemen üstündeki, yalnız onlara hizmet eden `const fileName = ...`, `const definitionFileName = ...`, `const tomlFileName = ...` bildirimlerinden **başka yerde kullanılmayanlar**. Dikkat: `fileName` ve `definitionFileName`/`tomlFileName` aşağıdaki `copyExpected`/`writeExpected` çağrılarında da kullanılıyor — o kullanımlar duruyorsa bildirimi **silme**.
 
-- [ ] **Step 5: Defter tabanlı temizliği ekle**
+- [ ] **Step 5: Mevcut ghost testlerini kaldır**
 
-`syncSkills` fonksiyonunun **hemen altına**, `// generate — main pipeline` yorum bloğundan **önce** ekle:
-
-```javascript
-// Remove targets this run no longer produces. Only paths the previous run
-// recorded are eligible — anything absent from the ledger belongs to the user.
-// A missing ledger means the project predates it: record, never delete.
-async function removeStaleGenerated(ctx, ledgerPath) {
-  if (!(await pathExists(ledgerPath))) {
-    return
-  }
-  let previous
-  try {
-    previous = JSON.parse(await readText(ledgerPath))
-  } catch {
-    // An unreadable ledger must not authorise deletions.
-    return
-  }
-  const files = Array.isArray(previous?.files) ? previous.files : []
-  for (const relative of files) {
-    if (ctx.produced.has(relative)) continue
-    const filePath = ctx.resolveRoot(...relative.split('/'))
-    if (!(await pathExists(filePath))) continue
-    await ctx.removeFile(filePath)
-  }
-}
-```
-
-`createContext`'in `return { ... }` bloğuna `removeFile,` ekle — `copyExpected,` satırının hemen altına.
-
-- [ ] **Step 6: `generate()`'te temizliği defter yazımından önce çağır**
-
-`generate()` içinde Task 1'de eklediğin defter bloğunu şununla değiştir:
-
-```javascript
-  // Cleanup runs against the PREVIOUS ledger, then the new one is written.
-  const ledgerPath = ctx.resolveRoot(LEDGER_RELATIVE)
-  await removeStaleGenerated(ctx, ledgerPath)
-  const ledgerBody = JSON.stringify({ files: [...ctx.produced].sort() }, null, 2) + '\n'
-  await ctx.writeExpected(ledgerPath, ledgerBody, { track: false })
-```
-
-- [ ] **Step 7: Testi çalıştır, geçtiğini gör**
-
-```bash
-node team-builder-shared/sync-agent-config.mjs --selftest
-```
-
-Beklenen: Kullanıcı dosyası assert'leri geçer. **Mevcut ghost testleri artık fail eder** — bu beklenen davranış değişikliğidir, Step 8'de güncellenecek. Beklenen fail:
-
-```
-SELFTEST FAIL: --check should report orphan generated file
-```
-
-- [ ] **Step 8: Mevcut ghost testlerini gerçek orphan senaryosuna çevir**
-
-`runSelftest` içinde şu iki bloğun **tamamını sil**:
+`runSelftest` içinde şu iki bloğun **tamamını sil** — artık silme olmadığı için ikisi de geçersiz:
 
 ```javascript
   // Orphan detection: a stray generated agent file → drift in --check.
@@ -367,50 +172,9 @@ SELFTEST FAIL: --check should report orphan generated file
   )
 ```
 
-Yerine, aynı konuma ekle:
+Yerine gelen bayat raporu testleri Task 2'de eklenecek.
 
-```javascript
-  // Gercek orphan: onceki sync'in urettigi bir agent manifest'ten cikarilinca
-  // generated karsiliklari silinir. Ghost dosyasi elle yaratmak artik orphan
-  // uretmez — defterde olmayan dosya kullanicinin sayilir.
-  const trimmedManifest = {
-    ...manifest,
-    agents: manifest.agents.filter(a => a.name !== 'developer'),
-  }
-  await fs.writeFile(
-    path.join(sourceRoot, 'agents', 'manifest.json'),
-    JSON.stringify(trimmedManifest, null, 2)
-  )
-  await fs.rm(path.join(sourceRoot, 'agents', 'developer.md'))
-
-  // Once --check: silinmesi gerekeni raporlamali, DISKTEN SILMEMELI.
-  const checkStale = await silentGenerate({ root: fixtureRoot, checkOnly: true })
-  assert(
-    checkStale.mismatches.some(m => m.includes('.claude/agents/developer.md')),
-    '--check should report the removed agent as an orphan'
-  )
-  assert(
-    await exists('.claude/agents/developer.md'),
-    '--check must not delete anything'
-  )
-
-  // Sonra gercek sync: silinmeli.
-  await silentGenerate({ root: fixtureRoot, checkOnly: false })
-  assert(
-    !(await exists('.claude/agents/developer.md')),
-    'agent removed from the manifest must be deleted from .claude/agents'
-  )
-  assert(
-    await exists('.claude/agents/architect.md'),
-    'the remaining agent must stay'
-  )
-  assert(
-    await exists('.claude/agents/my-helper.md'),
-    'hand-written agent must still survive a run that deletes a real orphan'
-  )
-```
-
-- [ ] **Step 9: Testi çalıştır, geçtiğini gör**
+- [ ] **Step 6: Testi çalıştır, geçtiğini gör**
 
 ```bash
 node team-builder-shared/sync-agent-config.mjs --selftest
@@ -418,125 +182,323 @@ node team-builder-shared/sync-agent-config.mjs --selftest
 
 Beklenen: `SELFTEST PASS`
 
-- [ ] **Step 10: Asıl bug'ın kapandığını elle doğrula**
+- [ ] **Step 7: Kod tabanında silme kalmadığını doğrula**
+
+```bash
+grep -n "fs.unlink\|fs.rmdir\|removeOrphans\|removeFile" team-builder-shared/sync-agent-config.mjs
+```
+
+Beklenen: yalnız `runSelftest` içindeki fixture temizliği (`fs.rm(fixtureRoot, ...)`) tipi satırlar; `fs.unlink`, `fs.rmdir`, `removeOrphans`, `removeFile` **hiç görünmemeli**.
+
+- [ ] **Step 8: Asıl bug'ın kapandığını elle doğrula**
 
 ```bash
 rm -rf /tmp/tb-bug && mkdir -p /tmp/tb-bug/.agent-source/agents /tmp/tb-bug/.agent-source/project && printf '{ "targetsDefault": ["claude"], "lead": "architect", "agents": [ { "name": "architect", "model": "opus" } ] }' > /tmp/tb-bug/.agent-source/agents/manifest.json && printf -- '---\nname: architect\n---\n\n# A\n' > /tmp/tb-bug/.agent-source/agents/architect.md && printf '# CLAUDE\n' > /tmp/tb-bug/.agent-source/project/CLAUDE.md && node team-builder-shared/sync-agent-config.mjs --root /tmp/tb-bug >/dev/null && printf -- '---\nname: my-helper\n---\n\n# Elle\n' > /tmp/tb-bug/.claude/agents/my-helper.md && node team-builder-shared/sync-agent-config.mjs --root /tmp/tb-bug && ls /tmp/tb-bug/.claude/agents/
 ```
 
-Beklenen: `my-helper.md` çıktıda **durur**; `(removed)` satırı **görünmez**.
+Beklenen: `(removed)` satırı **görünmez**; `ls` çıktısında `architect.md` ve `my-helper.md` birlikte durur.
 
-- [ ] **Step 11: Commit**
+- [ ] **Step 9: Commit**
 
 ```bash
 git add team-builder-shared/sync-agent-config.mjs
-git commit -m "fix: stop sync from deleting hand-written agent files"
+git commit -m "fix: stop sync from deleting files it did not write"
 ```
 
 ---
 
-### Task 3: Boş dizin temizliği ve geçiş güvenliği
-
-Skill mirror'ları dizin altında yaşar; son dosya silinince boş dizin kalmamalı. Ayrıca defter yokken hiçbir şeyin silinmediği kilitlenir.
+### Task 2: Defteri yaz ve bayat çıktıları raporla
 
 **Files:**
-- Modify: `team-builder-shared/sync-agent-config.mjs` (`removeStaleGenerated`, `runSelftest`)
+- Modify: `team-builder-shared/sync-agent-config.mjs` (sabitler, `createContext`, `generate`, `runSelftest`)
 
 **Interfaces:**
-- Consumes: Task 2'nin `removeStaleGenerated` fonksiyonu
-- Produces: yok
+- Consumes: Task 1 sonrası kod (silme yolu yok)
+- Produces: `LEDGER_RELATIVE` sabiti; `ctx.produced` (`Set<string>`, POSIX yollar); `reportStaleGenerated(ctx, ledgerPath)`
 
-- [ ] **Step 1: Failing test yaz**
+- [ ] **Step 1: Fixture'ı tüm çıktı tiplerini kapsayacak şekilde genişlet**
 
-`runSelftest` içinde, Task 2'de eklediğin gerçek-orphan bloğundan **sonra** ekle:
+Mevcut fixture Codex proje kaynaklarını içermiyor, dolayısıyla `.codex/config.toml` ve
+`.codex/team.md` hiç üretilmiyor — defter testi bu iki çıktı tipini kaçırırdı. `runSelftest`
+içinde, `const opencodeTeam = ...` satırının **hemen altına** ekle:
 
 ```javascript
-  // Skill kaynagi cikarilinca uc ekosistemdeki mirror'lar da temizlenir ve
-  // geride bos dizin kalmaz.
-  await fs.rm(path.join(sourceRoot, 'skills', 'demo-skill'), { recursive: true })
-  await silentGenerate({ root: fixtureRoot, checkOnly: false })
-  for (const dir of ['.claude/skills', '.agents/skills', '.opencode/skills']) {
-    assert(
-      !(await exists(`${dir}/demo-skill/SKILL.md`)),
-      `${dir}/demo-skill/SKILL.md must be removed when the source skill is gone`
-    )
-    assert(
-      !(await exists(`${dir}/demo-skill`)),
-      `${dir}/demo-skill must not be left behind as an empty directory`
-    )
-  }
-  assert(
-    await exists('.claude/skills/my-own-skill/SKILL.md'),
-    'hand-written skill must survive the mirror cleanup'
-  )
-
-  // Defter yoksa HICBIR SEY silinmez — sadece defter yeniden olusur.
-  await fs.rm(path.join(fixtureRoot, '.agent-source', 'generated-files.json'))
-  const strayPath = path.join(fixtureRoot, '.claude', 'agents', 'stray.md')
-  await fs.writeFile(strayPath, '---\nname: stray\n---\n\n# Stray\n')
-  await silentGenerate({ root: fixtureRoot, checkOnly: false })
-  assert(
-    await exists('.claude/agents/stray.md'),
-    'no ledger means no deletions (migration safety)'
-  )
-  assert(
-    await exists('.agent-source/generated-files.json'),
-    'a missing ledger must be recreated'
-  )
+  const codexConfig = '# codex config\n'
+  await fs.writeFile(path.join(sourceRoot, 'project', 'codex-config.toml'), codexConfig)
+  const codexTeam = '# codex team\n'
+  await fs.writeFile(path.join(sourceRoot, 'project', 'codex-team.md'), codexTeam)
 ```
 
-- [ ] **Step 2: Testi çalıştır, fail ettiğini gör**
+Doğrula — bu iki dosya eklenince fixture 14 hedef üretmelidir:
 
 ```bash
 node team-builder-shared/sync-agent-config.mjs --selftest
 ```
 
-Beklenen: `SELFTEST FAIL: .claude/skills/demo-skill must not be left behind as an empty directory`
+Beklenen: `SELFTEST PASS` (henüz defter yok; bu adım yalnız fixture'ı genişletiyor).
 
-Sebep: `removeStaleGenerated` dosyayı siliyor ama boşalan dizini bırakıyor.
+- [ ] **Step 2: Failing test yaz — defter tam ve sıralı**
 
-- [ ] **Step 3: Boş dizin budamayı ekle**
-
-`removeStaleGenerated` fonksiyonunun **hemen üstüne** ekle:
+`runSelftest` içinde, Task 1'de eklediğin elle-yazılan-dosya assert'lerinden **sonra** ekle:
 
 ```javascript
-// Walk up from a deleted file's directory, removing directories that just went
-// empty. Stops at the repo root and at the first directory that still has
-// content — a directory holding the user's own files is never touched.
-async function pruneEmptyDirs(startDir, stopDir) {
-  let dir = startDir
-  while (dir !== stopDir && dir.startsWith(stopDir + path.sep)) {
-    let entries
-    try {
-      entries = await fs.readdir(dir)
-    } catch {
-      return
-    }
-    if (entries.length > 0) return
-    await fs.rmdir(dir)
-    dir = path.dirname(dir)
-  }
-}
+  // Defter: uretilen TUM hedefleri tam ve sirali listeler, kendini listelemez.
+  assert(
+    await exists('.agent-source/generated-files.json'),
+    'ledger .agent-source/generated-files.json must be written'
+  )
+  const ledger = JSON.parse(await read('.agent-source/generated-files.json'))
+  const expectedLedger = [
+    '.agents/skills/demo-skill/SKILL.md',
+    '.claude/agents/architect.md',
+    '.claude/agents/developer.md',
+    '.claude/skills/demo-skill/SKILL.md',
+    '.codex/agent-definitions/architect.md',
+    '.codex/agents/architect.toml',
+    '.codex/config.toml',
+    '.codex/team.md',
+    '.opencode/agents/architect.md',
+    '.opencode/skills/demo-skill/SKILL.md',
+    '.opencode/team.md',
+    'AGENTS.md',
+    'CLAUDE.md',
+    'opencode.json',
+  ]
+  assert(
+    JSON.stringify(ledger.files) === JSON.stringify(expectedLedger),
+    `ledger must equal the full sorted target list\n  got:      ${JSON.stringify(ledger.files)}\n  expected: ${JSON.stringify(expectedLedger)}`
+  )
 ```
 
-Sonra `removeStaleGenerated` içindeki silme satırını değiştir. Mevcut hâli:
+> **Not:** Beklenen liste fixture'ın ürettiği hedeflerdir. Fail mesajı `got`'u bastığı için, fixture'da bir fark varsa gerçek listeyi oradan okuyup `expectedLedger`'ı düzelt — ama **üyelik assert'ine düşürme**, tam eşitlik korunmalı (eksik hedef ancak böyle yakalanır).
+
+- [ ] **Step 3: Testi çalıştır, fail ettiğini gör**
+
+```bash
+node team-builder-shared/sync-agent-config.mjs --selftest
+```
+
+Beklenen: `SELFTEST FAIL: ledger .agent-source/generated-files.json must be written`
+
+- [ ] **Step 4: Sabiti ekle**
+
+`const VALID_TARGETS = ...` satırının **hemen üstüne** ekle:
 
 ```javascript
-    if (!(await pathExists(filePath))) continue
-    await ctx.removeFile(filePath)
+// Sync's own record of what it generated. Staleness is reported against this,
+// so a file the user wrote by hand is never mistaken for a leftover.
+const LEDGER_RELATIVE = path.join('.agent-source', 'generated-files.json')
+```
+
+- [ ] **Step 5: `produced` kümesini ekle**
+
+`createContext` içinde `const writes = []` satırının **hemen altına** ekle:
+
+```javascript
+  // Every generated path this run produced — whether it changed on disk or not.
+  const produced = new Set()
+```
+
+`writeExpected` imzasını ve ilk satırlarını değiştir. Mevcut hâli:
+
+```javascript
+  async function writeExpected(filePath, expected) {
+    const normalizedExpected = normalizeText(expected)
 ```
 
 Şununla değiştir:
 
 ```javascript
-    if (!(await pathExists(filePath))) continue
-    await ctx.removeFile(filePath)
-    if (!ctx.checkOnly) {
-      await pruneEmptyDirs(path.dirname(filePath), ctx.resolvedRoot)
+  async function writeExpected(filePath, expected, { track = true } = {}) {
+    if (track) {
+      produced.add(toPosix(filePath))
     }
+    const normalizedExpected = normalizeText(expected)
 ```
 
-- [ ] **Step 4: Testi çalıştır, geçtiğini gör**
+`copyExpected`'ı opsiyonları geçirecek şekilde değiştir. Mevcut hâli:
+
+```javascript
+  async function copyExpected(sourcePath, targetPath, transform = text => text) {
+    const source = await readText(sourcePath)
+    await writeExpected(targetPath, transform(source))
+  }
+```
+
+Şununla değiştir:
+
+```javascript
+  async function copyExpected(sourcePath, targetPath, transform = text => text, options) {
+    const source = await readText(sourcePath)
+    await writeExpected(targetPath, transform(source), options)
+  }
+```
+
+`return { ... }` bloğuna `produced,` ekle — `writes,` satırının hemen altına.
+
+- [ ] **Step 6: Bayat raporlayıcıyı ekle**
+
+`syncSkills` fonksiyonunun **hemen altına**, `// generate — main pipeline` yorum bloğundan **önce** ekle:
+
+```javascript
+// Report generated targets this run no longer produces. Nothing is deleted:
+// a path that stopped being generated is not proof that removing it is safe.
+// A missing or malformed ledger yields no report — never an error.
+async function reportStaleGenerated(ctx, ledgerPath) {
+  if (!(await pathExists(ledgerPath))) {
+    return
+  }
+  let previous
+  try {
+    previous = JSON.parse(await readText(ledgerPath))
+  } catch {
+    return
+  }
+  if (!previous || !Array.isArray(previous.files)) {
+    return
+  }
+  for (const relative of previous.files) {
+    if (typeof relative !== 'string' || relative.length === 0) continue
+    if (ctx.produced.has(relative)) continue
+    const filePath = ctx.resolveRoot(...relative.split('/'))
+    if (!(await pathExists(filePath))) continue
+    ctx.mismatches.push(`${relative} (stale)`)
+  }
+}
+```
+
+- [ ] **Step 7: `generate()`'te raporu ve defter yazımını bağla**
+
+`generate()` içinde `await syncSkills(ctx, manifest)` satırının **hemen altına** ekle:
+
+```javascript
+  // Staleness is judged against the PREVIOUS ledger, then the new one is written.
+  // The ledger is generated too, but must not list itself — track: false.
+  const ledgerPath = ctx.resolveRoot(LEDGER_RELATIVE)
+  await reportStaleGenerated(ctx, ledgerPath)
+  const ledgerBody = JSON.stringify({ files: [...ctx.produced].sort() }, null, 2) + '\n'
+  await ctx.writeExpected(ledgerPath, ledgerBody, { track: false })
+```
+
+- [ ] **Step 8: Testi çalıştır, geçtiğini gör**
+
+```bash
+node team-builder-shared/sync-agent-config.mjs --selftest
+```
+
+Beklenen: `SELFTEST PASS`. Fail ederse mesajdaki `got` listesini `expectedLedger`'a yaz (Step 2'deki nota bak).
+
+- [ ] **Step 9: Bayat raporu testlerini ekle**
+
+> **Beklenen yan etki:** `architect` çıkarılınca geriye yalnız `developer` kalır ve o
+> `targets: ['claude']` olduğu için projede artık Codex/OpenCode hedefi yoktur. Dolayısıyla
+> `AGENTS.md`, `opencode.json`, `.opencode/team.md`, `.codex/config.toml`, `.codex/team.md`
+> de üretilmez ve **onlar da `(stale)` raporlanır.** Bu doğrudur; aşağıdaki assert'ler
+> `includes` kullandığı için ek stale girdileri testi bozmaz.
+
+`runSelftest` içinde, defter assert'lerinden **sonra** ekle:
+
+```javascript
+  // Uc hedefe birden ureten agent kaynaktan cikarilinca: dosyalar DURUR,
+  // dordu de (stale) olarak raporlanir.
+  const trimmedManifest = {
+    ...manifest,
+    agents: manifest.agents.filter(a => a.name !== 'architect'),
+    lead: 'developer',
+  }
+  await fs.writeFile(
+    path.join(sourceRoot, 'agents', 'manifest.json'),
+    JSON.stringify(trimmedManifest, null, 2)
+  )
+  await fs.rm(path.join(sourceRoot, 'agents', 'architect.md'))
+
+  const staleRun = await silentGenerate({ root: fixtureRoot, checkOnly: false })
+  const staleTargets = [
+    '.claude/agents/architect.md',
+    '.codex/agent-definitions/architect.md',
+    '.codex/agents/architect.toml',
+    '.opencode/agents/architect.md',
+  ]
+  for (const target of staleTargets) {
+    assert(await exists(target), `${target} must NOT be deleted, only reported`)
+    assert(
+      staleRun.mismatches.includes(`${target} (stale)`),
+      `${target} must be reported exactly as "${target} (stale)"`
+    )
+  }
+
+  // --check: ayni raporu verir, defterin byte'larini degistirmez, silmez.
+  const ledgerBefore = await read('.agent-source/generated-files.json')
+  const staleCheck = await silentGenerate({ root: fixtureRoot, checkOnly: true })
+  assert(
+    staleCheck.mismatches.includes('.claude/agents/architect.md (stale)'),
+    '--check must report stale targets'
+  )
+  assert(
+    (await read('.agent-source/generated-files.json')) === ledgerBefore,
+    '--check must not rewrite the ledger'
+  )
+  assert(
+    await exists('.claude/agents/architect.md'),
+    '--check must never delete anything'
+  )
+
+  // Elle yazilan dosya bu turlarda da raporlanmaz (defterde degil).
+  assert(
+    !staleRun.mismatches.some(m => m.includes('my-helper.md')),
+    'hand-written files must never be reported as stale'
+  )
+```
+
+- [ ] **Step 10: Bozuk ve eksik defter testlerini ekle**
+
+Aynı yere, Step 9'un ardından ekle:
+
+```javascript
+  // Bozuk defter: hata vermez, rapor uretmez, defteri yeniden yazar.
+  await fs.writeFile(
+    path.join(fixtureRoot, '.agent-source', 'generated-files.json'),
+    '{ bu gecerli JSON degil'
+  )
+  const brokenRun = await silentGenerate({ root: fixtureRoot, checkOnly: false })
+  assert(
+    !brokenRun.mismatches.some(m => m.endsWith('(stale)')),
+    'a malformed ledger must produce no stale report'
+  )
+  assert(
+    Array.isArray(
+      JSON.parse(await read('.agent-source/generated-files.json')).files
+    ),
+    'a malformed ledger must be rewritten'
+  )
+
+  // Defter yoksa: gercek bir bayat cikti VARKEN bile rapor uretilmez.
+  await fs.rm(path.join(fixtureRoot, '.agent-source', 'generated-files.json'))
+  const noLedgerRun = await silentGenerate({ root: fixtureRoot, checkOnly: false })
+  assert(
+    !noLedgerRun.mismatches.some(m => m.endsWith('(stale)')),
+    'a missing ledger must produce no stale report (migration safety)'
+  )
+  assert(
+    await exists('.claude/agents/architect.md'),
+    'a missing ledger must not cause any deletion'
+  )
+  assert(
+    await exists('.agent-source/generated-files.json'),
+    'a missing ledger must be recreated'
+  )
+
+  // Idempotentlik: ardisik ikinci sync sifir yazma bildirir.
+  const secondRun = await silentGenerate({ root: fixtureRoot, checkOnly: false })
+  assert(
+    (secondRun.writes ?? []).length === 0,
+    `a second consecutive sync must write nothing, wrote: ${JSON.stringify(secondRun.writes)}`
+  )
+```
+
+> `architect.md` bu noktada hâlâ diskte ve kaynaktan çıkarılmış durumda — yani defter silinmeden **önce** gerçek bir bayat çıktı var. Test bu yüzden boş geçemez.
+
+- [ ] **Step 11: Testi çalıştır, geçtiğini gör**
 
 ```bash
 node team-builder-shared/sync-agent-config.mjs --selftest
@@ -544,54 +506,61 @@ node team-builder-shared/sync-agent-config.mjs --selftest
 
 Beklenen: `SELFTEST PASS`
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 12: Uçtan uca elle doğrula**
+
+```bash
+rm -rf /tmp/tb-stale && mkdir -p /tmp/tb-stale/.agent-source/agents /tmp/tb-stale/.agent-source/project && printf '{ "targetsDefault": ["claude"], "lead": "architect", "agents": [ { "name": "architect", "model": "opus" }, { "name": "dev", "model": "sonnet" } ] }' > /tmp/tb-stale/.agent-source/agents/manifest.json && printf -- '---\nname: architect\n---\n\n# A\n' > /tmp/tb-stale/.agent-source/agents/architect.md && printf -- '---\nname: dev\n---\n\n# D\n' > /tmp/tb-stale/.agent-source/agents/dev.md && printf '# CLAUDE\n' > /tmp/tb-stale/.agent-source/project/CLAUDE.md && node team-builder-shared/sync-agent-config.mjs --root /tmp/tb-stale >/dev/null && printf '{ "targetsDefault": ["claude"], "lead": "architect", "agents": [ { "name": "architect", "model": "opus" } ] }' > /tmp/tb-stale/.agent-source/agents/manifest.json && rm /tmp/tb-stale/.agent-source/agents/dev.md && node team-builder-shared/sync-agent-config.mjs --root /tmp/tb-stale; echo "--- dosya duruyor mu? ---"; ls /tmp/tb-stale/.claude/agents/
+```
+
+Beklenen: çıktıda `! .claude/agents/dev.md (stale)` uyarısı; `ls` çıktısında `dev.md` **hâlâ durur**.
+
+- [ ] **Step 13: Commit**
 
 ```bash
 git add team-builder-shared/sync-agent-config.mjs
-git commit -m "fix: prune emptied mirror directories and skip deletion without a ledger"
+git commit -m "feat: record generated paths and report stale targets"
 ```
 
 ---
 
-### Task 4: Sözleşme dokümanlarını güncelle
-
-Generator'ın davranış sözleşmesi ve kaynak/generated sınırı yeni mekanizmayı yansıtmalı.
+### Task 3: Sözleşme dokümanlarını güncelle
 
 **Files:**
 - Modify: `team-builder-shared/sync-pipeline.md` (§8)
 - Modify: `team-builder-shared/canonical-source.md`
 
 **Interfaces:**
-- Consumes: Task 2 ve 3'ün davranışı
+- Consumes: Task 1 ve 2'nin davranışı
 - Produces: yok
 
 - [ ] **Step 1: `sync-pipeline.md` §8'i yeniden yaz**
 
-`team-builder-shared/sync-pipeline.md:104` `## 8. Fazlalık Generated Dosya Temizliği (orphan cleanup)` başlığıdır. Bu başlığın altındaki bölümün **tamamını** (bir sonraki `## 9.` başlığına kadar) şununla değiştir:
+`team-builder-shared/sync-pipeline.md:104` `## 8. Fazlalık Generated Dosya Temizliği (orphan cleanup)` başlığıdır. Bu başlığı ve altındaki bölümün **tamamını** (bir sonraki `## 9.` başlığına kadar) şununla değiştir:
 
 ```markdown
-## 8. Fazlalık Generated Dosya Temizliği (orphan cleanup)
+## 8. Bayat Generated Dosya Raporu
 
-Temizlik **sync'in kendi defterine** dayanır: `.agent-source/generated-files.json`.
-Sync her başarılı çalışmasında ürettiği tüm generated yolları (repo köküne göre, POSIX
-ayraçlı) bu dosyaya yazar.
+**Generator hiçbir dosya silmez.** Bir dosyanın artık üretilmiyor olması, onu silmenin
+güvenli olduğu anlamına gelmez; silme yolunu güvenli kılmak için gereken savunmalar
+(yol containment, dosya türü kontrolü, case-insensitive yeniden adlandırma çakışması,
+geçici I/O hatasının "üretilmedi" sanılması) sağladığı faydadan pahalıdır.
+
+Bunun yerine sync **ürettiklerinin defterini** tutar: `.agent-source/generated-files.json`.
+Her başarılı çalışmada ürettiği tüm generated yolları (repo köküne göre, POSIX ayraçlı,
+sıralı) oraya yazar. Defter kendini listelemez.
 
 | Dosya durumu | Davranış |
 |---|---|
 | Defterde **var**, bu sefer de üretildi | Güncellenir |
-| Defterde **var**, bu sefer üretilmedi | **Orphan → silinir** |
-| Defterde **yok** | **Kullanıcının → dokunulmaz** |
+| Defterde **var**, bu sefer üretilmedi, diskte duruyor | **`<yol> (stale)` raporlanır — silinmez** |
+| Defterde **yok** | Hiç ilgilenilmez (kullanıcının dosyası olabilir) |
 
-- **Dizin ya da uzantı bakılarak silme YAPILMAZ.** `.claude/agents/` ve `.claude/skills/`
-  gibi dizinler kullanıcının kendi dosyalarını koyabileceği meşru alanlardır; oradaki bir
-  dosyanın kaynağı olmaması, onu sync'in yazdığı anlamına gelmez.
-- **Defter yoksa hiçbir şey silinmez** — sync yalnız defteri oluşturur. Bu, defterden önce
-  kurulmuş projelerde ani veri kaybını önler.
-- **Defter okunamıyorsa da silme yapılmaz.** Bozuk bir defter silme yetkisi vermez.
-- Silme sonrası **boşalan dizinler** kaldırılır; içinde başka dosya kalan dizine dokunulmaz.
-- `--check` modunda silme yapılmaz; silinmesi gereken her orphan `<yol> (orphan)` biçiminde
-  mismatch olarak raporlanır.
-- Defterin kendisi generated'dır ama **kendini listelemez**; elle düzenlenmez.
+- Rapor mevcut mismatch kanalını kullanır: `--check` modunda exit 1, normal sync modunda
+  `!` ile uyarı satırı.
+- **Defter yoksa ya da okunamıyorsa bayat rapor üretilmez** ve hata verilmez. Bozuk
+  defterin tek sonucu bir turluk eksik rapordur; sync defteri yeniden yazar.
+- `--check` defter dosyasının içeriğini **değiştirmez**.
+- Bayat dosyaları silmek kullanıcıya kalmıştır.
 ```
 
 - [ ] **Step 2: `canonical-source.md`'ye defteri ekle**
@@ -599,13 +568,22 @@ ayraçlı) bu dosyaya yazar.
 `team-builder-shared/canonical-source.md` içinde `.claude/settings.local.json` canonical kaynak değildir.` ile başlayan maddeyi bul ve **hemen ardına** ekle:
 
 ```markdown
-- `.agent-source/generated-files.json` **kaynak değildir** — sync'in kendi defteridir:
-  en son hangi generated dosyaları ürettiğini kaydeder. Temizlik bu deftere bakar, böylece
-  kullanıcının elle yazdığı agent/skill dosyaları asla silinmez. Elle düzenlenmez; commit
+- `.agent-source/generated-files.json` **kaynak değildir** — `.agent-source/` ağacının
+  içinde duran tek generated dosyadır. Sync'in kendi defteridir: en son hangi generated
+  dosyaları ürettiğini kaydeder. Bayat çıktı raporu buna bakar, böylece kullanıcının elle
+  yazdığı agent/skill dosyaları hiçbir zaman bayat sayılmaz. Elle düzenlenmez; commit
   edilir (takımda tutarlı olması için). Detay: `sync-pipeline.md` §8.
 ```
 
-- [ ] **Step 3: Selftest'i son kez çalıştır**
+- [ ] **Step 3: Silme iddiası kalmadığını doğrula**
+
+```bash
+grep -rn "sil\|remove\|orphan" team-builder-shared/sync-pipeline.md team-builder-shared/canonical-source.md | grep -vi "stale\|silinmez\|silmek kullanıcıya\|silmez"
+```
+
+Beklenen: generator'ın dosya sildiğini ima eden hiçbir satır kalmamalı.
+
+- [ ] **Step 4: Selftest'leri çalıştır**
 
 ```bash
 node team-builder-shared/sync-agent-config.mjs --selftest && node team-builder-shared/validate-manifest.mjs --selftest
@@ -613,11 +591,11 @@ node team-builder-shared/sync-agent-config.mjs --selftest && node team-builder-s
 
 Beklenen: iki kez `SELFTEST PASS`
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
 git add team-builder-shared/sync-pipeline.md team-builder-shared/canonical-source.md
-git commit -m "docs: describe ledger-based orphan cleanup"
+git commit -m "docs: replace orphan cleanup with stale reporting"
 ```
 
 ---
@@ -630,18 +608,21 @@ git commit -m "docs: describe ledger-based orphan cleanup"
 node team-builder-shared/sync-agent-config.mjs --selftest && node team-builder-shared/validate-manifest.mjs --selftest
 ```
 
-- [ ] **`removeOrphans` kodda kalmamış**
+- [ ] **Kod tabanında silme yolu kalmamış**
 
 ```bash
-grep -rn "removeOrphans" team-builder-shared/ || echo "temiz"
+grep -n "fs.unlink\|fs.rmdir\|removeOrphans\|removeFile" team-builder-shared/sync-agent-config.mjs || echo "temiz"
 ```
 
 Beklenen: `temiz`
 
-- [ ] **Elle yazılan agent korunuyor, gerçek orphan siliniyor**
+- [ ] **Elle yazılan dosya korunuyor, bayat çıktı raporlanıyor**
 
-```bash
-rm -rf /tmp/tb-final && mkdir -p /tmp/tb-final/.agent-source/agents /tmp/tb-final/.agent-source/project && printf '{ "targetsDefault": ["claude"], "lead": "architect", "agents": [ { "name": "architect", "model": "opus" }, { "name": "dev", "model": "sonnet" } ] }' > /tmp/tb-final/.agent-source/agents/manifest.json && printf -- '---\nname: architect\n---\n\n# A\n' > /tmp/tb-final/.agent-source/agents/architect.md && printf -- '---\nname: dev\n---\n\n# D\n' > /tmp/tb-final/.agent-source/agents/dev.md && printf '# CLAUDE\n' > /tmp/tb-final/.agent-source/project/CLAUDE.md && node team-builder-shared/sync-agent-config.mjs --root /tmp/tb-final >/dev/null && printf -- '---\nname: mine\n---\n\n# Mine\n' > /tmp/tb-final/.claude/agents/mine.md && printf '{ "targetsDefault": ["claude"], "lead": "architect", "agents": [ { "name": "architect", "model": "opus" } ] }' > /tmp/tb-final/.agent-source/agents/manifest.json && rm /tmp/tb-final/.agent-source/agents/dev.md && node team-builder-shared/sync-agent-config.mjs --root /tmp/tb-final && ls /tmp/tb-final/.claude/agents/
-```
+Task 2 Step 11'deki komutu çalıştır. Beklenen: `(stale)` uyarısı görünür, dosya diskte durur.
 
-Beklenen: `dev.md (removed)` raporlanır; kalan dosyalar `architect.md` ve `mine.md`.
+## Kapsam dışı
+
+**Yol containment açığı bu planın kapsamı dışındadır.** `validate-manifest.mjs` agent adını
+yalnız "boş olmayan string" diye doğruluyor; `path.join(root, '.claude/agents', '../../../X.md')`
+repo kökünün dışına çıkıyor. Bu **bugün canlı bir yazma açığıdır** ve ayrı bir iş olarak
+ele alınmalıdır. Bu plan silme yapmadığı için onu ne çözer ne kötüleştirir.
