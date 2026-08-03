@@ -753,7 +753,7 @@ async function runSelftest() {
     '.agents/skills/demo-skill/SKILL.md missing'
   )
 
-  // Kullanicinin elle yazdigi dosyalara ASLA dokunulmaz.
+  // Preserve user-authored files: sync only owns what it generated.
   const handWritten = path.join(fixtureRoot, '.claude', 'agents', 'my-helper.md')
   const handWrittenBody = '---\nname: my-helper\n---\n\n# Elle yazdigim\n'
   await fs.writeFile(handWritten, handWrittenBody)
