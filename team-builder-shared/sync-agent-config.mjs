@@ -480,27 +480,34 @@ async function syncSkills(ctx, manifest) {
 
 // Report generated targets this run no longer produces. Nothing is deleted:
 // a path that stopped being generated is not proof that removing it is safe.
-// A missing or malformed ledger yields no report — never an error.
+// A missing or malformed ledger yields no report — never an error. Returns
+// the stale paths that are still on disk, so the caller can keep carrying
+// them in the ledger — the ledger is an ownership record, not a per-run
+// snapshot, so a path stays reported every run until the file is actually
+// gone.
 async function reportStaleGenerated(ctx, ledgerPath) {
   if (!(await pathExists(ledgerPath))) {
-    return
+    return []
   }
   let previous
   try {
     previous = JSON.parse(await readText(ledgerPath))
   } catch {
-    return
+    return []
   }
   if (!previous || !Array.isArray(previous.files)) {
-    return
+    return []
   }
+  const stale = []
   for (const relative of previous.files) {
     if (typeof relative !== 'string' || relative.length === 0) continue
     if (ctx.produced.has(relative)) continue
     const filePath = ctx.resolveRoot(...relative.split('/'))
     if (!(await pathExists(filePath))) continue
     ctx.mismatches.push(`${relative} (stale)`)
+    stale.push(relative)
   }
+  return stale
 }
 
 // ---------------------------------------------------------------------------
@@ -528,10 +535,17 @@ async function generate({ root, checkOnly, quiet = false }) {
   await syncSkills(ctx, manifest)
 
   // Staleness is judged against the PREVIOUS ledger, then the new one is written.
+  // The new ledger is the union of this run's produced paths and any stale
+  // path still on disk — an ownership record, not a per-run snapshot — so a
+  // stale target keeps being reported on every future sync/--check instead
+  // of silently dropping out the moment it's first noticed. A stale path the
+  // user actually deleted is absent from disk, so reportStaleGenerated will
+  // not return it here, and it naturally falls out of the ledger.
   // The ledger is generated too, but must not list itself — track: false.
   const ledgerPath = ctx.resolveRoot(LEDGER_RELATIVE)
-  await reportStaleGenerated(ctx, ledgerPath)
-  const ledgerBody = JSON.stringify({ files: [...ctx.produced].sort() }, null, 2) + '\n'
+  const stalePaths = await reportStaleGenerated(ctx, ledgerPath)
+  const ledgerFiles = new Set([...ctx.produced, ...stalePaths])
+  const ledgerBody = JSON.stringify({ files: [...ledgerFiles].sort() }, null, 2) + '\n'
   await ctx.writeExpected(ledgerPath, ledgerBody, { track: false })
 
   if (checkOnly) {
@@ -930,6 +944,59 @@ async function runSelftest() {
   assert(
     !staleRun.mismatches.some(m => m.includes('my-helper.md')),
     'hand-written files must never be reported as stale'
+  )
+
+  // The whole point of the ledger: staleness must be reported EVERY run, not
+  // just the run it was first noticed on. A second consecutive sync (no
+  // further changes) must still report all four targets — this is what
+  // catches the ledger being written from ctx.produced alone instead of the
+  // union with the previous ledger's still-on-disk entries.
+  const staleRunAgain = await silentGenerate({ root: fixtureRoot, checkOnly: false })
+  for (const target of staleTargets) {
+    assert(
+      staleRunAgain.mismatches.includes(`${target} (stale)`),
+      `${target} must still be reported as stale on a second consecutive sync`
+    )
+  }
+
+  // --check must report that same persistent staleness, and must not rewrite
+  // the ledger while doing so (checked via byte-identical content).
+  const ledgerBeforeStaleRecheck = await read('.agent-source/generated-files.json')
+  const staleRecheck = await silentGenerate({ root: fixtureRoot, checkOnly: true })
+  for (const target of staleTargets) {
+    assert(
+      staleRecheck.mismatches.includes(`${target} (stale)`),
+      `${target} must be reported as stale by --check too`
+    )
+  }
+  assert(
+    (await read('.agent-source/generated-files.json')) === ledgerBeforeStaleRecheck,
+    '--check must not rewrite the ledger even when stale paths are present'
+  )
+
+  // Deleting one stale file from disk (the user cleaning it up by hand) must
+  // drop only that path from the ledger; the rest stay reported. Uses a
+  // target other than '.claude/agents/architect.md', which later assertions
+  // ("a missing ledger must not cause any deletion") still expect present.
+  const removedStaleTarget = '.codex/agents/architect.toml'
+  await fs.rm(path.join(fixtureRoot, removedStaleTarget))
+  const afterDeleteRun = await silentGenerate({ root: fixtureRoot, checkOnly: false })
+  assert(
+    !afterDeleteRun.mismatches.includes(`${removedStaleTarget} (stale)`),
+    `${removedStaleTarget} must stop being reported once removed from disk`
+  )
+  for (const target of staleTargets) {
+    if (target === removedStaleTarget) continue
+    assert(
+      afterDeleteRun.mismatches.includes(`${target} (stale)`),
+      `${target} must still be reported as stale after an unrelated stale file was removed`
+    )
+  }
+  assert(
+    !JSON.parse(await read('.agent-source/generated-files.json')).files.includes(
+      removedStaleTarget
+    ),
+    'the ledger must drop a stale path once the file is gone from disk'
   )
 
   // A malformed ledger is not an error: no report, and it gets rewritten.
