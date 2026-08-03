@@ -136,32 +136,6 @@ function createContext({ root, checkOnly }) {
     await writeExpected(targetPath, transform(source))
   }
 
-  async function removeFile(filePath) {
-    if (checkOnly) {
-      mismatches.push(`${toPosix(filePath)} (orphan)`)
-      return
-    }
-    await fs.unlink(filePath)
-    writes.push(`${toPosix(filePath)} (removed)`)
-  }
-
-  // Remove generated files in dirPath that are not in expectedFileNames and
-  // match one of allowedExtensions. Subdirs / other files are left untouched.
-  async function removeOrphans(dirPath, expectedFileNames, allowedExtensions) {
-    if (!(await pathExists(dirPath))) {
-      return
-    }
-    const entries = await fs.readdir(dirPath, { withFileTypes: true })
-    for (const entry of entries) {
-      if (!entry.isFile()) continue
-      const extension = path.extname(entry.name)
-      if (!allowedExtensions.has(extension) || expectedFileNames.has(entry.name)) {
-        continue
-      }
-      await removeFile(path.join(dirPath, entry.name))
-    }
-  }
-
   return {
     resolvedRoot,
     sourceRoot,
@@ -173,7 +147,6 @@ function createContext({ root, checkOnly }) {
     resolveSource,
     writeExpected,
     copyExpected,
-    removeOrphans,
   }
 }
 
@@ -423,11 +396,6 @@ async function syncProjectFiles(ctx, manifest) {
 async function syncAgents(ctx, manifest, projectName) {
   const names = manifest.agents.map(agent => agent.name)
 
-  const expectedClaudeAgents = new Set()
-  const expectedCodexDefinitions = new Set()
-  const expectedCodexToml = new Set()
-  const expectedOpencodeAgents = new Set()
-
   for (const agent of manifest.agents) {
     const source = ctx.resolveSource('agents', `${agent.name}.md`)
     if (!(await pathExists(source))) {
@@ -440,15 +408,12 @@ async function syncAgents(ctx, manifest, projectName) {
 
     if (targets.has('claude')) {
       const fileName = `${agent.name}.md`
-      expectedClaudeAgents.add(fileName)
       await ctx.copyExpected(source, ctx.resolveRoot('.claude', 'agents', fileName))
     }
 
     if (targets.has('codex')) {
       const definitionFileName = `${agent.name}.md`
       const tomlFileName = `${agent.name}.toml`
-      expectedCodexDefinitions.add(definitionFileName)
-      expectedCodexToml.add(tomlFileName)
       await ctx.copyExpected(
         source,
         ctx.resolveRoot('.codex', 'agent-definitions', definitionFileName),
@@ -462,7 +427,6 @@ async function syncAgents(ctx, manifest, projectName) {
 
     if (targets.has('opencode')) {
       const fileName = `${agent.name}.md`
-      expectedOpencodeAgents.add(fileName)
       await ctx.copyExpected(
         source,
         ctx.resolveRoot('.opencode', 'agents', fileName),
@@ -470,28 +434,6 @@ async function syncAgents(ctx, manifest, projectName) {
       )
     }
   }
-
-  // Orphan cleanup for generated agent target dirs.
-  await ctx.removeOrphans(
-    ctx.resolveRoot('.claude', 'agents'),
-    expectedClaudeAgents,
-    new Set(['.md'])
-  )
-  await ctx.removeOrphans(
-    ctx.resolveRoot('.codex', 'agent-definitions'),
-    expectedCodexDefinitions,
-    new Set(['.md'])
-  )
-  await ctx.removeOrphans(
-    ctx.resolveRoot('.codex', 'agents'),
-    expectedCodexToml,
-    new Set(['.toml'])
-  )
-  await ctx.removeOrphans(
-    ctx.resolveRoot('.opencode', 'agents'),
-    expectedOpencodeAgents,
-    new Set(['.md'])
-  )
 
   // Source agent .md not listed in manifest → mismatch.
   const sourceAgentFiles = await listFiles(ctx.resolveSource('agents'))
@@ -811,6 +753,35 @@ async function runSelftest() {
     '.agents/skills/demo-skill/SKILL.md missing'
   )
 
+  // Kullanicinin elle yazdigi dosyalara ASLA dokunulmaz.
+  const handWritten = path.join(fixtureRoot, '.claude', 'agents', 'my-helper.md')
+  const handWrittenBody = '---\nname: my-helper\n---\n\n# Elle yazdigim\n'
+  await fs.writeFile(handWritten, handWrittenBody)
+  await fs.mkdir(path.join(fixtureRoot, '.claude', 'skills', 'my-own-skill'), {
+    recursive: true,
+  })
+  const handSkillBody = '---\nname: my-own-skill\ndescription: elle\n---\n\n# Elle\n'
+  await fs.writeFile(
+    path.join(fixtureRoot, '.claude', 'skills', 'my-own-skill', 'SKILL.md'),
+    handSkillBody
+  )
+
+  await silentGenerate({ root: fixtureRoot, checkOnly: false })
+
+  assert(
+    await exists('.claude/agents/my-helper.md'),
+    'hand-written agent must survive sync'
+  )
+  assert(
+    normalizeText(await read('.claude/agents/my-helper.md')) ===
+      normalizeText(handWrittenBody),
+    'hand-written agent must not be rewritten'
+  )
+  assert(
+    await exists('.claude/skills/my-own-skill/SKILL.md'),
+    'hand-written skill must survive sync'
+  )
+
   // --check should be clean right after generate (idempotent).
   const checkClean = await silentGenerate({ root: fixtureRoot, checkOnly: true })
   assert(checkClean.ok === true, '--check should be clean after generate')
@@ -829,28 +800,6 @@ async function runSelftest() {
   assert(
     checkDrift.mismatches.some(m => m.includes('.claude/agents/architect.md')),
     '--check should report the corrupted file as drift'
-  )
-
-  // Orphan detection: a stray generated agent file → drift in --check.
-  await fs.writeFile(
-    path.join(fixtureRoot, '.codex', 'agents', 'ghost.toml'),
-    'orphan\n'
-  )
-  const checkOrphan = await silentGenerate({ root: fixtureRoot, checkOnly: true })
-  assert(
-    checkOrphan.mismatches.some(m => m.includes('ghost.toml')),
-    '--check should report orphan generated file'
-  )
-
-  // Orphan detection for the opencode agents dir too.
-  await fs.writeFile(
-    path.join(fixtureRoot, '.opencode', 'agents', 'ghost.md'),
-    'orphan\n'
-  )
-  const checkOcOrphan = await silentGenerate({ root: fixtureRoot, checkOnly: true })
-  assert(
-    checkOcOrphan.mismatches.some(m => m.includes('.opencode/agents/ghost.md')),
-    '--check should report orphan opencode agent md'
   )
 
   // Cleanup.
