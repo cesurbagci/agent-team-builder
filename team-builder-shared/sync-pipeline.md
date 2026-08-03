@@ -72,8 +72,8 @@ Her generated dosyanın başına sabit bir header yazılır:
 - Her hedef için beklenen içeriği üretir ve diskteki içerikle karşılaştırır.
 - Fark bulduğu her dosyayı `mismatches` listesine ekler. Drift kaynakları:
   1. Generated dosyanın içeriği beklenenden farklı (veya dosya hiç yok).
-  2. Kaynakta olmayan fazlalık generated dosya (silinmesi gerekirdi) —
-     `--check` modunda silmek yerine mismatch olarak işaretlenir.
+  2. Defterde kayıtlı olup bu turda üretilmeyen, hâlâ diskte duran bayat generated
+     dosya (bkz. §8).
   3. `.agent-source/agents/` altında manifest'te listelenmeyen `<role>.md` kaynağı.
 - Karşılaştırmadan önce satır sonları normalize edilir (`\r\n` → `\n`); CRLF/LF
   farkı drift sayılmaz.
@@ -101,21 +101,34 @@ Kaynak değişmeden sync tekrar çalıştırılırsa:
 - `--check` modunda bu dosyayı drift olarak saymaz.
 - Geliştiriciye özel/lokal ayar dosyası olarak generator'ın tamamen dışında kalır.
 
-## 8. Fazlalık Generated Dosya Temizliği (orphan cleanup)
+## 8. Bayat Generated Dosya Raporu
 
-Generated hedef dizinlerinde, kaynakta artık karşılığı olmayan dosyalar **orphan**
-sayılır ve temizlenir:
+**Generator hiçbir dosya silmez.** Bir dosyanın artık üretilmiyor olması, onu silmenin
+güvenli olduğu anlamına gelmez; silme yolunu güvenli kılmak için gereken savunmalar
+(yol containment, dosya türü kontrolü, case-insensitive yeniden adlandırma çakışması,
+geçici I/O hatasının "üretilmedi" sanılması) sağladığı faydadan pahalıdır.
 
-- `.claude/agents/` → beklenen `<role>.md` kümesinde olmayan `.md` dosyaları silinir.
-- `.codex/agent-definitions/` → beklenen `.md` dışı / listede olmayanlar silinir.
-- `.codex/agents/` → beklenen `.toml` dışı / listede olmayanlar silinir.
-- `.opencode/agents/` → beklenen `<role>.md` kümesinde olmayan `.md` dosyaları silinir.
-- Sadece ilgili uzantıdaki dosyalar değerlendirilir; alt dizinler ve diğer dosyalar
-  dokunulmadan bırakılır.
-- Bir ajan manifest'ten çıkarıldığında veya `targets`'tan bir hedef kaldırıldığında,
-  ona ait generated dosya bir sonraki sync'te silinir.
-- `--check` modunda silme yapılmaz; silinmesi gereken her orphan mismatch olarak
-  raporlanır (bkz. §5).
+Bunun yerine sync bir **sahiplik defteri** tutar: `.agent-source/generated-files.json`.
+Her başarılı çalışmada şunların birleşimini (repo köküne göre, POSIX ayraçlı, sıralı)
+oraya yazar: bu turda ürettiği tüm generated yollar **artı** önceki defterde olup artık
+üretilmeyen ama hâlâ diskte duran yollar. Defter kendini listelemez.
+
+| Dosya durumu | Davranış |
+|---|---|
+| Defterde **var**, bu sefer de üretildi | Güncellenir |
+| Defterde **var**, bu sefer üretilmedi, diskte duruyor | **`<yol> (stale)` raporlanır — silinmez, defterde KALIR** |
+| Defterde **var**, bu sefer üretilmedi, diskte de yok | Kullanıcı silmiş → defterden düşer |
+| Defterde **yok** | Hiç ilgilenilmez (kullanıcının dosyası olabilir) |
+
+Bayat yolun defterde kalması şarttır: aksi halde dosya bir kez raporlanır, defterden
+düşer ve bir daha hiç görünmez — `--check` yeşil yanarken dosya diskte kalır.
+
+- Rapor mevcut mismatch kanalını kullanır: `--check` modunda exit 1, normal sync modunda
+  `!` ile uyarı satırı.
+- **Defter yoksa ya da okunamıyorsa bayat rapor üretilmez** ve hata verilmez. Bozuk
+  defterin tek sonucu bir turluk eksik rapordur; sync defteri yeniden yazar.
+- `--check` defter dosyasının içeriğini **değiştirmez**.
+- Bayat dosyaları silmek kullanıcıya kalmıştır.
 
 ## 9. Hata Davranışı
 

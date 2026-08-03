@@ -98,3 +98,8 @@ runtime state kabul edilir.
 - `.claude/settings.local.json` canonical kaynak değildir. Sync bu dosyayı kopyalamaz,
   Codex altına taşımaz ve `--check` modunda **drift sebebi saymaz** (kullanıcıya özel
   yerel izinler).
+- `.agent-source/generated-files.json` **kaynak değildir** — `.agent-source/` ağacının
+  içinde duran tek generated dosyadır. Sync'in kendi defteridir: en son hangi generated
+  dosyaları ürettiğini kaydeder. Bayat çıktı raporu buna bakar, böylece kullanıcının elle
+  yazdığı agent/skill dosyaları hiçbir zaman bayat sayılmaz. Elle düzenlenmez; commit
+  edilir (takımda tutarlı olması için). Detay: `sync-pipeline.md` §8.
