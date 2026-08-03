@@ -35,6 +35,9 @@ async function loadValidate() {
 }
 
 const GENERATED_HEADER = '# This file is generated from .agent-source. Run sync.\n'
+// Sync's own record of what it generated. Staleness is reported against this,
+// so a file the user wrote by hand is never mistaken for a leftover.
+const LEDGER_RELATIVE = path.join('.agent-source', 'generated-files.json')
 const VALID_TARGETS = new Set(['claude', 'codex', 'opencode'])
 
 // Fallback map when an opencode-targeted agent has no explicit `opencode_model`.
@@ -107,6 +110,8 @@ function createContext({ root, checkOnly }) {
 
   const mismatches = []
   const writes = []
+  // Every generated path this run produced — whether it changed on disk or not.
+  const produced = new Set()
 
   const toPosix = filePath =>
     path.relative(resolvedRoot, filePath).split(path.sep).join('/')
@@ -114,7 +119,10 @@ function createContext({ root, checkOnly }) {
   const resolveRoot = (...segments) => path.join(resolvedRoot, ...segments)
   const resolveSource = (...segments) => path.join(sourceRoot, ...segments)
 
-  async function writeExpected(filePath, expected) {
+  async function writeExpected(filePath, expected, { track = true } = {}) {
+    if (track) {
+      produced.add(toPosix(filePath))
+    }
     const normalizedExpected = normalizeText(expected)
     const exists = await pathExists(filePath)
     const actual = exists ? normalizeText(await readText(filePath)) : null
@@ -131,9 +139,9 @@ function createContext({ root, checkOnly }) {
     writes.push(toPosix(filePath))
   }
 
-  async function copyExpected(sourcePath, targetPath, transform = text => text) {
+  async function copyExpected(sourcePath, targetPath, transform = text => text, options) {
     const source = await readText(sourcePath)
-    await writeExpected(targetPath, transform(source))
+    await writeExpected(targetPath, transform(source), options)
   }
 
   return {
@@ -142,6 +150,7 @@ function createContext({ root, checkOnly }) {
     checkOnly,
     mismatches,
     writes,
+    produced,
     toPosix,
     resolveRoot,
     resolveSource,
@@ -469,6 +478,31 @@ async function syncSkills(ctx, manifest) {
   }
 }
 
+// Report generated targets this run no longer produces. Nothing is deleted:
+// a path that stopped being generated is not proof that removing it is safe.
+// A missing or malformed ledger yields no report — never an error.
+async function reportStaleGenerated(ctx, ledgerPath) {
+  if (!(await pathExists(ledgerPath))) {
+    return
+  }
+  let previous
+  try {
+    previous = JSON.parse(await readText(ledgerPath))
+  } catch {
+    return
+  }
+  if (!previous || !Array.isArray(previous.files)) {
+    return
+  }
+  for (const relative of previous.files) {
+    if (typeof relative !== 'string' || relative.length === 0) continue
+    if (ctx.produced.has(relative)) continue
+    const filePath = ctx.resolveRoot(...relative.split('/'))
+    if (!(await pathExists(filePath))) continue
+    ctx.mismatches.push(`${relative} (stale)`)
+  }
+}
+
 // ---------------------------------------------------------------------------
 // generate — main pipeline
 // ---------------------------------------------------------------------------
@@ -493,6 +527,13 @@ async function generate({ root, checkOnly, quiet = false }) {
   await syncAgents(ctx, manifest, projectName)
   await syncSkills(ctx, manifest)
 
+  // Staleness is judged against the PREVIOUS ledger, then the new one is written.
+  // The ledger is generated too, but must not list itself — track: false.
+  const ledgerPath = ctx.resolveRoot(LEDGER_RELATIVE)
+  await reportStaleGenerated(ctx, ledgerPath)
+  const ledgerBody = JSON.stringify({ files: [...ctx.produced].sort() }, null, 2) + '\n'
+  await ctx.writeExpected(ledgerPath, ledgerBody, { track: false })
+
   if (checkOnly) {
     if (ctx.mismatches.length > 0) {
       error('Agent configuration drift detected:')
@@ -514,13 +555,13 @@ async function generate({ root, checkOnly, quiet = false }) {
   }
   if (ctx.writes.length === 0) {
     log('Agent configuration already in sync.')
-    return { ok: true, writes: [] }
+    return { ok: true, writes: [], mismatches: ctx.mismatches }
   }
   log('Synchronized agent configuration:')
   for (const filePath of ctx.writes) {
     log(`- ${filePath}`)
   }
-  return { ok: true, writes: ctx.writes }
+  return { ok: true, writes: ctx.writes, mismatches: ctx.mismatches }
 }
 
 // ---------------------------------------------------------------------------
@@ -610,6 +651,11 @@ async function runSelftest() {
   await fs.writeFile(path.join(sourceRoot, 'project', 'opencode.json'), opencodeJson)
   const opencodeTeam = '# OpenCode Team\n\nTakim sozlesmesi.\n'
   await fs.writeFile(path.join(sourceRoot, 'project', 'opencode-team.md'), opencodeTeam)
+
+  const codexConfig = '# codex config\n'
+  await fs.writeFile(path.join(sourceRoot, 'project', 'codex-config.toml'), codexConfig)
+  const codexTeam = '# codex team\n'
+  await fs.writeFile(path.join(sourceRoot, 'project', 'codex-team.md'), codexTeam)
 
   const skillMd = '# Demo Skill\n\nDemo.\n'
   await fs.writeFile(
@@ -782,6 +828,33 @@ async function runSelftest() {
     'hand-written skill must survive sync'
   )
 
+  // The ledger lists every generated target, sorted, and never itself.
+  assert(
+    await exists('.agent-source/generated-files.json'),
+    'ledger .agent-source/generated-files.json must be written'
+  )
+  const ledger = JSON.parse(await read('.agent-source/generated-files.json'))
+  const expectedLedger = [
+    '.agents/skills/demo-skill/SKILL.md',
+    '.claude/agents/architect.md',
+    '.claude/agents/developer.md',
+    '.claude/skills/demo-skill/SKILL.md',
+    '.codex/agent-definitions/architect.md',
+    '.codex/agents/architect.toml',
+    '.codex/config.toml',
+    '.codex/team.md',
+    '.opencode/agents/architect.md',
+    '.opencode/skills/demo-skill/SKILL.md',
+    '.opencode/team.md',
+    'AGENTS.md',
+    'CLAUDE.md',
+    'opencode.json',
+  ]
+  assert(
+    JSON.stringify(ledger.files) === JSON.stringify(expectedLedger),
+    `ledger must equal the full sorted target list\n  got:      ${JSON.stringify(ledger.files)}\n  expected: ${JSON.stringify(expectedLedger)}`
+  )
+
   // --check should be clean right after generate (idempotent).
   const checkClean = await silentGenerate({ root: fixtureRoot, checkOnly: true })
   assert(checkClean.ok === true, '--check should be clean after generate')
@@ -800,6 +873,103 @@ async function runSelftest() {
   assert(
     checkDrift.mismatches.some(m => m.includes('.claude/agents/architect.md')),
     '--check should report the corrupted file as drift'
+  )
+
+  // Dropping an agent that fed three targets: the files STAY on disk and
+  // every one of them is reported as stale. Placed after the clean/drift
+  // checks above (rather than immediately after the ledger assert) because
+  // it permanently trims the manifest for the rest of this fixture — running
+  // it earlier would pull architect out of the ledger before the drift test
+  // above gets to exercise it.
+  const trimmedManifest = {
+    ...manifest,
+    agents: manifest.agents.filter(a => a.name !== 'architect'),
+    lead: 'developer',
+  }
+  await fs.writeFile(
+    path.join(sourceRoot, 'agents', 'manifest.json'),
+    JSON.stringify(trimmedManifest, null, 2)
+  )
+  await fs.rm(path.join(sourceRoot, 'agents', 'architect.md'))
+
+  // --check reports the staleness against the not-yet-advanced ledger, and
+  // rewrites nothing, deletes nothing. Run before the real sync below: a real
+  // (non-check) run advances the ledger to the new state as its last act, so
+  // checking staleness must happen first or there is nothing left to see.
+  const ledgerBefore = await read('.agent-source/generated-files.json')
+  const staleCheck = await silentGenerate({ root: fixtureRoot, checkOnly: true })
+  assert(
+    staleCheck.mismatches.includes('.claude/agents/architect.md (stale)'),
+    '--check must report stale targets'
+  )
+  assert(
+    (await read('.agent-source/generated-files.json')) === ledgerBefore,
+    '--check must not rewrite the ledger'
+  )
+  assert(
+    await exists('.claude/agents/architect.md'),
+    '--check must never delete anything'
+  )
+
+  const staleRun = await silentGenerate({ root: fixtureRoot, checkOnly: false })
+  const staleTargets = [
+    '.claude/agents/architect.md',
+    '.codex/agent-definitions/architect.md',
+    '.codex/agents/architect.toml',
+    '.opencode/agents/architect.md',
+  ]
+  for (const target of staleTargets) {
+    assert(await exists(target), `${target} must NOT be deleted, only reported`)
+    assert(
+      staleRun.mismatches.includes(`${target} (stale)`),
+      `${target} must be reported exactly as "${target} (stale)"`
+    )
+  }
+
+  // A hand-written file is never reported: it was never in the ledger.
+  assert(
+    !staleRun.mismatches.some(m => m.includes('my-helper.md')),
+    'hand-written files must never be reported as stale'
+  )
+
+  // A malformed ledger is not an error: no report, and it gets rewritten.
+  await fs.writeFile(
+    path.join(fixtureRoot, '.agent-source', 'generated-files.json'),
+    '{ bu gecerli JSON degil'
+  )
+  const brokenRun = await silentGenerate({ root: fixtureRoot, checkOnly: false })
+  assert(
+    !brokenRun.mismatches.some(m => m.endsWith('(stale)')),
+    'a malformed ledger must produce no stale report'
+  )
+  assert(
+    Array.isArray(
+      JSON.parse(await read('.agent-source/generated-files.json')).files
+    ),
+    'a malformed ledger must be rewritten'
+  )
+
+  // No ledger means no report even though a genuinely stale target exists.
+  await fs.rm(path.join(fixtureRoot, '.agent-source', 'generated-files.json'))
+  const noLedgerRun = await silentGenerate({ root: fixtureRoot, checkOnly: false })
+  assert(
+    !noLedgerRun.mismatches.some(m => m.endsWith('(stale)')),
+    'a missing ledger must produce no stale report (migration safety)'
+  )
+  assert(
+    await exists('.claude/agents/architect.md'),
+    'a missing ledger must not cause any deletion'
+  )
+  assert(
+    await exists('.agent-source/generated-files.json'),
+    'a missing ledger must be recreated'
+  )
+
+  // Idempotence: a second consecutive sync must report zero writes.
+  const secondRun = await silentGenerate({ root: fixtureRoot, checkOnly: false })
+  assert(
+    (secondRun.writes ?? []).length === 0,
+    `a second consecutive sync must write nothing, wrote: ${JSON.stringify(secondRun.writes)}`
   )
 
   // Cleanup.
