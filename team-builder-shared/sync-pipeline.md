@@ -109,9 +109,11 @@ güvenli olduğu anlamına gelmez; silme yolunu güvenli kılmak için gereken s
 geçici I/O hatasının "üretilmedi" sanılması) sağladığı faydadan pahalıdır.
 
 Bunun yerine sync bir **sahiplik defteri** tutar: `.agent-source/generated-files.json`.
-Her başarılı çalışmada şunların birleşimini (repo köküne göre, POSIX ayraçlı, sıralı)
-oraya yazar: bu turda ürettiği tüm generated yollar **artı** önceki defterde olup artık
-üretilmeyen ama hâlâ diskte duran yollar. Defter kendini listelemez.
+**Normal sync modunda**, her başarılı çalışma şunların birleşimini (repo köküne göre,
+POSIX ayraçlı, sıralı) oraya yazar: bu turda ürettiği tüm generated yollar **artı**
+önceki defterde olup artık üretilmeyen ama hâlâ diskte duran yollar. **`--check` modu
+deftere hiçbir şey yazmaz** — yalnızca bu birleşimi diskteki içerikle karşılaştırır
+(bkz. §5). Defter kendini listelemez.
 
 | Dosya durumu | Davranış |
 |---|---|
@@ -125,8 +127,12 @@ düşer ve bir daha hiç görünmez — `--check` yeşil yanarken dosya diskte k
 
 - Rapor mevcut mismatch kanalını kullanır: `--check` modunda exit 1, normal sync modunda
   `!` ile uyarı satırı.
-- **Defter yoksa ya da okunamıyorsa bayat rapor üretilmez** ve hata verilmez. Bozuk
-  defterin tek sonucu bir turluk eksik rapordur; sync defteri yeniden yazar.
+- **Normal sync modunda**, defter yoksa ya da okunamıyorsa bayat rapor üretilmez ve hata
+  verilmez. Bozuk defterin tek sonucu bir turluk eksik rapordur; sync defteri yeniden
+  yazar.
+- **`--check` modunda ise sonuç farklıdır:** defter eksik ya da bozuksa diskteki içerik
+  beklenen birleşimden farklı olur (defter de generated olduğu için); defter yolu
+  **normal drift mismatch'i** olarak raporlanır ve `--check` exit 1 ile çıkar.
 - `--check` defter dosyasının içeriğini **değiştirmez**.
 - Bayat dosyaları silmek kullanıcıya kalmıştır.
 

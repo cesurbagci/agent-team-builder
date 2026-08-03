@@ -25,6 +25,7 @@ kaynağın `.agent-source/` olduğunu görür.
 ```
 .agent-source/                      # TEK CANONICAL KAYNAK — generated dosyalar elle değiştirilmez
 ├── README.md                       # "generated'ı elleme, burayı güncelle + sync çalıştır"
+├── generated-files.json            # sync defteri (GENERATED — ağaçtaki tek generated dosya)
 ├── agents/
 │   ├── <role>.md                   # rol talimatının TAM gövdesi (tool-bağımsız, verbatim kopyalanır)
 │   └── manifest.json               # rol metadata: targets[], model, model_reasoning_effort,
@@ -63,6 +64,7 @@ GENERATED'dır**; elle düzenlenmez, kaynaktan üretilir.
 | `project/opencode.json` | `opencode.json` | OpenCode hedefi seçiliyse |
 | `project/opencode-team.md` | `.opencode/team.md` | OpenCode hedefi seçiliyse |
 | `skills/<skill>/SKILL.md` | `.agents/skills/` (her zaman — Codex ve OpenCode ikisi de okur) + Claude hedefi varsa `.claude/skills/` + OpenCode hedefi varsa `.opencode/skills/` | varsa |
+| *(kaynak yok — sync'in kendi ürettiği)* | `.agent-source/generated-files.json` | bu turda üretilen tüm generated yollar **artı** önceki defterde olup hâlâ diskte duran yollar (birleşim) |
 
 - `agents/<role>.md`'nin hangi hedeflere gideceği o agent'ın **`targets`** alanına
   bağlıdır (yoksa kök `targetsDefault`): örn. `["claude"]`, `["opencode"]`,
@@ -99,7 +101,8 @@ runtime state kabul edilir.
   Codex altına taşımaz ve `--check` modunda **drift sebebi saymaz** (kullanıcıya özel
   yerel izinler).
 - `.agent-source/generated-files.json` **kaynak değildir** — `.agent-source/` ağacının
-  içinde duran tek generated dosyadır. Sync'in kendi defteridir: en son hangi generated
-  dosyaları ürettiğini kaydeder. Bayat çıktı raporu buna bakar, böylece kullanıcının elle
-  yazdığı agent/skill dosyaları hiçbir zaman bayat sayılmaz. Elle düzenlenmez; commit
-  edilir (takımda tutarlı olması için). Detay: `sync-pipeline.md` §8.
+  içinde duran tek generated dosyadır. Sync'in kendi **sahiplik defteridir**: bu turda
+  ürettiği yollar **artı** önceki defterde olup hâlâ diskte duran yolların birleşimini
+  tutar. Bayat çıktı raporu buna bakar, böylece kullanıcının elle yazdığı agent/skill
+  dosyaları hiçbir zaman bayat sayılmaz. Elle düzenlenmez; commit edilir (takımda
+  tutarlı olması için). Detay: `sync-pipeline.md` §8.
