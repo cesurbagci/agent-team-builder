@@ -59,7 +59,16 @@ sorunu **ayrı bir iş** olarak ele alınacak; bu tasarım onu ne çözer ne kö
 
 ## Çözüm: `.agent-source/generated-files.json`
 
-Sync her başarılı çalışmasında ürettiği tüm generated yolları bu deftere yazar:
+Defter bir **sahiplik kaydıdır**, "bu turda ne ürettim" listesi değil. Her başarılı
+çalışmada şunların birleşimi yazılır:
+
+1. Bu turda üretilen tüm generated yollar, **ve**
+2. Önceki defterde olup artık üretilmeyen ama **hâlâ diskte duran** yollar.
+
+İkinci madde şart: aksi halde bayat bir dosya bir kez raporlanır, defterden düşer ve
+bir daha hiç görünmez — `--check` yeşil yanarken dosya diskte kalır. Bu, tam olarak bu
+tasarımın çözmek için var olduğu duruma geri dönmek olurdu. Kullanıcı dosyayı silince
+defterden kendiliğinden düşer.
 
 ```json
 {
@@ -79,7 +88,8 @@ listelemez.
 | Dosya durumu | Davranış |
 |---|---|
 | Defterde **var**, bu sefer de üretildi | Güncellenir |
-| Defterde **var**, bu sefer üretilmedi, diskte duruyor | **`(stale)` olarak raporlanır — silinmez** |
+| Defterde **var**, bu sefer üretilmedi, diskte duruyor | **`(stale)` raporlanır — silinmez, defterde KALIR** |
+| Defterde **var**, bu sefer üretilmedi, diskte de yok | Kullanıcı silmiş → defterden düşer |
 | Defterde **yok** | Hiç ilgilenilmez |
 
 Rapor mevcut `mismatches` kanalını kullanır. Bu kanalın davranışı zaten tanımlı:
@@ -149,8 +159,11 @@ bir çıktının kaynaktan çıkarılması ve **silinmeyip raporlanması** doğr
    çalışır, bayat rapor üretilmez, defter yeniden yazılır.
 7. **`--check` yazmaz:** senaryo 3'ün ardından `--check` çalıştırılır → `(stale)` mismatch'i
    döner, defter dosyasının byte'ları değişmez, hiçbir dosya silinmez.
-8. **İdempotentlik:** ardışık iki sync → ikincisi sıfır yazma bildirir; hemen ardından
-   `--check` yalnız bayat raporunu verir, başka drift vermez.
+8. **Bayat rapor kalıcıdır:** senaryo 3'ten sonra sync **tekrar** çalıştırılır → aynı dört
+   dosya yine `(stale)` raporlanır. Ardından `--check` de aynı raporu verir ve exit 1 ile
+   çıkar. Dosyalar elle silinince rapor kesilir ve defterden düşerler.
+9. **İdempotentlik:** ardışık iki sync → ikincisi sıfır yazma bildirir (bayat raporu
+   yazma sayılmaz).
 
 ## Kararlar
 
@@ -159,6 +172,7 @@ bir çıktının kaynaktan çıkarılması ve **silinmeyip raporlanması** doğr
 | 1 | Sync hiçbir dosya silmez | Silme yolunu güvenli kılmak için gereken savunma katmanları, silmenin sağladığı faydadan pahalı |
 | 2 | Defter `.agent-source/generated-files.json` | Kaynak ağacında, görünür ad, ekosistemden bağımsız |
 | 3 | Rapor mevcut `mismatches` kanalından | `--check` exit 1 / sync uyarı davranışı zaten tanımlı |
-| 4 | Bozuk defter → rapor yok, hata yok | Silme olmadığı için bedeli yalnız bir turluk eksik rapor |
-| 5 | `removeOrphans` ve `removeFile` kaldırılır | Silme yolu tamamen kapanmalı; yarısı kalırsa risk sürer |
-| 6 | Yol containment ayrı iş | Bugün canlı bir **yazma** açığı; bu tasarım onu ne çözer ne kötüleştirir |
+| 4 | Defter sahiplik kaydıdır: diskte duran bayat yollar defterde kalır | Aksi halde bayat dosya bir kez raporlanıp sonsuza dek sessizleşir |
+| 5 | Bozuk defter → rapor yok, hata yok | Silme olmadığı için bedeli yalnız bir turluk eksik rapor |
+| 6 | `removeOrphans` ve `removeFile` kaldırılır | Silme yolu tamamen kapanmalı; yarısı kalırsa risk sürer |
+| 7 | Yol containment ayrı iş | Bugün canlı bir **yazma** açığı; bu tasarım onu ne çözer ne kötüleştirir |

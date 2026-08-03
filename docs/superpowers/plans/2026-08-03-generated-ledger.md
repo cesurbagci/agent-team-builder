@@ -37,7 +37,7 @@ Asıl bug fix, ve bilerek ilk sırada: bu commit'ten sonra sync artık hiçbir k
 `team-builder-shared/sync-agent-config.mjs` içinde `runSelftest` fonksiyonunda, `// --check should be clean right after generate (idempotent).` yorumundan **önce** ekle:
 
 ```javascript
-  // Kullanicinin elle yazdigi dosyalara ASLA dokunulmaz.
+  // Preserve user-authored files: sync only owns what it generated.
   const handWritten = path.join(fixtureRoot, '.claude', 'agents', 'my-helper.md')
   const handWrittenBody = '---\nname: my-helper\n---\n\n# Elle yazdigim\n'
   await fs.writeFile(handWritten, handWrittenBody)
@@ -242,7 +242,7 @@ Beklenen: `SELFTEST PASS` (henüz defter yok; bu adım yalnız fixture'ı geniş
 `runSelftest` içinde, Task 1'de eklediğin elle-yazılan-dosya assert'lerinden **sonra** ekle:
 
 ```javascript
-  // Defter: uretilen TUM hedefleri tam ve sirali listeler, kendini listelemez.
+  // The ledger lists every generated target, sorted, and never itself.
   assert(
     await exists('.agent-source/generated-files.json'),
     'ledger .agent-source/generated-files.json must be written'
@@ -399,8 +399,8 @@ Beklenen: `SELFTEST PASS`. Fail ederse mesajdaki `got` listesini `expectedLedger
 `runSelftest` içinde, defter assert'lerinden **sonra** ekle:
 
 ```javascript
-  // Uc hedefe birden ureten agent kaynaktan cikarilinca: dosyalar DURUR,
-  // dordu de (stale) olarak raporlanir.
+  // Dropping an agent that fed three targets: the files STAY on disk and
+  // every one of them is reported as stale.
   const trimmedManifest = {
     ...manifest,
     agents: manifest.agents.filter(a => a.name !== 'architect'),
@@ -427,7 +427,7 @@ Beklenen: `SELFTEST PASS`. Fail ederse mesajdaki `got` listesini `expectedLedger
     )
   }
 
-  // --check: ayni raporu verir, defterin byte'larini degistirmez, silmez.
+  // --check reports the same staleness, rewrites nothing, deletes nothing.
   const ledgerBefore = await read('.agent-source/generated-files.json')
   const staleCheck = await silentGenerate({ root: fixtureRoot, checkOnly: true })
   assert(
@@ -443,7 +443,7 @@ Beklenen: `SELFTEST PASS`. Fail ederse mesajdaki `got` listesini `expectedLedger
     '--check must never delete anything'
   )
 
-  // Elle yazilan dosya bu turlarda da raporlanmaz (defterde degil).
+  // A hand-written file is never reported: it was never in the ledger.
   assert(
     !staleRun.mismatches.some(m => m.includes('my-helper.md')),
     'hand-written files must never be reported as stale'
@@ -455,7 +455,7 @@ Beklenen: `SELFTEST PASS`. Fail ederse mesajdaki `got` listesini `expectedLedger
 Aynı yere, Step 9'un ardından ekle:
 
 ```javascript
-  // Bozuk defter: hata vermez, rapor uretmez, defteri yeniden yazar.
+  // A malformed ledger is not an error: no report, and it gets rewritten.
   await fs.writeFile(
     path.join(fixtureRoot, '.agent-source', 'generated-files.json'),
     '{ bu gecerli JSON degil'
@@ -472,7 +472,7 @@ Aynı yere, Step 9'un ardından ekle:
     'a malformed ledger must be rewritten'
   )
 
-  // Defter yoksa: gercek bir bayat cikti VARKEN bile rapor uretilmez.
+  // No ledger means no report even though a genuinely stale target exists.
   await fs.rm(path.join(fixtureRoot, '.agent-source', 'generated-files.json'))
   const noLedgerRun = await silentGenerate({ root: fixtureRoot, checkOnly: false })
   assert(
@@ -488,7 +488,7 @@ Aynı yere, Step 9'un ardından ekle:
     'a missing ledger must be recreated'
   )
 
-  // Idempotentlik: ardisik ikinci sync sifir yazma bildirir.
+  // Idempotence: a second consecutive sync must report zero writes.
   const secondRun = await silentGenerate({ root: fixtureRoot, checkOnly: false })
   assert(
     (secondRun.writes ?? []).length === 0,
@@ -545,15 +545,20 @@ güvenli olduğu anlamına gelmez; silme yolunu güvenli kılmak için gereken s
 (yol containment, dosya türü kontrolü, case-insensitive yeniden adlandırma çakışması,
 geçici I/O hatasının "üretilmedi" sanılması) sağladığı faydadan pahalıdır.
 
-Bunun yerine sync **ürettiklerinin defterini** tutar: `.agent-source/generated-files.json`.
-Her başarılı çalışmada ürettiği tüm generated yolları (repo köküne göre, POSIX ayraçlı,
-sıralı) oraya yazar. Defter kendini listelemez.
+Bunun yerine sync bir **sahiplik defteri** tutar: `.agent-source/generated-files.json`.
+Her başarılı çalışmada şunların birleşimini (repo köküne göre, POSIX ayraçlı, sıralı)
+oraya yazar: bu turda ürettiği tüm generated yollar **artı** önceki defterde olup artık
+üretilmeyen ama hâlâ diskte duran yollar. Defter kendini listelemez.
 
 | Dosya durumu | Davranış |
 |---|---|
 | Defterde **var**, bu sefer de üretildi | Güncellenir |
-| Defterde **var**, bu sefer üretilmedi, diskte duruyor | **`<yol> (stale)` raporlanır — silinmez** |
+| Defterde **var**, bu sefer üretilmedi, diskte duruyor | **`<yol> (stale)` raporlanır — silinmez, defterde KALIR** |
+| Defterde **var**, bu sefer üretilmedi, diskte de yok | Kullanıcı silmiş → defterden düşer |
 | Defterde **yok** | Hiç ilgilenilmez (kullanıcının dosyası olabilir) |
+
+Bayat yolun defterde kalması şarttır: aksi halde dosya bir kez raporlanır, defterden
+düşer ve bir daha hiç görünmez — `--check` yeşil yanarken dosya diskte kalır.
 
 - Rapor mevcut mismatch kanalını kullanır: `--check` modunda exit 1, normal sync modunda
   `!` ile uyarı satırı.
