@@ -108,6 +108,12 @@ defterin tek sonucu bir turluk eksik rapordur.
 Girdi doğrulaması yine de yapılır — bir girdi string değilse ya da boşsa o girdi atlanır,
 tüm defter reddedilmez. Silme olmadığı için kısmi/yanlış yorumun bedeli yalnız rapordur.
 
+**`--check` modunda ayrı bir sonuç daha vardır:** defter eksik ya da bozuksa içeriği
+beklenenden farklı olacağı için defter yolu **normal drift mismatch'i** olarak raporlanır
+ve `--check` exit 1 verir. Bu doğru davranıştır — defteri düzeltmek bir sync gerektirir.
+Yani "bozuk defterin tek bedeli eksik rapordur" ifadesi yalnız normal sync modu için
+geçerlidir.
+
 ### `--check` davranışı
 
 `--check` hiçbir şey yazmaz ve hiçbir şey silmez. Bayat dosyaları `(stale)` mismatch'i
@@ -122,7 +128,7 @@ defter yolu da normal drift mismatch'i olarak görünür.
 |---|---|
 | `sync-agent-config.mjs` | `removeOrphans` ve `removeFile` kaldırılır; `produced` kümesi, defter okuma/yazma, bayat raporu eklenir |
 | `sync-pipeline.md` | §8 yeniden yazılır: temizlik değil, raporlama |
-| `canonical-source.md` | Defterin `.agent-source/` içinde generated bir dosya olduğu; kaynak olmadığı |
+| `canonical-source.md` | Defter canonical dizin ağacına ve generated hedefler haritasına eklenir; `.agent-source/` içindeki tek generated dosya olduğu, kaynak olmadığı anlatılır |
 
 `manifest-schema.md` değişmez — manifest şeması etkilenmiyor.
 
