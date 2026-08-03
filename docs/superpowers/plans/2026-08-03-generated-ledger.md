@@ -13,7 +13,7 @@
 - **Doküman dili Türkçe.** Kod, dosya adı ve commit mesajı İngilizce.
 - **Harici bağımlılık eklenmez.** Yalnız Node stdlib.
 - **Her kod değişikliği sonrası** `node team-builder-shared/sync-agent-config.mjs --selftest` → `SELFTEST PASS`.
-- **Sync hiçbir dosya silmez.** Uygulama bittiğinde kod tabanında `fs.unlink` / `fs.rm` / `fs.rmdir` çağrısı **kalmamalıdır** (fixture temizliği yapan selftest kodu hariç).
+- **Sync hiçbir dosya silmez.** Uygulama bittiğinde **generator kodunda** (`createContext`, `sync*`, `generate`) `fs.unlink` / `fs.rmdir` / `fs.rm` çağrısı **kalmamalıdır**. `runSelftest` içindeki fixture kurma, bozma ve temizleme kodu bu kuralın dışındadır — testler kaynak dosyaları silerek senaryo kurar.
 - **`--check` hiçbir şey yazmaz ve silmez.** Defter dosyasının byte'larını da değiştirmez.
 - **Defter yolları repo köküne göre POSIX ayraçlı ve sıralıdır** — mevcut `toPosix()` ile aynı biçim.
 - **Bozuk/eksik defter hata vermez**, yalnız o turda bayat rapor üretilmez.
