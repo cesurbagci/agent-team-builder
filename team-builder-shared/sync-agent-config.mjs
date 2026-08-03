@@ -139,9 +139,9 @@ function createContext({ root, checkOnly }) {
     writes.push(toPosix(filePath))
   }
 
-  async function copyExpected(sourcePath, targetPath, transform = text => text, options) {
+  async function copyExpected(sourcePath, targetPath, transform = text => text) {
     const source = await readText(sourcePath)
-    await writeExpected(targetPath, transform(source), options)
+    await writeExpected(targetPath, transform(source))
   }
 
   return {
@@ -478,6 +478,24 @@ async function syncSkills(ctx, manifest) {
   }
 }
 
+// Whether a previously-generated LEDGER ENTRY should still count as present.
+// Unlike pathExists (fs.access, follows symlinks), this must see a dangling
+// symlink as present — otherwise a stale target that becomes one silently
+// drops out of stalePaths below and is never reported again, breaking the
+// "reported until the user deletes it" contract. A transient error (e.g.
+// EACCES) must not be read as "deleted" either, for the same reason: only
+// ENOENT/ENOTDIR (the path or a parent segment is genuinely gone) means the
+// user actually removed it. Local to reportStaleGenerated — pathExists keeps
+// its existing "any error means absent" semantics for its other callers.
+async function ledgerEntryExists(filePath) {
+  try {
+    await fs.lstat(filePath)
+    return true
+  } catch (err) {
+    return err.code !== 'ENOENT' && err.code !== 'ENOTDIR'
+  }
+}
+
 // Report generated targets this run no longer produces. Nothing is deleted:
 // a path that stopped being generated is not proof that removing it is safe.
 // A missing or malformed ledger yields no report — never an error. Returns
@@ -503,7 +521,7 @@ async function reportStaleGenerated(ctx, ledgerPath) {
     if (typeof relative !== 'string' || relative.length === 0) continue
     if (ctx.produced.has(relative)) continue
     const filePath = ctx.resolveRoot(...relative.split('/'))
-    if (!(await pathExists(filePath))) continue
+    if (!(await ledgerEntryExists(filePath))) continue
     ctx.mismatches.push(`${relative} (stale)`)
     stale.push(relative)
   }
@@ -562,9 +580,14 @@ async function generate({ root, checkOnly, quiet = false }) {
   }
 
   if (ctx.mismatches.length > 0) {
-    // Non-fatal source-listing mismatches surfaced even in sync mode.
+    // Mismatches — unlisted agent sources and stale generated paths alike —
+    // are non-fatal in sync mode: printed as warnings, not failures. Only
+    // --check (above) treats them as a failure.
     for (const mismatch of ctx.mismatches) {
       warn(`! ${mismatch}`)
+    }
+    if (ctx.mismatches.some(m => m.endsWith(' (stale)'))) {
+      warn('These files are no longer generated; deleting them is up to you.')
     }
   }
   if (ctx.writes.length === 0) {
@@ -841,6 +864,11 @@ async function runSelftest() {
     await exists('.claude/skills/my-own-skill/SKILL.md'),
     'hand-written skill must survive sync'
   )
+  assert(
+    normalizeText(await read('.claude/skills/my-own-skill/SKILL.md')) ===
+      normalizeText(handSkillBody),
+    'hand-written skill must not be rewritten'
+  )
 
   // The ledger lists every generated target, sorted, and never itself.
   assert(
@@ -889,6 +917,49 @@ async function runSelftest() {
     '--check should report the corrupted file as drift'
   )
 
+  // Skill mirrors go stale too, same contract as agent files: removing a
+  // skill's SOURCE must be reported for every ecosystem mirror it fed. Run
+  // before the manifest trim below, while opencode is still an active target
+  // — otherwise losing the last opencode agent would also make the opencode
+  // mirror stale for an unrelated reason and confound the assertion.
+  await fs.rm(path.join(sourceRoot, 'skills', 'demo-skill'), { recursive: true })
+  const skillMirrors = [
+    '.claude/skills/demo-skill/SKILL.md',
+    '.agents/skills/demo-skill/SKILL.md',
+    '.opencode/skills/demo-skill/SKILL.md',
+  ]
+  const skillStaleRun = await silentGenerate({ root: fixtureRoot, checkOnly: false })
+  for (const mirror of skillMirrors) {
+    assert(await exists(mirror), `${mirror} must NOT be deleted, only reported`)
+    assert(
+      skillStaleRun.mismatches.includes(`${mirror} (stale)`),
+      `${mirror} must be reported exactly as "${mirror} (stale)"`
+    )
+  }
+
+  // Persists on a second consecutive sync, same contract as agent staleness.
+  const skillStaleRunAgain = await silentGenerate({ root: fixtureRoot, checkOnly: false })
+  for (const mirror of skillMirrors) {
+    assert(
+      skillStaleRunAgain.mismatches.includes(`${mirror} (stale)`),
+      `${mirror} must still be reported as stale on a second consecutive sync`
+    )
+  }
+
+  // Persists on --check too, without rewriting the ledger.
+  const ledgerBeforeSkillCheck = await read('.agent-source/generated-files.json')
+  const skillStaleCheck = await silentGenerate({ root: fixtureRoot, checkOnly: true })
+  for (const mirror of skillMirrors) {
+    assert(
+      skillStaleCheck.mismatches.includes(`${mirror} (stale)`),
+      `${mirror} must be reported as stale by --check too`
+    )
+  }
+  assert(
+    (await read('.agent-source/generated-files.json')) === ledgerBeforeSkillCheck,
+    '--check must not rewrite the ledger for stale skill mirrors either'
+  )
+
   // Dropping an agent that fed three targets: the files STAY on disk and
   // every one of them is reported as stale. Placed after the clean/drift
   // checks above (rather than immediately after the ledger assert) because
@@ -906,32 +977,33 @@ async function runSelftest() {
   )
   await fs.rm(path.join(sourceRoot, 'agents', 'architect.md'))
 
-  // --check reports the staleness against the not-yet-advanced ledger, and
-  // rewrites nothing, deletes nothing. Run before the real sync below: a real
-  // (non-check) run advances the ledger to the new state as its last act, so
-  // checking staleness must happen first or there is nothing left to see.
-  const ledgerBefore = await read('.agent-source/generated-files.json')
-  const staleCheck = await silentGenerate({ root: fixtureRoot, checkOnly: true })
-  assert(
-    staleCheck.mismatches.includes('.claude/agents/architect.md (stale)'),
-    '--check must report stale targets'
-  )
-  assert(
-    (await read('.agent-source/generated-files.json')) === ledgerBefore,
-    '--check must not rewrite the ledger'
-  )
-  assert(
-    await exists('.claude/agents/architect.md'),
-    '--check must never delete anything'
-  )
-
-  const staleRun = await silentGenerate({ root: fixtureRoot, checkOnly: false })
   const staleTargets = [
     '.claude/agents/architect.md',
     '.codex/agent-definitions/architect.md',
     '.codex/agents/architect.toml',
     '.opencode/agents/architect.md',
   ]
+
+  // --check reports the staleness against the ledger as the original sync
+  // left it (before this trim), and rewrites nothing, deletes nothing. (A
+  // later real sync no longer makes staleness disappear either — the union
+  // in generate() keeps carrying it forward on every run — this ordering
+  // just exercises --check against a ledger the trim hasn't touched yet.)
+  const ledgerBefore = await read('.agent-source/generated-files.json')
+  const staleCheck = await silentGenerate({ root: fixtureRoot, checkOnly: true })
+  for (const target of staleTargets) {
+    assert(
+      staleCheck.mismatches.includes(`${target} (stale)`),
+      `--check must report ${target} as stale`
+    )
+    assert(await exists(target), `--check must never delete ${target}`)
+  }
+  assert(
+    (await read('.agent-source/generated-files.json')) === ledgerBefore,
+    '--check must not rewrite the ledger'
+  )
+
+  const staleRun = await silentGenerate({ root: fixtureRoot, checkOnly: false })
   for (const target of staleTargets) {
     assert(await exists(target), `${target} must NOT be deleted, only reported`)
     assert(
@@ -944,6 +1016,33 @@ async function runSelftest() {
   assert(
     !staleRun.mismatches.some(m => m.includes('my-helper.md')),
     'hand-written files must never be reported as stale'
+  )
+  assert(
+    !staleRun.mismatches.some(m => m.includes('my-own-skill')),
+    'hand-written skills must never be reported as stale'
+  )
+
+  // A stale target that becomes a dangling symlink must still be reported
+  // and retained. pathExists (fs.access, follows symlinks) would call a
+  // dangling symlink "absent" and silently drop it from the ledger forever;
+  // reportStaleGenerated must use an lstat-based check instead, which sees
+  // the symlink itself regardless of where it points.
+  const danglingStaleTarget = '.codex/agent-definitions/architect.md'
+  await fs.rm(path.join(fixtureRoot, danglingStaleTarget))
+  await fs.symlink(
+    path.join(fixtureRoot, 'does-not-exist-target'),
+    path.join(fixtureRoot, danglingStaleTarget)
+  )
+  const danglingRun = await silentGenerate({ root: fixtureRoot, checkOnly: false })
+  assert(
+    danglingRun.mismatches.includes(`${danglingStaleTarget} (stale)`),
+    'a dangling symlink stale target must still be reported, not silently dropped'
+  )
+  assert(
+    JSON.parse(await read('.agent-source/generated-files.json')).files.includes(
+      danglingStaleTarget
+    ),
+    'a dangling symlink stale target must remain retained in the ledger'
   )
 
   // The whole point of the ledger: staleness must be reported EVERY run, not
@@ -959,9 +1058,14 @@ async function runSelftest() {
     )
   }
 
-  // --check must report that same persistent staleness, and must not rewrite
-  // the ledger while doing so (checked via byte-identical content).
+  // --check must report that same persistent staleness, must exit 1 while
+  // doing so (verification requirement 8), and must not rewrite the ledger
+  // while doing so (checked via byte-identical content).
   const ledgerBeforeStaleRecheck = await read('.agent-source/generated-files.json')
+  // Reset first: the earlier corruption test's --check already set exitCode
+  // to 1, so asserting it below without resetting would pass vacuously even
+  // if this --check call itself never touched exitCode.
+  process.exitCode = 0
   const staleRecheck = await silentGenerate({ root: fixtureRoot, checkOnly: true })
   for (const target of staleTargets) {
     assert(
@@ -969,6 +1073,10 @@ async function runSelftest() {
       `${target} must be reported as stale by --check too`
     )
   }
+  assert(
+    process.exitCode === 1,
+    '--check must exit with code 1 while persistent staleness remains'
+  )
   assert(
     (await read('.agent-source/generated-files.json')) === ledgerBeforeStaleRecheck,
     '--check must not rewrite the ledger even when stale paths are present'
