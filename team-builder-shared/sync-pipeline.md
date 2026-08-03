@@ -120,7 +120,7 @@ deftere hiçbir şey yazmaz** — yalnızca bu birleşimi diskteki içerikle kar
 | Defterde **var**, bu sefer de üretildi | Güncellenir |
 | Defterde **var**, bu sefer üretilmedi, diskte duruyor | **`<yol> (stale)` raporlanır — silinmez, defterde KALIR** |
 | Defterde **var**, bu sefer üretilmedi, diskte de yok | Kullanıcı silmiş → defterden düşer |
-| Defterde **yok** | Hiç ilgilenilmez (kullanıcının dosyası olabilir) |
+| Defterde **yok** (bu turda üretilmemiş ve deftere hiç girmemiş) | Hiç ilgilenilmez — kullanıcının dosyasıdır |
 
 Bayat yolun defterde kalması şarttır: aksi halde dosya bir kez raporlanır, defterden
 düşer ve bir daha hiç görünmez — `--check` yeşil yanarken dosya diskte kalır.
@@ -128,8 +128,10 @@ düşer ve bir daha hiç görünmez — `--check` yeşil yanarken dosya diskte k
 - Rapor mevcut mismatch kanalını kullanır: `--check` modunda exit 1, normal sync modunda
   `!` ile uyarı satırı.
 - **Normal sync modunda**, defter yoksa ya da okunamıyorsa bayat rapor üretilmez ve hata
-  verilmez. Bozuk defterin tek sonucu bir turluk eksik rapordur; sync defteri yeniden
-  yazar.
+  verilmez; sync defteri yeniden yazar. **Dikkat: bu kayıp kalıcıdır.** Yeniden yazılan
+  defter yalnız o turda üretilenleri içerir, dolayısıyla önceki defterin sahiplendiği
+  bayat yollar bir daha raporlanmaz — o dosyalar tekrar üretilip yeniden deftere girmedikçe
+  görünmez kalır.
 - **`--check` modunda ise sonuç farklıdır:** defter eksik ya da bozuksa diskteki içerik
   beklenen birleşimden farklı olur (defter de generated olduğu için); defter yolu
   **normal drift mismatch'i** olarak raporlanır ve `--check` exit 1 ile çıkar.

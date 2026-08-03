@@ -103,6 +103,7 @@ runtime state kabul edilir.
 - `.agent-source/generated-files.json` **kaynak değildir** — `.agent-source/` ağacının
   içinde duran tek generated dosyadır. Sync'in kendi **sahiplik defteridir**: bu turda
   ürettiği yollar **artı** önceki defterde olup hâlâ diskte duran yolların birleşimini
-  tutar. Bayat çıktı raporu buna bakar, böylece kullanıcının elle yazdığı agent/skill
-  dosyaları hiçbir zaman bayat sayılmaz. Elle düzenlenmez; commit edilir (takımda
+  tutar. Bayat çıktı raporu buna bakar, böylece deftere hiç girmemiş — yani kullanıcının
+  kendi yazdığı — agent/skill dosyaları bayat sayılmaz. (Kullanıcı bir zamanlar generated
+  olan bir yola elle dosya koyarsa o yol defterde olduğu için bayat raporlanır.) Elle düzenlenmez; commit edilir (takımda
   tutarlı olması için). Detay: `sync-pipeline.md` §8.

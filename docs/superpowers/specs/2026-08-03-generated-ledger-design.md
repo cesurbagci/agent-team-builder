@@ -90,7 +90,7 @@ listelemez.
 | Defterde **var**, bu sefer de üretildi | Güncellenir |
 | Defterde **var**, bu sefer üretilmedi, diskte duruyor | **`(stale)` raporlanır — silinmez, defterde KALIR** |
 | Defterde **var**, bu sefer üretilmedi, diskte de yok | Kullanıcı silmiş → defterden düşer |
-| Defterde **yok** | Hiç ilgilenilmez |
+| Defterde **yok** (üretilmemiş ve deftere hiç girmemiş) | Hiç ilgilenilmez — kullanıcının dosyasıdır |
 
 Rapor mevcut `mismatches` kanalını kullanır. Bu kanalın davranışı zaten tanımlı:
 `--check` modunda exit 1, normal sync modunda `!` ile uyarı satırı. Yani yeni bir çıktı
@@ -102,8 +102,9 @@ açıklama ekler: bu dosyalar artık üretilmiyor, silmek kullanıcıya kalmış
 ### Defter okunamıyorsa
 
 Defter yoksa, JSON olarak parse edilemiyorsa, ya da `files` beklenen biçimde değilse:
-**hiçbir bayat rapor üretilmez.** Sync normal çalışır ve defteri yeniden yazar. Bozuk
-defterin tek sonucu bir turluk eksik rapordur.
+**hiçbir bayat rapor üretilmez.** Sync normal çalışır ve defteri yeniden yazar. **Bu kayıp
+kalıcıdır:** yeniden yazılan defter yalnız o turda üretilenleri içerdiği için, önceki
+defterin sahiplendiği bayat yollar bir daha raporlanmaz.
 
 Girdi doğrulaması yine de yapılır — bir girdi string değilse ya da boşsa o girdi atlanır,
 tüm defter reddedilmez. Silme olmadığı için kısmi/yanlış yorumun bedeli yalnız rapordur.
@@ -111,8 +112,8 @@ tüm defter reddedilmez. Silme olmadığı için kısmi/yanlış yorumun bedeli 
 **`--check` modunda ayrı bir sonuç daha vardır:** defter eksik ya da bozuksa içeriği
 beklenenden farklı olacağı için defter yolu **normal drift mismatch'i** olarak raporlanır
 ve `--check` exit 1 verir. Bu doğru davranıştır — defteri düzeltmek bir sync gerektirir.
-Yani "bozuk defterin tek bedeli eksik rapordur" ifadesi yalnız normal sync modu için
-geçerlidir.
+Yani bozuk defterin iki ayrı bedeli vardır: normal sync modunda sahiplik kaydı kalıcı
+olarak kaybolur, `--check` modunda ise defter yolu drift olarak raporlanır.
 
 ### `--check` davranışı
 
@@ -151,7 +152,8 @@ bir çıktının kaynaktan çıkarılması ve **silinmeyip raporlanması** doğr
    ve OpenCode çıktılarının hepsini kapsar; defter kendini listelemez.
 2. **Kullanıcı dosyası korunur:** elle yazılan `.claude/agents/my-helper.md` ve
    `.claude/skills/my-own-skill/SKILL.md` sync sonrası durur, içerikleri değişmez ve
-   **rapor edilmez** (defterde olmadıkları için ilgi alanı dışı).
+   **rapor edilmez** (deftere hiç girmedikleri için ilgi alanı dışı; bir zamanlar generated
+   olan bir yola elle konan dosya ise defterde olduğu için raporlanır).
 3. **Bayat çıktı raporlanır, silinmez:** üç hedefe birden üreten bir agent manifest'ten ve
    kaynaktan çıkarılır; sync sonrası dört generated dosyası da **diskte durur** ve dördü
    de `(stale)` olarak raporlanır.
