@@ -15,8 +15,8 @@ değiştirilmez**; her zaman kaynaktan üretilir. Generator iki modda çalışı
 
 ## 2. Girdiler
 
-- **Proje kökü (`root`):** script'in bir üst dizini. Tüm generated hedefler bu köke
-  göre yazılır.
+- **Proje kökü (`root`):** `--root <dir>` ile verilir; verilmezse çalışma dizini
+  (`process.cwd()`) kullanılır. Tüm generated hedefler bu köke göre yazılır.
 - **`.agent-source/` (`sourceRoot`):** tek canonical kaynak ağacı:
   - `agents/manifest.json` — rol metadata listesi (`agents[]`). Her ajan için:
     `name`, `description`, `targets[]` (varsayılan `["claude","codex"]`), `model`
@@ -27,7 +27,8 @@ değiştirilmez**; her zaman kaynaktan üretilir. Generator iki modda çalışı
     `project/codex-config.toml`, `project/codex-team.md`, `project/migration-map.md`.
   - `skills/<skill>/SKILL.md` — repo skill kaynakları (varsa).
 
-Argümanlar: `--check` bayrağı `process.argv` içinde aranır; başka argüman yoktur.
+Argümanlar: `--check` (drift-check modu), `--root <dir>` (proje kökü) ve
+`--selftest` (fixture tabanlı kendi kendini test) `process.argv` içinde aranır.
 
 ## 3. Çıktı Hedefleri (generated)
 
@@ -35,7 +36,7 @@ Kaynaktan üretilen, elle düzenlenmeyen dosyalar:
 
 | Kaynak | Generated hedef(ler) | Koşul |
 |---|---|---|
-| `project/CLAUDE.md` | `CLAUDE.md` | her zaman |
+| `project/CLAUDE.md` | `CLAUDE.md` | Claude hedefi seçiliyse |
 | `project/AGENTS.md` | `AGENTS.md` | Codex **veya** OpenCode hedefi |
 | `project/codex-config.toml` | `.codex/config.toml` | Codex hedefi |
 | `project/codex-team.md` | `.codex/team.md` | Codex hedefi |
@@ -46,7 +47,7 @@ Kaynaktan üretilen, elle düzenlenmeyen dosyalar:
 | `agents/<role>.md` | `.codex/agent-definitions/<role>.md` | `targets` içinde `codex` |
 | `agents/<role>.md` + manifest | `.codex/agents/<role>.toml` | `targets` içinde `codex` |
 | `agents/<role>.md` + manifest | `.opencode/agents/<role>.md` | `targets` içinde `opencode` |
-| `skills/<skill>/SKILL.md` | `.claude/skills/` **ve** `.agents/skills/` (+ OpenCode hedefi varsa `.opencode/skills/`) | her zaman |
+| `skills/<skill>/SKILL.md` | `.agents/skills/` (her zaman) + Claude hedefi varsa `.claude/skills/` + OpenCode hedefi varsa `.opencode/skills/` | varsa |
 
 Codex agent-definition'ı üretilirken kaynak gövdesi dönüştürülür (örn.
 `.claude/skills/...` yolları `.agents/skills/...` olur; Claude'a özgü Task-tool
@@ -90,8 +91,14 @@ Kaynak değişmeden sync tekrar çalıştırılırsa:
 - Beklenen içerik mevcut içerikle birebir aynıysa dosya **hiç yazılmaz**
   (gereksiz dosya dokunuşu yok, `mtime` değişmez).
 - Hiç değişiklik yoksa `Agent configuration already in sync.` yazar.
-- Bunun sonucu: sync → `--check` her zaman temiz; sync → sync → sync ardışık
-  çalıştırmaları no-op'tur. Idempotentlik garantisi sözleşmenin parçasıdır.
+- Bunun sonucu: sync → sync → sync ardışık çalıştırmaları no-op'tur — sıfır
+  generated dosya değişikliği, sıfır yazma. Idempotentlik garantisi budur ve
+  sözleşmenin parçasıdır.
+- Bu, `--check`'in her zaman temiz çıkacağı anlamına **gelmez**. Defterde hâlâ
+  diskte duran bayat bir yol varsa (bkz. §8) `--check` o yol elle silinene
+  kadar her çalıştırmada exit 1 ile çıkmaya devam eder — bu drift değil,
+  kasıtlı ve kalıcı bir rapordur. `--check` yalnızca defterde diskte duran
+  bayat yol kalmadığında temiz çıkar.
 
 ## 7. `.claude/settings.local.json` Muafiyeti
 

@@ -60,7 +60,7 @@ GENERATED'dır**; elle düzenlenmez, kaynaktan üretilir.
 | `project/AGENTS.md` | `AGENTS.md` | Codex **veya** OpenCode hedefi seçiliyse |
 | `project/codex-config.toml` | `.codex/config.toml` | Codex hedefi seçiliyse |
 | `project/codex-team.md` | `.codex/team.md` | Codex hedefi seçiliyse |
-| `project/migration-map.md` | `.codex/migration-map.md` | varsa |
+| `project/migration-map.md` | `.codex/migration-map.md` | Codex hedefi seçiliyse (kaynak varsa) |
 | `project/opencode.json` | `opencode.json` | OpenCode hedefi seçiliyse |
 | `project/opencode-team.md` | `.opencode/team.md` | OpenCode hedefi seçiliyse |
 | `skills/<skill>/SKILL.md` | `.agents/skills/` (her zaman — Codex ve OpenCode ikisi de okur) + Claude hedefi varsa `.claude/skills/` + OpenCode hedefi varsa `.opencode/skills/` | varsa |
@@ -80,7 +80,9 @@ GENERATED'dır**; elle düzenlenmez, kaynaktan üretilir.
   generated dosyaları karşılaştırır. Fark (drift) varsa mismatch listesi basar ve
   exit ≠ 0 döner. Generated dosyanın elle değiştirilmiş olması burada yakalanır.
 - **Idempotent:** Kaynak değişmeden sync tekrar çalışınca hiçbir generated dosya
-  değişmez (`--check` temiz çıkar).
+  değişmez — sıfır yazma. Bu, `--check`'in her zaman temiz çıkacağı anlamına
+  gelmez: defterde hâlâ diskte duran bayat bir yol varsa `--check` o yol elle
+  silinene kadar exit 1 vermeye devam eder (bkz. `sync-pipeline.md` §8).
 - Ayrıntılı generate algoritması ve drift davranışı için bkz. `sync-pipeline.md`.
 
 ## Memory canonical DEĞİLDİR
