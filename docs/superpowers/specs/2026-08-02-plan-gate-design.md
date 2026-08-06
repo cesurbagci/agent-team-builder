@@ -1,8 +1,13 @@
 # Tasarım: Plan Kapısı ve İş Havuzu (`planGate`)
 
-- **Tarih:** 2026-08-02
+- **Tarih:** 2026-08-02 (revize: 2026-08-04)
 - **Durum:** Onaylandı — uygulama planı bekliyor
-- **Kapsam:** team-builder'a 5. anayasa preseti olarak plan kapısı + onaylanmış iş havuzu
+- **Kapsam:** team-builder'a 5. anayasa preseti olarak plan kapısı + onaylanmış iş havuzu + çapraz ekosistem çağırma
+
+> **Revizyon notu.** İlk sürüm Codex review'ından 11 bulgu aldı. Bu sürüm hepsini
+> karşılıyor. İki şey de değişti: (a) generated-file ledger'ı geldi, bu yüzden preset
+> kapatıldığında ortada kalan skill mirror'ları artık `(stale)` olarak raporlanıyor;
+> (b) çapraz ekosistem çağırma mekanizması doğrulandı ve bu tasarımın kapsamına alındı.
 
 ## Problem
 
@@ -18,187 +23,194 @@ Mevcut tek denetim noktası kod review'ı — yani reviewer devreye girdiğinde 
 yazılmış kod var. Yaklaşım baştan yanlışsa o emek çöpe gidiyor.
 
 **Bu tasarımın çözdüğü dert:** kod yazılmadan önce yaklaşımın hem bir agent hem kullanıcı
-tarafından onaylanması, ve onaylanmış işlerin kaybolmadan bir havuzda birikip istendiğinde
-işletilebilmesi.
+tarafından onaylanması; onaylanmış işlerin kaybolmadan bir havuzda birikip istendiğinde
+işletilebilmesi; ve birden fazla ekosistem kuruluysa denetimin istenen provider'ın
+agent'ına yaptırılabilmesi.
 
-## Kapsam sınırı
-
-Bu spec dört alt sistemden ikisini kapsar:
+## Kapsam
 
 | | Alt sistem | Durum |
 |---|---|---|
-| **A** | Plan kapısı — plan yazımı, agent review, kullanıcı onayı | **Bu spec** |
+| **A** | Plan kapısı — plan yazımı, architect denetimi, kullanıcı onayı | **Bu spec** |
 | **D** | Havuz — onaylanmış işlerin birikmesi ve seçilerek işletilmesi | **Bu spec** |
-| **B** | Çapraz ekosistem mekanizması — başka provider'ın agent'ının teknik olarak nasıl çağrılacağı | Ayrı spec |
-| **C** | Inbox'ın dış sistem entegrasyonu (Jira vb.) | Ayrı spec |
+| **B** | Çapraz ekosistem çağırma — başka provider'ın agent'ını çalıştırmak | **Bu spec** (mekanizma doğrulandı) |
+| **C** | Inbox'ın dış sisteme (Jira vb.) bağlanması | Ayrı spec |
 
-A ve D birlikte ele alınıyor çünkü D, A'nın durum makinesinin devamı — kullanıcı planı
-onayladıktan sonra ne olduğunun cevabı. Ayırmak A'yı yarım bırakırdı.
-
-`inbox/` dizini ve ham kayıt formatı bu spec'te tanımlanıyor; **dış sisteme bağlanması**
-C'ye ait.
-
-B için bu spec **kanca noktalarını ve veri modelini** tanımlıyor, böylece B geldiğinde
-A+D'yi yeniden yazmak gerekmiyor.
+`inbox/` dizini ve ham kayıt formatı burada tanımlanıyor; **dış sistem entegrasyonu** C'ye
+ait.
 
 ## Mimari
 
 Mekanizma iki parçalı: **kural anayasada, prosedür skill'de.**
 
-Agent md gövdeleri sadece "bu projede plan kapısı açık, prosedür `work-plan` skill'inde"
-der; adımları tekrar etmez. Prosedürün tek otoritesi skill'dir. Bu ayrım drift'i önler —
-aynı kural iki yerde anlatılmaz.
+### Tek otorite ayrımı (Codex bulgu 2)
+
+İlk sürüm hem `plan-gate.md`'yi hem skill'i "prosedürün tek otoritesi" ilan ediyordu ve
+adımları ikisine birden kopyalıyordu — tam da önlemek istediği drift. Ayrım artık net:
+
+| Doküman | Kim okur | Ne anlatır |
+|---|---|---|
+| `team-builder-shared/plan-gate.md` | **Sihirbaz** (kurulum anında) | Kurulum sözleşmesi: hangi dizin/dosyalar üretilir, frontmatter şeması, öncelik katmanları. **Runtime adımlarını anlatmaz.** |
+| Projeye kurulan `work-plan` skill'i | **Projede çalışan agent** (her iş anında) | Runtime prosedürü: planı kim yazar, kapılardan nasıl geçer, havuz nasıl işletilir |
+
+Aynı kural iki yerde anlatılmaz. Agent md gövdeleri de adımları tekrar etmez; "bu projede
+plan kapısı açık, prosedür `work-plan` skill'inde" der.
 
 ### Neden hook değil
 
 `PreToolUse` hook'u ile Edit/Write çağrısını engellemek daha zorlayıcı olurdu, ama Claude
 Code'a özgü; Codex ve OpenCode'da karşılığı yok. Çok hedefli bir repoda kapı yalnız bir
-ekosistemde çalışır — "kapı var sanmak, yokken" en kötü senaryo. Hook ileride Claude
-tarafında *ek* sıkılaştırma olarak düşünülebilir, kapının temeli olamaz.
+ekosistemde çalışır — "kapı var sanmak, yokken" en kötü senaryo.
 
 ### team-builder reposunda değişecekler
 
 | Dosya | Değişiklik |
 |---|---|
-| `team-builder-shared/constitution.md` | KARAR 5 — `planGate` (default **KAPALI**) |
-| `team-builder-shared/plan-gate.md` *(yeni)* | Prosedürün tek otoritesi: durumlar, kapılar, roller |
-| `team-builder-shared/templates/plan.md` *(yeni)* | Plan dosyası şablonu |
-| `team-builder-setup/SKILL.md` | Adım 7B'ye toggle + preset açıksa sorulacaklar; Adım 8a'ya iskelet üretimi |
-| `team-builder-shared/agent-md-rich.md` | developer ve architect gövdelerine kural satırları |
-| `team-builder-shared/manifest-schema.md` | `constitution.planGate` alanı |
-| `team-builder-shared/validate-manifest.mjs` | `planGate` boolean doğrulaması |
-| `team-builder-shared/routing.md` | `.agent-work/**` sahipliği notu |
-| `team-builder-shared/canonical-source.md` | `.agent-work/` generated değildir notu |
-| `team-builder-shared/sync-pipeline.md` | iskelet üretimi + orphan istisnası |
+| `constitution.md` | KARAR 5 — `planGate` (default **KAPALI**); "default her zaman true" iddiası düzeltilir |
+| `plan-gate.md` *(yeni)* | Kurulum sözleşmesi + veri modeli (runtime adımları **değil**) |
+| `templates/plan.md` *(yeni)* | Plan şablonu iskeleti |
+| `templates/work-plan-skill.md` *(yeni)* | Projeye kurulacak skill'in şablonu |
+| `templates/agent-invoke-skill.md` *(yeni)* | Çapraz ekosistem çağırma skill'inin şablonu |
+| `team-builder-setup/SKILL.md` | 5. toggle; "tam 4 kural" soru kuralı; Adım 8a üretim adımları |
+| `agent-md-rich.md` | developer ve architect gövdelerine `## Plan Kapısı` bölümü |
+| `manifest-schema.md` | `constitution.planGate`; "4 preset, tümü default true" düzeltilir |
+| `validate-manifest.mjs` | `planGate` boolean |
+| `wizard-state.md` | constitution örneği 5 alana çıkar |
+| `README.md` (iki dil) | "all on by default" düzeltilir |
+| `routing.md` | `.agent-work/**` sahipliği notu |
+| `canonical-source.md` | `.agent-work/` generated değildir |
+| `sync-pipeline.md` | `.agent-work/` sync kapsamı dışıdır |
 
-### Projede üretilecekler (preset açıkken, setup bir kez çalışır)
+> **Codex bulgu 3 ve 4:** ilk sürüm yalnız `constitution.md`'nin bir cümlesini
+> düzeltiyordu. `manifest-schema.md`, `wizard-state.md`, `README.md` ve
+> `team-builder-setup/SKILL.md`'deki "tam 4 kural → tek multiSelect (4 seçenek)" kuralı da
+> beşinci presete göre güncellenmelidir; aksi halde şema dokümanı "tümü default true" der
+> ve sihirbazın soru kuralı 4 seçenek sınırıyla çakışır.
+
+### Projede üretilecekler (preset açıkken, setup bir kez)
 
 ```
 .agent-work/                     ← generated DEĞİL; agent'ların çalışma alanı
-├── README.md                    ← ne olduğu + akış özeti
+├── README.md
 ├── TEMPLATE.md                  ← plan şablonu
+├── agent.local.json             ← makine-yerel; .gitignore'da
 ├── inbox/                       ← ham kayıt
 ├── draft/                       ← plan yazıldı
-├── approved/                    ← onaylandı, havuz
-└── done/                        ← işlendi (arşiv)
+├── approved/                    ← onaylandı; havuz
+├── in-progress/                 ← işletiliyor
+└── done/                        ← bitti (arşiv)
 
-.agent-source/skills/work-plan/SKILL.md   ← generated; ekosistem skill dizinlerine mirror
+.agent-source/skills/work-plan/SKILL.md      ← generated; ekosistem skill dizinlerine mirror
+.agent-source/skills/agent-invoke/SKILL.md   ← generated; aynı şekilde
 ```
 
-Ayrıca setup, projenin `.gitignore`'una `.agent-work/agent.local.json` satırını ekler
-(dosya yoksa oluşturur, varsa satır zaten varsa tekrar eklemez).
+Ayrıca setup, projenin `.gitignore`'una `.agent-work/agent.local.json` satırını ekler.
 
-`.agent-work/` **tek dizindir, repo kökündedir, hiçbir yere kopyalanmaz.** Mirror'lanan
-yalnız `work-plan/SKILL.md`'dir; bunun sebebi ekosistemlerin skill'i farklı dizinden
-okumasıdır (Claude `.claude/skills/`, Codex `.agents/skills/`, OpenCode ikisini de).
+### Üç kritik kısıt
 
-### İki kritik kısıt
-
-**1. `.agent-work/` generated değildir.** `.agent-memory/` ile aynı sınıfta: agent'ların
-kendi alanı. `sync` onu üretmez, içindeki planları silmez, drift kontrolüne sokmaz. Setup
-yalnız **boş iskeleti** bir kez kurar. Bu şart — aksi halde generator bir sonraki
-çalışmasında bütün planları orphan sayıp siler.
+**1. `.agent-work/` generated değildir.** `.agent-memory/` ile aynı sınıfta. `sync` onu
+üretmez, drift kontrolüne sokmaz. Setup yalnız boş iskeleti bir kez kurar.
 
 **2. Şablon `docs/` altına konmaz.** `templates/plan.md` projede `.agent-work/TEMPLATE.md`
-olarak açılır. Sebep: routing'de `docs/** → architect` kuralı var ve her zaman ekleniyor.
-Şablon `docs/` altında olsaydı planı yazacak developer kendi şablonuna erişemez, routing
-onu architect'e yönlendirirdi. `.agent-work/` `docs/` dışında olduğu için bu çakışma
-doğmuyor.
+olur. Sebep: routing'de `docs/** → architect` kuralı her zaman eklenir; şablon `docs/`
+altında olsaydı planı yazacak developer kendi şablonuna erişemezdi.
 
-### Preset neden default kapalı
+**3. Şablonlar `docLanguage` dilinde üretilir (Codex bulgu 9).** `team-builder-setup`
+"üretilen tüm metinler `docLanguage` dilinde" diyor. Bu yüzden `templates/plan.md` ve
+`templates/work-plan-skill.md` **verbatim kopyalanmaz**; sihirbaz aynı yapıyı projenin
+`docLanguage`'inde üretir. Şablonlar Türkçe referanstır, çıktı değil.
 
-Mevcut dört anayasa kuralı neredeyse sıfır maliyetli disiplinlerdir (yorum standardı,
-memory disiplini gibi). Bu beşincisi her iş için artefakt ve iki kapı üretir — bilinçli
-tercih olmalı, sessizce gelmemeli. Sihirbaz diğerleri gibi sorar, yalnız işaretsiz gelir.
+### Preset kapatma (Codex bulgu 1)
+
+`/team-builder-edit` diye bir skill **yoktur** — repoda üç skill var (`setup`, `sync`,
+`architecture-advisor`) ve mevcut SKILL.md'ler var olmayan komutlara yönlendiriyor. Bu
+tasarım o eksiği kapatmaz; bu yüzden kapatma yolu şudur:
+
+`manifest.constitution.planGate` `false` yapılır ve `sync` çalıştırılır. `work-plan` ve
+`agent-invoke` skill kaynakları `.agent-source/skills/`'ten silinirse, generated
+mirror'ları **generated-file ledger'ı sayesinde `(stale)` olarak raporlanır** ve kullanıcı
+onları siler. `.agent-work/` dizinine dokunulmaz — içindeki planlar kullanıcınındır.
+
+`work-plan` skill'i, preset kapalıyken çağrılırsa bunu söyler; var olmayan bir komuta
+yönlendirmez.
 
 ## Yaşam döngüsü
 
 ```
-inbox/     ham kayıt (yan bulgu, sonradan akla gelen)
+inbox/        ham kayıt (yan bulgu, sonradan akla gelen)
    │ analiz
    ▼
-draft/     plan yazıldı ── kapı 1: gates.plan-review ──┐
-   ▲                                                   │
-   │ plan değişti → reviewed_by düşer                  ▼
-   └────────────────────────────── kapı 2: kullanıcı onayı
-                                                       │
-                                                       ▼
-approved/  havuz — kullanıcı içinden bir/birkaçını seçip işletir
-                                                       │ kod yazılır
-                                                       │ kapı 3: gates.code-review
-                                                       ▼
-done/      arşiv (+ kalıcı karar çıktıysa ADR)
+draft/        plan yazıldı ── kapı 1: gates.plan-review ──┐
+   ▲                                                      │
+   │ plan değişti → reviewed_by düşer                     ▼
+   └───────────────────────────────── kapı 2: kullanıcı onayı
+                                                          │
+                                                          ▼
+approved/     havuz — kullanıcı bir/birkaçını seçip işletir
+                                                          │ seçildi
+                                                          ▼
+in-progress/  kod yazılıyor ── kapı 3: gates.code-review ─┐
+                                                          ▼
+done/         arşiv (+ kalıcı karar çıktıysa ADR)
 ```
 
-**Durum = bulunduğu klasör.** Frontmatter'da `status` alanı bilerek yoktur; durumu iki
-yerde tutmak kaçınılmaz olarak drift üretir. Dosya taşımak git'te rename olarak görünür,
-geçmiş korunur.
+**Durum = bulunduğu klasör.** Frontmatter'da `status` alanı yoktur.
 
-`inbox/` girişi opsiyoneldir; doğrudan `draft/` ile de başlanabilir.
+`in-progress/` (Codex bulgu 8) sayesinde "hiç başlamadı" ile "yarıda kaldı" ayrılır:
+`approved/` bekleyen iş, `in-progress/` başlamış iş demektir. Yarım kalan iş
+`in-progress/`'te durur ve `executor` alanı kimin devam edeceğini söyler.
 
 ### Roller ve kapılar
 
-| Adım | Kim |
-|---|---|
-| Plan yazımı | Kod yolunun sahibi developer (routing'e göre) |
-| **Kapı 1** — plan review | **architect** |
-| **Kapı 2** — onay | **Kullanıcı** (aşağıdaki sunum kuralına göre) |
-| İşletme | `executor` alanındaki developer |
-| **Kapı 3** — kod review | reviewer (mevcut akış) |
+| Adım | Kim | Rol takımda yoksa |
+|---|---|---|
+| Plan yazımı | Kod yolunun sahibi developer (`routing[]`) | — |
+| **Kapı 1** — plan review | **architect** | Kapı atlanır, plan doğrudan kullanıcıya gider |
+| **Kapı 2** — onay | **kullanıcı** | — |
+| İşletme | `executor` alanındaki developer | — |
+| **Kapı 3** — kod review | **reviewer** | Kapı atlanır, iş biterken doğrudan kullanıcı onayına gider |
+
+Kapı 1'in architect'e ait olması bilinçlidir: plan review'ının sorusu "bu doğru yaklaşım
+mı" — mimari bir yargı. Reviewer'ı plan aşamasına da sokmak onun asıl kapısını sulandırır.
+
+**Rol adları sabit varsayılmaz (Codex bulgu 7).** Sihirbaz özel rol adlarına izin verir.
+`gates` listeleri manifest'teki gerçek agent adlarından üretilir; "architect"/"reviewer"
+sabit metinleri şablona gömülmez. Developer, ad kalıbıyla değil `writesCode: true` +
+routing sahipliğiyle belirlenir.
 
 ### Kapı 2'nin sunum kuralı
 
-Plan kullanıcıya **sade dille ve somut örnekle** sunulur; ham dosya içeriği veya YAML
-dökülmez. Kullanıcı planı okuyup "evet böyle ilerle" diyebilmeli, teknik terim çözmek
-zorunda kalmamalıdır.
-
-Bu, repo'nun mevcut sunum ilkesinin devamıdır: `team-builder-setup` zaten "JARGON YASAĞI +
-önce açıkla" ve "kullanıcıya alan adı / teknik terim gösterme" kuralını taşıyor. Aynı
-disiplin plan sunumuna uygulanır — `gates`, `executor`, `paths` gibi alan adları
-kullanıcıya gösterilmez; ne yapılacağı ve kabul kriteri günlük dille anlatılır.
-
-Kullanıcıya giden plan **kapı 1'den geçmiş, düzeltilmiş** plandır — ham taslak değil.
-Kapı sırası bilinçli olarak "önce agent, sonra kullanıcı" seçilmiştir ki kullanıcının
-zamanı teknik olarak süzülmemiş bir metne harcanmasın.
-
-Kapı 1'in architect'e ait olmasının sebebi: plan review'ının asıl sorusu "bu doğru
-yaklaşım mı" — bu mimari bir yargıdır. Repo zaten "belirsizlikte architect'e danışılır"
-diyor; plan bu danışmanın yazılı hali olur. reviewer'ı plan aşamasına da sokmak onun asıl
-kapısını (kod review) sulandırırdı.
+Plan kullanıcıya **sade dille ve somut örnekle** sunulur; ham YAML veya alan adı
+(`gates`, `executor`, `paths`) gösterilmez. Bu, `team-builder-setup`'taki "JARGON YASAĞI"
+ilkesinin devamıdır. Kullanıcıya giden plan **kapı 1'den geçmiş, düzeltilmiş** plandır.
 
 ### Eşik: yok
 
-**Her iş plan kapısından geçer.** Kaçış kullanıcıdadır: kullanıcı açıkça "plansız yap"
-derse atlanır. Kaçış kapısı **agent'ta değildir** — agent kendi kararıyla planı atlayamaz.
+**Her iş plan kapısından geçer.** Kaçış kullanıcıdadır: "plansız yap" derse atlanır. Kaçış
+agent'ta değildir — eşik kararını agent verirse kapı sessizce atlanır.
 
-Eşik tanımlamak ("N dosyadan fazlaysa plan") reddedildi çünkü "eşiğin altında mı"
-kararını planı yazacak agent verir; yanlış sınıflarsa kapı sessizce atlanır. Bu, kapının
-varlık sebebini ortadan kaldırır.
+### Havuz seçmelidir
 
-### Havuz seçmelidir, kuyruk değil
-
-`approved/` bir **havuzdur**, FIFO kuyruk değil. Kullanıcı içinden bir tanesini seçip
-"bunu yapalım" der, ya da birkaçını seçip "bunları yapalım" der. Zorunlu sıra yoktur.
+`approved/` bir havuzdur, FIFO kuyruk değil. Kullanıcı bir tanesini ya da birkaçını seçip
+işletir.
 
 ## Veri modeli
 
-### `inbox/` kaydı — minimal
+### `inbox/` kaydı
 
-```markdown
+```yaml
 ---
 title: Kupon alanında doğrulama eksik
 created: 2026-08-02
 source: agent:backend-developer      # user | agent:<ad>
 ---
-
-Kupon kodu boş gönderilince 500 dönüyor. Ödeme akışı test edilirken görüldü.
 ```
 
-Domain, yol, plan yok — henüz analiz edilmedi. Amaç kaybolmamasıdır.
+Gövde iki-üç cümle. Analiz edilmemiştir; amaç kaybolmamasıdır.
 
-### `draft/` → `approved/` → `done/` planı
+### Plan dosyası
 
-```markdown
+```yaml
 ---
 title: Kupon alanına doğrulama ekle
 domain: backend
@@ -216,159 +228,130 @@ gates:
 reviewed_by: [claude/architect]
 adr: docs/mimari/backend/adr/0003-kupon-dogrulama.md
 ---
-
-## Ne ve neden
-Sade dille, örnekle. Kabul kriteri burada.
-
-## Nasıl
-Etkilenen yollar, yaklaşım, riskler, açık sorular.
 ```
 
 | Alan | Anlamı |
 |---|---|
 | `domain`, `paths` | Hangi projeye/modüle ait — filtreleme bunun üzerinden |
-| `source` | Kaydı kim açtı (kullanıcı mı, hangi agent mı) |
+| `source` | Kaydı kim açtı |
 | `executor` | İşi kim yapacak — `<ekosistem>/<rol>` |
 | `gates` | Bu iş için zorunlu kapılar — `<ekosistem>/<rol>` listeleri |
 | `reviewed_by` | Fiilen hangi kapılardan geçti |
-| `adr` | Kapanışta kalıcı karar çıktıysa ADR bağlantısı |
+| `adr` | Kalıcı karar çıktıysa ADR bağlantısı |
 
-**`gates` alanlarını agent kullanıcının doğal dilinden doldurur.** Kullanıcı *"mimarisinde
-Codex mimardan ikinci bir review alalım, el sıkışmadan ilerlemeyelim; iş gerçekleşince de
-Codex reviewer onayı olmadan ilerlemeyelim"* dediğinde agent bunu `gates` bloğuna çevirir.
-Kullanıcı YAML yazmaz.
-
-`gates` listeleri olduğu için **ikinci görüş ek alan gerektirmez** — aynı kapıya iki
-ekosistem yazmak yeterlidir.
+`gates` alanlarını agent kullanıcının doğal dilinden doldurur. Kullanıcı *"mimarisinde
+Codex mimardan ikinci bir review alalım, el sıkışmadan ilerlemeyelim"* dediğinde agent
+bunu `gates` bloğuna çevirir; kullanıcı YAML yazmaz. Liste olduğu için **ikinci görüş ek
+alan gerektirmez**.
 
 ### Konum: kökte tek havuz
 
-Planlar repo kökünde tek `.agent-work/` altında toplanır, proje/modül başına dağıtılmaz.
-Gerekçeler:
+Planlar repo kökünde tek `.agent-work/` altında toplanır. Gerekçe: bir plan sık sık birden
+fazla projeye dokunur; havuz merkezi olmak zorundadır; repo projeyi zaten domain olarak
+modelliyor (`domain`/`paths` filtrelemeyi karşılar); ve `.agent-memory/` emsali kökte tek.
 
-1. **Bir plan sık sık birden fazla projeye dokunur.** Per-project olsa hangisine
-   yazılacağı keyfi olurdu; ikisine birden yazmak tek-kaynak ilkesini kırardı.
-2. **Havuz merkezi olmak zorunda.** "Onaylı işleri göster, şu üçünü işlet" diyebilmek için
-   hepsinin tek yerde ve seçilebilir olması gerekir. Dağıtık olsa bir projeyi atlamak
-   sessiz bir hata olurdu.
-3. **Repo projeyi zaten domain olarak modelliyor.** Domain-split developer rolleri ve
-   `routing[]` path→rol eşlemesi mevcut; `domain` + `paths` alanları filtrelemeyi
-   karşılar, ayrı dizin ağacına gerek yoktur.
-4. **Emsal var:** anayasa KARAR 3 "tek canonical memory alanı repo kökünde `.agent-memory/`"
-   diyor. `.agent-work/` onunla simetriktir.
-
-Karşı argüman — bir projeyi başka repoya taşırsan planlar gitmez — kabul edilmiştir:
-planlar geçici artefakttır (`done/` arşivi), kalıcı olan karar zaten kapanışta ADR'a
-dönüşüp `docs/<arch-root>/` altına, domain klasörüne gider.
-
-## Ekosistem seçimi
+## Çapraz ekosistem çağırma
 
 ### Üç katmanlı öncelik
 
 1. **Plan frontmatter `gates`** — o iş için ezer, commit edilir
-2. **`.agent-work/agent.local.json`** — makine-yerel varsayılan, `.gitignore`'da
-3. **Hiçbiri yoksa** — planı yazan developer'ın ekosistemi (aynı oturumda kalır)
-
-Ayrı bir override *dosyası* yoktur; ezme frontmatter'da olur.
+2. **`.agent-work/agent.local.json`** — makine-yerel, `.gitignore`'da
+3. **Hiçbiri yoksa** — planı yazan developer'ın ekosistemi
 
 ### `agent.local.json`
 
 ```json
 {
-  "codex/architect": { "model": "gpt-5.5", "effort": "high" },
-  "codex/reviewer":  { "model": "gpt-5.5", "effort": "high" },
-  "claude/architect": { "model": "opus", "effort": "high" }
+  "codex/architect":  { "model": "gpt-5.6-sol", "effort": "max" },
+  "claude/architect": { "model": "opus" },
+  "opencode/reviewer": { "model": "anthropic/claude-sonnet-4-5" }
 }
 ```
 
-Bu dosya **yalnız çapraz-ekosistem çağrıları için** provider/model/effort tutar. Yoksa
-agent kullanıcıyı doldurmaya yönlendirir. `.gitignore`'a eklenir — `.agent-work/`'ün
-commit edilmeyen tek parçasıdır.
+**Yalnız çapraz-ekosistem çağrıları için** provider/model/effort tutar. Yoksa agent
+kullanıcıyı doldurmaya yönlendirir. Makine-yereldir çünkü başka bir geliştiricinin
+makinesinde Codex kurulu olmayabilir.
 
 **Generated agent dosyalarındaki `model` alanına dokunulmaz.** Bir agent kendi
-ekosisteminde çalışırken modelini ekosistemin native mekanizmasından alır
-(`.claude/agents/<ad>.md` frontmatter'ı, `.codex/agents/<ad>.toml`,
-`.opencode/agents/<ad>.md`). Model bilgisini oradan kaldırıp yerel bir JSON'a taşımak
-teknik olarak çalışmaz: o JSON'u hiçbir ekosistem okumaz, model seçimi tamamen kaybolur ve
-her ekosistem kendi varsayılanına düşer.
+ekosisteminde çalışırken modelini ekosistemin native mekanizmasından alır. Model bilgisini
+oradan kaldırıp yerel JSON'a taşımak çalışmaz — o JSON'u hiçbir ekosistem okumaz.
 
-İki dosya çakışmaz çünkü iki farklı çağrı yolunu tanımlarlar:
+### Çağırma mekanizması — doğrulandı
 
-| | Agent kendi ekosisteminde | Başka ekosistemden çağrılırken |
+`agent-invoke` skill'i hedef ekosisteme göre farklı yol tutar:
+
+| Ekosistem | Komut | Rolü verme |
 |---|---|---|
-| Kaynak | Generated agent dosyası (native) | `agent.local.json` |
-| Kim okur | Ekosistemin kendisi | `work-plan` skill'i |
+| Claude | `claude -p --agent <ad> --model <model> --output-format json` | `--agent` |
+| OpenCode | `opencode run --agent <ad> -m <provider/model> --format json` | `--agent` |
+| Codex | `codex exec -m <model> -c model_reasoning_effort=<effort>` | **Rol talimatını prompt'a gömerek** |
 
-`agent.local.json`'ın **mekanizması** (o agent'ın teknik olarak nasıl çağrılacağı) B
-spec'ine aittir; bu spec yalnız dosyayı, formatını ve önceliğini tanımlar.
+Codex'te agent'ı adıyla seçen bir flag yoktur (`codex exec --help` taranarak doğrulandı).
+Rol, `.codex/agent-definitions/<rol>.md` içeriği prompt'a gömülerek verilir. Model ve
+effort seçimi Codex'te de mevcuttur.
 
-### Kanca noktaları (B'ye bırakılan)
+`codex exec --output-schema` ile yapılandırılmış verdict alınabilir; Claude ve OpenCode'da
+karşılığı `--output-format json` / `--format json`.
 
-| Kanca | Ne seçilir |
-|---|---|
-| Plan yazımı | Hangi ekosistemin developer'ı |
-| Kapı 1 | Hangi ekosistemin architect'i + ikinci görüş |
-| İşletme | Hangi ekosistemin developer'ı |
-| Kapı 3 | Hangi ekosistemin reviewer'ı + ikinci görüş |
+### Hedef ekosistem kurulu değilse
+
+Akış **durur ve o makinedeki kişiye sorar**: *"Bu plan `codex/architect` onayı istiyor ama
+bu makinede Codex kurulu değil. Atlayalım mı, sen mi bakacaksın?"* Sessizce atlanmaz
+(kullanıcının niyeti açıktır), akış da kilitlenmez (plan dosyaları commit edilir ve başka
+geliştiricinin makinesinde kırılmamalıdır).
 
 ## Commit kapsamı
 
-`.agent-work/` **tamamen commit edilir** — `inbox/` dahil. Tek istisna
-`agent.local.json`'dır, o `.gitignore`'a eklenir.
-
-Planların paylaşılması bilinçlidir: plan bir devir teslim artefaktıdır, takım ne
-yapılacağını görmeli ve PR'da plan da okunabilmelidir.
+`.agent-work/` tamamen commit edilir — `inbox/` dahil. Tek istisna `agent.local.json`.
 
 ## Sınır durumları
 
 | Durum | Davranış |
 |---|---|
-| Takımda architect yok | Kapı 1 atlanır; plan doğrudan kullanıcıya gider. Plan yine yazılır. |
-| İstenen ekosistem o makinede kurulu değil | **Durur ve o makinedeki kişiye sorar:** "Bu plan `codex/architect` onayı istiyor, bu makinede Codex yok. Atlayalım mı, sen mi bakacaksın?" |
-| Plan review sonrası içeriği değişti | `reviewed_by` düşer, plan kapılardan yeniden geçer. Kullanıcı "gerek yok" diyerek atlatabilir. |
+| architect yok | Kapı 1 atlanır; plan doğrudan kullanıcıya |
+| reviewer yok | Kapı 3 atlanır; iş biterken doğrudan kullanıcı onayına |
+| İstenen ekosistem kurulu değil | Durur ve sorar |
+| Plan review sonrası içerik değişti | `reviewed_by` düşer, kapılardan yeniden geçer; kullanıcı "gerek yok" diyebilir |
 | Plan reddedildi | `draft/`'ta kalır, `reviewed_by` temizlenir |
-| İş yarıda kaldı | `approved/`'da kalır, `executor` işaretli — başka oturumda devam edilir |
-| Preset kapalıyken skill çağrıldı | "Bu projede plan kapısı kapalı; açmak için `/team-builder-edit`" der |
-| `.agent-work/` yokken skill çağrıldı | İskeleti kurmayı teklif eder |
-
-### Eksik ekosistemde neden sessizce atlanmıyor
-
-Kullanıcı `gates`'e bir kapı yazdıysa niyeti açıktır ("el sıkışmadan ilerlemeyelim").
-Sessizce atlamak o niyeti ihlal eder. Akışı kilitlemek de kabul edilemez — plan dosyaları
-commit edildiği için başka geliştiricinin makinesinde kırılırdı. Doğrusu durup **karar
-verme yetkisini o makinedeki insana bırakmaktır**; bu, tasarım boyunca uygulanan "kaçış
-kullanıcıda" ilkesiyle tutarlıdır.
+| İş yarıda kaldı | `in-progress/`'te kalır, `executor` işaretli |
+| Preset kapalıyken skill çağrıldı | "Plan kapısı kapalı; açmak için `manifest.constitution.planGate`'i `true` yapıp sync çalıştır" der |
+| `.agent-work/` yok | İskeleti kurmayı teklif eder |
 
 ## Doğrulama
 
-Mevcut selftest altyapısına eklenecekler:
+**İskeleti sihirbaz kurar, generator değil (Codex bulgu 5).** Bu yüzden testler ikiye
+ayrılır:
 
-**`validate-manifest.mjs`:**
-- `constitution.planGate` boolean olmalı
-- Manifest geçerliliği `planGate` açık/kapalı iken bozulmamalı
+**Generator selftest'i** (`sync-agent-config.mjs --selftest`) — yalnız generator'ın
+sorumluluğunu test eder:
+1. `planGate: true` olan manifest geçerlidir; `false` olan da geçerlidir.
+2. `.agent-source/skills/work-plan/` ve `agent-invoke/` kaynakları ekosistem skill
+   dizinlerine mirror'lanır.
+3. **`.agent-work/` içine konan bir dosya sync sonrası yerinde durur, `--check` temiz
+   çıkar ve ledger'da görünmez** — generator o dizini hiç sahiplenmez.
 
-**`sync-agent-config.mjs` selftest:**
-- Preset **açıkken**: `.agent-work/` iskeleti kurulur, `work-plan` skill'i ekosistem skill
-  dizinlerine mirror'lanır
-- Preset **kapalıyken**: hiçbiri üretilmez
-- **`.agent-work/` içine elle konan bir plan dosyası sync sonrası yerinde durur ve
-  `--check` temiz çıkar** — en kritik test. Bu kırılırsa generator bütün planları orphan
-  sayıp siler.
-- Preset açıkken drift kontrolü temiz kalır
+**Manifest doğrulayıcı** (`validate-manifest.mjs --selftest`):
+4. `constitution.planGate` boolean olmalı; string reddedilir.
 
-## Kararlar özeti
+**Sihirbaz çıktısı** (elle doğrulama, otomatik test kapsamı dışı):
+5. Preset açık kurulumda `.agent-work/` iskeleti (beş alt dizin dahil), `TEMPLATE.md` ve
+   `.gitignore` satırı oluşur; şablon metinleri `docLanguage` dilindedir.
+6. Preset kapalı kurulumda hiçbiri oluşmaz.
+
+## Kararlar
 
 | # | Karar | Gerekçe |
 |---|---|---|
-| 1 | Anayasa preseti + skill; hook değil | Hook Claude'a özgü, çok hedefli repoda kapı yalnız bir ekosistemde çalışırdı |
+| 1 | Anayasa preseti + projeye kurulan skill; hook değil | Hook Claude'a özgü; çok hedefli repoda kapı tek ekosistemde çalışırdı |
 | 2 | Preset default kapalı | Artefakt üreten tek kural; bilinçli tercih olmalı |
-| 3 | Kökte tek `.agent-work/` | Çoklu projeye dokunan plan ve merkezi havuz gereği |
-| 4 | Durum = klasör | İki yerde tutmak drift üretir |
-| 5 | Kapı 1 architect'e ait | "Doğru yaklaşım mı" mimari yargıdır; reviewer'ın kapısı sulanmaz |
-| 6 | Eşik yok, kaçış kullanıcıda | Eşik kararını agent verirse kapı sessizce atlanır |
-| 7 | Havuz seçmeli, FIFO değil | Kullanıcı bir veya birkaçını seçer |
-| 8 | `gates` frontmatter'da, ayrı dosya yok | Tek mekanizma, tek yer |
-| 9 | Generated agent dosyalarındaki `model`'e dokunulmaz | Native mekanizma; kaldırılırsa model seçimi kaybolur |
-| 10 | Eksik ekosistemde durur ve sorar | Ne sessiz atlama ne kilitlenme |
-| 11 | `.agent-work/` sync'in dışında | Aksi halde planlar orphan sayılıp silinir |
-| 12 | Şablon `.agent-work/TEMPLATE.md` | `docs/** → architect` routing çakışmasını doğurmamak için |
+| 3 | `plan-gate.md` = kurulum sözleşmesi, skill = runtime prosedürü | Aynı kural iki yerde anlatılırsa drift olur |
+| 4 | Kökte tek `.agent-work/` | Çoklu projeye dokunan plan ve merkezi havuz gereği |
+| 5 | Durum = klasör; `in-progress/` eklendi | İki yerde tutmak drift üretir; başlamış iş ayırt edilmeli |
+| 6 | Kapı 1 architect'e, kapı 3 reviewer'a; rol yoksa kullanıcıya | Yaklaşım yargısı architect'in; kimse kilitlenmemeli |
+| 7 | Rol adları manifest'ten üretilir, sabit varsayılmaz | Sihirbaz özel rol adlarına izin veriyor |
+| 8 | Eşik yok, kaçış kullanıcıda | Eşik kararını agent verirse kapı sessizce atlanır |
+| 9 | `gates` frontmatter'da, ayrı override dosyası yok | Tek mekanizma, tek yer |
+| 10 | Generated agent dosyalarındaki `model`'e dokunulmaz | Native mekanizma; kaldırılırsa model seçimi kaybolur |
+| 11 | Şablonlar `docLanguage`'de üretilir, kopyalanmaz | Sihirbazın kendi dil sözleşmesi |
+| 12 | Preset kapatma: manifest + sync | `/team-builder-edit` yok; ledger mirror'ları stale raporlar |
+| 13 | Codex'te rol prompt'a gömülür | `codex exec`'te agent seçme flag'i yok (doğrulandı) |
