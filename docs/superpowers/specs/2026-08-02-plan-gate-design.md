@@ -134,6 +134,11 @@ onları siler. `.agent-work/` dizinine dokunulmaz — içindeki planlar kullanı
 `work-plan` skill'i, preset kapalıyken çağrılırsa bunu söyler; var olmayan bir komuta
 yönlendirmez.
 
+> **Planlanan ayrı iş:** mevcut projeleri team-builder'ın son sürümüne yükselten bir skill
+> yazılacak (manifest migration'ı — örn. eksik `targetsDefault` — ekosistem ekleme, rol
+> ekleme, preset açma/kapama). O geldiğinde preset kapatma oraya taşınabilir. Bu spec o
+> skill'e bağımlı değildir ve onsuz da tamamdır; yukarıdaki elle yol geçerli kalır.
+
 ## Yaşam döngüsü
 
 ```
