@@ -35,6 +35,9 @@ async function loadValidate() {
 }
 
 const GENERATED_HEADER = '# This file is generated from .agent-source. Run sync.\n'
+// Sync's own record of what it generated. Staleness is reported against this,
+// so a file the user wrote by hand is never mistaken for a leftover.
+const LEDGER_RELATIVE = path.join('.agent-source', 'generated-files.json')
 const VALID_TARGETS = new Set(['claude', 'codex', 'opencode'])
 
 // Fallback map when an opencode-targeted agent has no explicit `opencode_model`.
@@ -107,6 +110,8 @@ function createContext({ root, checkOnly }) {
 
   const mismatches = []
   const writes = []
+  // Every generated path this run produced — whether it changed on disk or not.
+  const produced = new Set()
 
   const toPosix = filePath =>
     path.relative(resolvedRoot, filePath).split(path.sep).join('/')
@@ -114,7 +119,10 @@ function createContext({ root, checkOnly }) {
   const resolveRoot = (...segments) => path.join(resolvedRoot, ...segments)
   const resolveSource = (...segments) => path.join(sourceRoot, ...segments)
 
-  async function writeExpected(filePath, expected) {
+  async function writeExpected(filePath, expected, { track = true } = {}) {
+    if (track) {
+      produced.add(toPosix(filePath))
+    }
     const normalizedExpected = normalizeText(expected)
     const exists = await pathExists(filePath)
     const actual = exists ? normalizeText(await readText(filePath)) : null
@@ -136,44 +144,18 @@ function createContext({ root, checkOnly }) {
     await writeExpected(targetPath, transform(source))
   }
 
-  async function removeFile(filePath) {
-    if (checkOnly) {
-      mismatches.push(`${toPosix(filePath)} (orphan)`)
-      return
-    }
-    await fs.unlink(filePath)
-    writes.push(`${toPosix(filePath)} (removed)`)
-  }
-
-  // Remove generated files in dirPath that are not in expectedFileNames and
-  // match one of allowedExtensions. Subdirs / other files are left untouched.
-  async function removeOrphans(dirPath, expectedFileNames, allowedExtensions) {
-    if (!(await pathExists(dirPath))) {
-      return
-    }
-    const entries = await fs.readdir(dirPath, { withFileTypes: true })
-    for (const entry of entries) {
-      if (!entry.isFile()) continue
-      const extension = path.extname(entry.name)
-      if (!allowedExtensions.has(extension) || expectedFileNames.has(entry.name)) {
-        continue
-      }
-      await removeFile(path.join(dirPath, entry.name))
-    }
-  }
-
   return {
     resolvedRoot,
     sourceRoot,
     checkOnly,
     mismatches,
     writes,
+    produced,
     toPosix,
     resolveRoot,
     resolveSource,
     writeExpected,
     copyExpected,
-    removeOrphans,
   }
 }
 
@@ -423,11 +405,6 @@ async function syncProjectFiles(ctx, manifest) {
 async function syncAgents(ctx, manifest, projectName) {
   const names = manifest.agents.map(agent => agent.name)
 
-  const expectedClaudeAgents = new Set()
-  const expectedCodexDefinitions = new Set()
-  const expectedCodexToml = new Set()
-  const expectedOpencodeAgents = new Set()
-
   for (const agent of manifest.agents) {
     const source = ctx.resolveSource('agents', `${agent.name}.md`)
     if (!(await pathExists(source))) {
@@ -440,15 +417,12 @@ async function syncAgents(ctx, manifest, projectName) {
 
     if (targets.has('claude')) {
       const fileName = `${agent.name}.md`
-      expectedClaudeAgents.add(fileName)
       await ctx.copyExpected(source, ctx.resolveRoot('.claude', 'agents', fileName))
     }
 
     if (targets.has('codex')) {
       const definitionFileName = `${agent.name}.md`
       const tomlFileName = `${agent.name}.toml`
-      expectedCodexDefinitions.add(definitionFileName)
-      expectedCodexToml.add(tomlFileName)
       await ctx.copyExpected(
         source,
         ctx.resolveRoot('.codex', 'agent-definitions', definitionFileName),
@@ -462,7 +436,6 @@ async function syncAgents(ctx, manifest, projectName) {
 
     if (targets.has('opencode')) {
       const fileName = `${agent.name}.md`
-      expectedOpencodeAgents.add(fileName)
       await ctx.copyExpected(
         source,
         ctx.resolveRoot('.opencode', 'agents', fileName),
@@ -470,28 +443,6 @@ async function syncAgents(ctx, manifest, projectName) {
       )
     }
   }
-
-  // Orphan cleanup for generated agent target dirs.
-  await ctx.removeOrphans(
-    ctx.resolveRoot('.claude', 'agents'),
-    expectedClaudeAgents,
-    new Set(['.md'])
-  )
-  await ctx.removeOrphans(
-    ctx.resolveRoot('.codex', 'agent-definitions'),
-    expectedCodexDefinitions,
-    new Set(['.md'])
-  )
-  await ctx.removeOrphans(
-    ctx.resolveRoot('.codex', 'agents'),
-    expectedCodexToml,
-    new Set(['.toml'])
-  )
-  await ctx.removeOrphans(
-    ctx.resolveRoot('.opencode', 'agents'),
-    expectedOpencodeAgents,
-    new Set(['.md'])
-  )
 
   // Source agent .md not listed in manifest → mismatch.
   const sourceAgentFiles = await listFiles(ctx.resolveSource('agents'))
@@ -527,6 +478,56 @@ async function syncSkills(ctx, manifest) {
   }
 }
 
+// Whether a previously-generated LEDGER ENTRY should still count as present.
+// Unlike pathExists (fs.access, follows symlinks), this must see a dangling
+// symlink as present — otherwise a stale target that becomes one silently
+// drops out of stalePaths below and is never reported again, breaking the
+// "reported until the user deletes it" contract. A transient error (e.g.
+// EACCES) must not be read as "deleted" either, for the same reason: only
+// ENOENT/ENOTDIR (the path or a parent segment is genuinely gone) means the
+// user actually removed it. Local to reportStaleGenerated — pathExists keeps
+// its existing "any error means absent" semantics for its other callers.
+async function ledgerEntryExists(filePath) {
+  try {
+    await fs.lstat(filePath)
+    return true
+  } catch (err) {
+    return err.code !== 'ENOENT' && err.code !== 'ENOTDIR'
+  }
+}
+
+// Report generated targets this run no longer produces. Nothing is deleted:
+// a path that stopped being generated is not proof that removing it is safe.
+// A missing or malformed ledger yields no report — never an error. Returns
+// the stale paths that are still on disk, so the caller can keep carrying
+// them in the ledger — the ledger is an ownership record, not a per-run
+// snapshot, so a path stays reported every run until the file is actually
+// gone.
+async function reportStaleGenerated(ctx, ledgerPath) {
+  if (!(await pathExists(ledgerPath))) {
+    return []
+  }
+  let previous
+  try {
+    previous = JSON.parse(await readText(ledgerPath))
+  } catch {
+    return []
+  }
+  if (!previous || !Array.isArray(previous.files)) {
+    return []
+  }
+  const stale = []
+  for (const relative of previous.files) {
+    if (typeof relative !== 'string' || relative.length === 0) continue
+    if (ctx.produced.has(relative)) continue
+    const filePath = ctx.resolveRoot(...relative.split('/'))
+    if (!(await ledgerEntryExists(filePath))) continue
+    ctx.mismatches.push(`${relative} (stale)`)
+    stale.push(relative)
+  }
+  return stale
+}
+
 // ---------------------------------------------------------------------------
 // generate — main pipeline
 // ---------------------------------------------------------------------------
@@ -551,6 +552,20 @@ async function generate({ root, checkOnly, quiet = false }) {
   await syncAgents(ctx, manifest, projectName)
   await syncSkills(ctx, manifest)
 
+  // Staleness is judged against the PREVIOUS ledger, then the new one is written.
+  // The new ledger is the union of this run's produced paths and any stale
+  // path still on disk — an ownership record, not a per-run snapshot — so a
+  // stale target keeps being reported on every future sync/--check instead
+  // of silently dropping out the moment it's first noticed. A stale path the
+  // user actually deleted is absent from disk, so reportStaleGenerated will
+  // not return it here, and it naturally falls out of the ledger.
+  // The ledger is generated too, but must not list itself — track: false.
+  const ledgerPath = ctx.resolveRoot(LEDGER_RELATIVE)
+  const stalePaths = await reportStaleGenerated(ctx, ledgerPath)
+  const ledgerFiles = new Set([...ctx.produced, ...stalePaths])
+  const ledgerBody = JSON.stringify({ files: [...ledgerFiles].sort() }, null, 2) + '\n'
+  await ctx.writeExpected(ledgerPath, ledgerBody, { track: false })
+
   if (checkOnly) {
     if (ctx.mismatches.length > 0) {
       error('Agent configuration drift detected:')
@@ -565,20 +580,25 @@ async function generate({ root, checkOnly, quiet = false }) {
   }
 
   if (ctx.mismatches.length > 0) {
-    // Non-fatal source-listing mismatches surfaced even in sync mode.
+    // Mismatches — unlisted agent sources and stale generated paths alike —
+    // are non-fatal in sync mode: printed as warnings, not failures. Only
+    // --check (above) treats them as a failure.
     for (const mismatch of ctx.mismatches) {
       warn(`! ${mismatch}`)
+    }
+    if (ctx.mismatches.some(m => m.endsWith(' (stale)'))) {
+      warn('These files are no longer generated; deleting them is up to you.')
     }
   }
   if (ctx.writes.length === 0) {
     log('Agent configuration already in sync.')
-    return { ok: true, writes: [] }
+    return { ok: true, writes: [], mismatches: ctx.mismatches }
   }
   log('Synchronized agent configuration:')
   for (const filePath of ctx.writes) {
     log(`- ${filePath}`)
   }
-  return { ok: true, writes: ctx.writes }
+  return { ok: true, writes: ctx.writes, mismatches: ctx.mismatches }
 }
 
 // ---------------------------------------------------------------------------
@@ -668,6 +688,11 @@ async function runSelftest() {
   await fs.writeFile(path.join(sourceRoot, 'project', 'opencode.json'), opencodeJson)
   const opencodeTeam = '# OpenCode Team\n\nTakim sozlesmesi.\n'
   await fs.writeFile(path.join(sourceRoot, 'project', 'opencode-team.md'), opencodeTeam)
+
+  const codexConfig = '# codex config\n'
+  await fs.writeFile(path.join(sourceRoot, 'project', 'codex-config.toml'), codexConfig)
+  const codexTeam = '# codex team\n'
+  await fs.writeFile(path.join(sourceRoot, 'project', 'codex-team.md'), codexTeam)
 
   const skillMd = '# Demo Skill\n\nDemo.\n'
   await fs.writeFile(
@@ -811,6 +836,67 @@ async function runSelftest() {
     '.agents/skills/demo-skill/SKILL.md missing'
   )
 
+  // Preserve user-authored files not generated from the canonical source.
+  const handWritten = path.join(fixtureRoot, '.claude', 'agents', 'my-helper.md')
+  const handWrittenBody = '---\nname: my-helper\n---\n\n# Elle yazdigim\n'
+  await fs.writeFile(handWritten, handWrittenBody)
+  await fs.mkdir(path.join(fixtureRoot, '.claude', 'skills', 'my-own-skill'), {
+    recursive: true,
+  })
+  const handSkillBody = '---\nname: my-own-skill\ndescription: elle\n---\n\n# Elle\n'
+  await fs.writeFile(
+    path.join(fixtureRoot, '.claude', 'skills', 'my-own-skill', 'SKILL.md'),
+    handSkillBody
+  )
+
+  await silentGenerate({ root: fixtureRoot, checkOnly: false })
+
+  assert(
+    await exists('.claude/agents/my-helper.md'),
+    'hand-written agent must survive sync'
+  )
+  assert(
+    normalizeText(await read('.claude/agents/my-helper.md')) ===
+      normalizeText(handWrittenBody),
+    'hand-written agent must not be rewritten'
+  )
+  assert(
+    await exists('.claude/skills/my-own-skill/SKILL.md'),
+    'hand-written skill must survive sync'
+  )
+  assert(
+    normalizeText(await read('.claude/skills/my-own-skill/SKILL.md')) ===
+      normalizeText(handSkillBody),
+    'hand-written skill must not be rewritten'
+  )
+
+  // The ledger lists every generated target, sorted, and never itself.
+  assert(
+    await exists('.agent-source/generated-files.json'),
+    'ledger .agent-source/generated-files.json must be written'
+  )
+  const ledger = JSON.parse(await read('.agent-source/generated-files.json'))
+  const expectedLedger = [
+    '.agents/skills/demo-skill/SKILL.md',
+    '.claude/agents/architect.md',
+    '.claude/agents/developer.md',
+    '.claude/skills/demo-skill/SKILL.md',
+    '.codex/agent-definitions/architect.md',
+    '.codex/agents/architect.toml',
+    '.codex/config.toml',
+    '.codex/team.md',
+    '.opencode/agents/architect.md',
+    '.opencode/skills/demo-skill/SKILL.md',
+    '.opencode/team.md',
+    'AGENTS.md',
+    'CLAUDE.md',
+    'opencode.json',
+  ]
+  assert(
+    JSON.stringify(ledger.files) === JSON.stringify(expectedLedger),
+    `ledger must equal the full sorted target list\n  got:      ${JSON.stringify(ledger.files)}\n  expected: ${JSON.stringify(expectedLedger)}`
+  )
+
   // --check should be clean right after generate (idempotent).
   const checkClean = await silentGenerate({ root: fixtureRoot, checkOnly: true })
   assert(checkClean.ok === true, '--check should be clean after generate')
@@ -831,26 +917,234 @@ async function runSelftest() {
     '--check should report the corrupted file as drift'
   )
 
-  // Orphan detection: a stray generated agent file → drift in --check.
-  await fs.writeFile(
-    path.join(fixtureRoot, '.codex', 'agents', 'ghost.toml'),
-    'orphan\n'
-  )
-  const checkOrphan = await silentGenerate({ root: fixtureRoot, checkOnly: true })
+  // Skill mirrors go stale too, same contract as agent files: removing a
+  // skill's SOURCE must be reported for every ecosystem mirror it fed. Run
+  // before the manifest trim below, while opencode is still an active target
+  // — otherwise losing the last opencode agent would also make the opencode
+  // mirror stale for an unrelated reason and confound the assertion.
+  await fs.rm(path.join(sourceRoot, 'skills', 'demo-skill'), { recursive: true })
+  const skillMirrors = [
+    '.claude/skills/demo-skill/SKILL.md',
+    '.agents/skills/demo-skill/SKILL.md',
+    '.opencode/skills/demo-skill/SKILL.md',
+  ]
+  const skillStaleRun = await silentGenerate({ root: fixtureRoot, checkOnly: false })
+  for (const mirror of skillMirrors) {
+    assert(await exists(mirror), `${mirror} must NOT be deleted, only reported`)
+    assert(
+      skillStaleRun.mismatches.includes(`${mirror} (stale)`),
+      `${mirror} must be reported exactly as "${mirror} (stale)"`
+    )
+  }
+
+  // Persists on a second consecutive sync, same contract as agent staleness.
+  const skillStaleRunAgain = await silentGenerate({ root: fixtureRoot, checkOnly: false })
+  for (const mirror of skillMirrors) {
+    assert(
+      skillStaleRunAgain.mismatches.includes(`${mirror} (stale)`),
+      `${mirror} must still be reported as stale on a second consecutive sync`
+    )
+  }
+
+  // Persists on --check too, without rewriting the ledger.
+  const ledgerBeforeSkillCheck = await read('.agent-source/generated-files.json')
+  const skillStaleCheck = await silentGenerate({ root: fixtureRoot, checkOnly: true })
+  for (const mirror of skillMirrors) {
+    assert(
+      skillStaleCheck.mismatches.includes(`${mirror} (stale)`),
+      `${mirror} must be reported as stale by --check too`
+    )
+  }
   assert(
-    checkOrphan.mismatches.some(m => m.includes('ghost.toml')),
-    '--check should report orphan generated file'
+    (await read('.agent-source/generated-files.json')) === ledgerBeforeSkillCheck,
+    '--check must not rewrite the ledger for stale skill mirrors either'
   )
 
-  // Orphan detection for the opencode agents dir too.
+  // Dropping an agent that fed three targets: the files STAY on disk and
+  // every one of them is reported as stale. Placed after the clean/drift
+  // checks above (rather than immediately after the ledger assert) because
+  // it permanently trims the manifest for the rest of this fixture — running
+  // it earlier would pull architect out of the ledger before the drift test
+  // above gets to exercise it.
+  const trimmedManifest = {
+    ...manifest,
+    agents: manifest.agents.filter(a => a.name !== 'architect'),
+    lead: 'developer',
+  }
   await fs.writeFile(
-    path.join(fixtureRoot, '.opencode', 'agents', 'ghost.md'),
-    'orphan\n'
+    path.join(sourceRoot, 'agents', 'manifest.json'),
+    JSON.stringify(trimmedManifest, null, 2)
   )
-  const checkOcOrphan = await silentGenerate({ root: fixtureRoot, checkOnly: true })
+  await fs.rm(path.join(sourceRoot, 'agents', 'architect.md'))
+
+  const staleTargets = [
+    '.claude/agents/architect.md',
+    '.codex/agent-definitions/architect.md',
+    '.codex/agents/architect.toml',
+    '.opencode/agents/architect.md',
+  ]
+
+  // --check reports the staleness against the ledger as the original sync
+  // left it (before this trim), and rewrites nothing, deletes nothing. (A
+  // later real sync no longer makes staleness disappear either — the union
+  // in generate() keeps carrying it forward on every run — this ordering
+  // just exercises --check against a ledger the trim hasn't touched yet.)
+  const ledgerBefore = await read('.agent-source/generated-files.json')
+  const staleCheck = await silentGenerate({ root: fixtureRoot, checkOnly: true })
+  for (const target of staleTargets) {
+    assert(
+      staleCheck.mismatches.includes(`${target} (stale)`),
+      `--check must report ${target} as stale`
+    )
+    assert(await exists(target), `--check must never delete ${target}`)
+  }
   assert(
-    checkOcOrphan.mismatches.some(m => m.includes('.opencode/agents/ghost.md')),
-    '--check should report orphan opencode agent md'
+    (await read('.agent-source/generated-files.json')) === ledgerBefore,
+    '--check must not rewrite the ledger'
+  )
+
+  const staleRun = await silentGenerate({ root: fixtureRoot, checkOnly: false })
+  for (const target of staleTargets) {
+    assert(await exists(target), `${target} must NOT be deleted, only reported`)
+    assert(
+      staleRun.mismatches.includes(`${target} (stale)`),
+      `${target} must be reported exactly as "${target} (stale)"`
+    )
+  }
+
+  // A hand-written file is never reported: it was never in the ledger.
+  assert(
+    !staleRun.mismatches.some(m => m.includes('my-helper.md')),
+    'hand-written files must never be reported as stale'
+  )
+  assert(
+    !staleRun.mismatches.some(m => m.includes('my-own-skill')),
+    'hand-written skills must never be reported as stale'
+  )
+
+  // A stale target that becomes a dangling symlink must still be reported
+  // and retained. pathExists (fs.access, follows symlinks) would call a
+  // dangling symlink "absent" and silently drop it from the ledger forever;
+  // reportStaleGenerated must use an lstat-based check instead, which sees
+  // the symlink itself regardless of where it points.
+  const danglingStaleTarget = '.codex/agent-definitions/architect.md'
+  await fs.rm(path.join(fixtureRoot, danglingStaleTarget))
+  await fs.symlink(
+    path.join(fixtureRoot, 'does-not-exist-target'),
+    path.join(fixtureRoot, danglingStaleTarget)
+  )
+  const danglingRun = await silentGenerate({ root: fixtureRoot, checkOnly: false })
+  assert(
+    danglingRun.mismatches.includes(`${danglingStaleTarget} (stale)`),
+    'a dangling symlink stale target must still be reported, not silently dropped'
+  )
+  assert(
+    JSON.parse(await read('.agent-source/generated-files.json')).files.includes(
+      danglingStaleTarget
+    ),
+    'a dangling symlink stale target must remain retained in the ledger'
+  )
+
+  // The whole point of the ledger: staleness must be reported EVERY run, not
+  // just the run it was first noticed on. A second consecutive sync (no
+  // further changes) must still report all four targets — this is what
+  // catches the ledger being written from ctx.produced alone instead of the
+  // union with the previous ledger's still-on-disk entries.
+  const staleRunAgain = await silentGenerate({ root: fixtureRoot, checkOnly: false })
+  for (const target of staleTargets) {
+    assert(
+      staleRunAgain.mismatches.includes(`${target} (stale)`),
+      `${target} must still be reported as stale on a second consecutive sync`
+    )
+  }
+
+  // --check must report that same persistent staleness, must exit 1 while
+  // doing so (verification requirement 8), and must not rewrite the ledger
+  // while doing so (checked via byte-identical content).
+  const ledgerBeforeStaleRecheck = await read('.agent-source/generated-files.json')
+  // Reset first: the earlier corruption test's --check already set exitCode
+  // to 1, so asserting it below without resetting would pass vacuously even
+  // if this --check call itself never touched exitCode.
+  process.exitCode = 0
+  const staleRecheck = await silentGenerate({ root: fixtureRoot, checkOnly: true })
+  for (const target of staleTargets) {
+    assert(
+      staleRecheck.mismatches.includes(`${target} (stale)`),
+      `${target} must be reported as stale by --check too`
+    )
+  }
+  assert(
+    process.exitCode === 1,
+    '--check must exit with code 1 while persistent staleness remains'
+  )
+  assert(
+    (await read('.agent-source/generated-files.json')) === ledgerBeforeStaleRecheck,
+    '--check must not rewrite the ledger even when stale paths are present'
+  )
+
+  // Deleting one stale file from disk (the user cleaning it up by hand) must
+  // drop only that path from the ledger; the rest stay reported. Uses a
+  // target other than '.claude/agents/architect.md', which later assertions
+  // ("a missing ledger must not cause any deletion") still expect present.
+  const removedStaleTarget = '.codex/agents/architect.toml'
+  await fs.rm(path.join(fixtureRoot, removedStaleTarget))
+  const afterDeleteRun = await silentGenerate({ root: fixtureRoot, checkOnly: false })
+  assert(
+    !afterDeleteRun.mismatches.includes(`${removedStaleTarget} (stale)`),
+    `${removedStaleTarget} must stop being reported once removed from disk`
+  )
+  for (const target of staleTargets) {
+    if (target === removedStaleTarget) continue
+    assert(
+      afterDeleteRun.mismatches.includes(`${target} (stale)`),
+      `${target} must still be reported as stale after an unrelated stale file was removed`
+    )
+  }
+  assert(
+    !JSON.parse(await read('.agent-source/generated-files.json')).files.includes(
+      removedStaleTarget
+    ),
+    'the ledger must drop a stale path once the file is gone from disk'
+  )
+
+  // A malformed ledger is not an error: no report, and it gets rewritten.
+  await fs.writeFile(
+    path.join(fixtureRoot, '.agent-source', 'generated-files.json'),
+    '{ bu gecerli JSON degil'
+  )
+  const brokenRun = await silentGenerate({ root: fixtureRoot, checkOnly: false })
+  assert(
+    !brokenRun.mismatches.some(m => m.endsWith('(stale)')),
+    'a malformed ledger must produce no stale report'
+  )
+  assert(
+    Array.isArray(
+      JSON.parse(await read('.agent-source/generated-files.json')).files
+    ),
+    'a malformed ledger must be rewritten'
+  )
+
+  // No ledger means no report even though a genuinely stale target exists.
+  await fs.rm(path.join(fixtureRoot, '.agent-source', 'generated-files.json'))
+  const noLedgerRun = await silentGenerate({ root: fixtureRoot, checkOnly: false })
+  assert(
+    !noLedgerRun.mismatches.some(m => m.endsWith('(stale)')),
+    'a missing ledger must produce no stale report (migration safety)'
+  )
+  assert(
+    await exists('.claude/agents/architect.md'),
+    'a missing ledger must not cause any deletion'
+  )
+  assert(
+    await exists('.agent-source/generated-files.json'),
+    'a missing ledger must be recreated'
+  )
+
+  // Idempotence: a second consecutive sync must report zero writes.
+  const secondRun = await silentGenerate({ root: fixtureRoot, checkOnly: false })
+  assert(
+    (secondRun.writes ?? []).length === 0,
+    `a second consecutive sync must write nothing, wrote: ${JSON.stringify(secondRun.writes)}`
   )
 
   // Cleanup.

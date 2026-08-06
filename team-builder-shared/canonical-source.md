@@ -25,6 +25,7 @@ kaynağın `.agent-source/` olduğunu görür.
 ```
 .agent-source/                      # TEK CANONICAL KAYNAK — generated dosyalar elle değiştirilmez
 ├── README.md                       # "generated'ı elleme, burayı güncelle + sync çalıştır"
+├── generated-files.json            # sync defteri (GENERATED — ağaçtaki tek generated dosya)
 ├── agents/
 │   ├── <role>.md                   # rol talimatının TAM gövdesi (tool-bağımsız, verbatim kopyalanır)
 │   └── manifest.json               # rol metadata: targets[], model, model_reasoning_effort,
@@ -59,10 +60,11 @@ GENERATED'dır**; elle düzenlenmez, kaynaktan üretilir.
 | `project/AGENTS.md` | `AGENTS.md` | Codex **veya** OpenCode hedefi seçiliyse |
 | `project/codex-config.toml` | `.codex/config.toml` | Codex hedefi seçiliyse |
 | `project/codex-team.md` | `.codex/team.md` | Codex hedefi seçiliyse |
-| `project/migration-map.md` | `.codex/migration-map.md` | varsa |
+| `project/migration-map.md` | `.codex/migration-map.md` | Codex hedefi seçiliyse (kaynak varsa) |
 | `project/opencode.json` | `opencode.json` | OpenCode hedefi seçiliyse |
 | `project/opencode-team.md` | `.opencode/team.md` | OpenCode hedefi seçiliyse |
 | `skills/<skill>/SKILL.md` | `.agents/skills/` (her zaman — Codex ve OpenCode ikisi de okur) + Claude hedefi varsa `.claude/skills/` + OpenCode hedefi varsa `.opencode/skills/` | varsa |
+| *(kaynak yok — sync'in kendi ürettiği)* | `.agent-source/generated-files.json` | bu turda üretilen tüm generated yollar **artı** önceki defterde olup hâlâ diskte duran yollar (birleşim) |
 
 - `agents/<role>.md`'nin hangi hedeflere gideceği o agent'ın **`targets`** alanına
   bağlıdır (yoksa kök `targetsDefault`): örn. `["claude"]`, `["opencode"]`,
@@ -78,7 +80,9 @@ GENERATED'dır**; elle düzenlenmez, kaynaktan üretilir.
   generated dosyaları karşılaştırır. Fark (drift) varsa mismatch listesi basar ve
   exit ≠ 0 döner. Generated dosyanın elle değiştirilmiş olması burada yakalanır.
 - **Idempotent:** Kaynak değişmeden sync tekrar çalışınca hiçbir generated dosya
-  değişmez (`--check` temiz çıkar).
+  değişmez — sıfır yazma. Bu, `--check`'in her zaman temiz çıkacağı anlamına
+  gelmez: defterde hâlâ diskte duran bayat bir yol varsa `--check` o yol elle
+  silinene kadar exit 1 vermeye devam eder (bkz. `sync-pipeline.md` §8).
 - Ayrıntılı generate algoritması ve drift davranışı için bkz. `sync-pipeline.md`.
 
 ## Memory canonical DEĞİLDİR
@@ -98,3 +102,10 @@ runtime state kabul edilir.
 - `.claude/settings.local.json` canonical kaynak değildir. Sync bu dosyayı kopyalamaz,
   Codex altına taşımaz ve `--check` modunda **drift sebebi saymaz** (kullanıcıya özel
   yerel izinler).
+- `.agent-source/generated-files.json` **kaynak değildir** — `.agent-source/` ağacının
+  içinde duran tek generated dosyadır. Sync'in kendi **sahiplik defteridir**: bu turda
+  ürettiği yollar **artı** önceki defterde olup hâlâ diskte duran yolların birleşimini
+  tutar. Bayat çıktı raporu buna bakar, böylece deftere hiç girmemiş — yani kullanıcının
+  kendi yazdığı — agent/skill dosyaları bayat sayılmaz. (Kullanıcı bir zamanlar generated
+  olan bir yola elle dosya koyarsa o yol defterde olduğu için bayat raporlanır.) Elle düzenlenmez; commit edilir (takımda
+  tutarlı olması için). Detay: `sync-pipeline.md` §8.
