@@ -97,6 +97,18 @@ presetleri tam 4 kural → tek multiSelect" diyor. Beşinci preset bunu çakış
 - **`planGate`:** ayrı bir tekli soru, işaretsiz.
 - `SKILL.md:57` bu düzene göre güncellenir.
 
+**`planGate` açık seçilirse iki alt soru daha sorulur** — kök `planGate` nesnesinin iki
+anahtarı da zorunlu olduğu için bunlar atlanamaz:
+
+| Soru | Adaylar |
+|---|---|
+| "Planı kim denetlesin?" | Kod yazmayan agent'lar + "denetim olmasın" (`null`) |
+| "Kodu kim denetlesin?" | Kod yazmayan agent'lar + "denetim olmasın" (`null`) |
+
+Sihirbaz seçimden hemen sonra **erişilebilirliği** doğrular (seçilen sahibin etkin
+hedefleri, uygun executor'ların birleşimini kapsıyor mu) ve kapsamıyorsa nedenini sade
+dille söyleyip yeniden sorar. Üretim (Adım 8a) bu iki değer kesinleşmeden başlamaz.
+
 ### Projede üretilecekler (preset açıkken)
 
 ```
@@ -110,6 +122,30 @@ presetleri tam 4 kural → tek multiSelect" diyor. Beşinci preset bunu çakış
 **Tüm insan-okur çıktılar `docLanguage` dilinde üretilir** — `README.md`, `TEMPLATE.md` ve
 skill gövdesi dahil. `templates/` altındaki dosyalar Türkçe **referanstır**, verbatim
 kopyalanmaz.
+
+**Makine işaretleri çeviriden bağımsızdır.** Kurallar bölüm *başlıklarına* bakamaz, çünkü
+başlıklar `docLanguage`'e çevrilir. Bu yüzden her gövde bölümünün üstünde **sabit bir HTML
+yorum işareti** bulunur ve kurallar yalnız bu işaretlere bakar:
+
+```markdown
+<!-- s:what -->
+## Ne ve neden
+...
+<!-- s:progress -->
+## İlerleme
+<!-- progress:not-started -->
+```
+
+| İşaret | Bölüm |
+|---|---|
+| `s:what` | Ne ve neden |
+| `s:how` | Nasıl |
+| `s:questions` | Açık sorular |
+| `s:review-notes` | Denetim notları |
+| `s:progress` | İlerleme |
+
+"Başlamadı" sentinel'i de dilden bağımsızdır: `<!-- progress:not-started -->`. Başlık
+metinleri çevrilir, işaretler çevrilmez.
 
 **`.agent-work/` generated değildir:** `sync` onu üretmez, drift kontrolüne sokmaz,
 generated-file ledger'ı sahiplenmez. Setup boş iskeleti bir kez kurar.
@@ -138,7 +174,9 @@ değişen çalışma artefaktıdır ve architect'in ağacının dışında durma
 | Uygunluk | Kapı sahibi **kod yazmayan** agent olmalı (`writesCode === false`; alan verilmemişse agent kod yazar sayılır) |
 | Erişilebilirlik | Her `null` olmayan kapı sahibinin **etkin hedefleri**, tüm **uygun executor'ların** etkin hedeflerinin birleşimini kapsamalı |
 | Ad tekilliği | `agents[].name` değerleri benzersiz olmalı |
-| Ad biçimi | `agents[].name` **`/` içeremez** (kimlik ayrıştırması için) |
+| Ad biçimi | `agents[].name` **portatif slug** olmalı: `^[a-z0-9]+(?:-[a-z0-9]+)*$` |
+| Ad tekilliği (büyük/küçük) | Karşılaştırma **büyük/küçük harf duyarsız** yapılır |
+| Routing zorunluluğu | `constitution.planGate: true` ise **en az bir uygun executor** bulunmalı |
 
 **Erişilebilirlik neden böyle tanımlı.** İlk taslak "kapı sahibi, `executor`'ın
 ekosisteminde olmalı" diyordu; bu doğrulayıcıya verilemez çünkü `executor` plan dosyasına
@@ -150,16 +188,42 @@ anında da `executor`'ın **uygun executor'lardan biri olması** denetlenir. Bu 
 Doğrulayıcı bugün ad tekilliğini denetlemiyor (`validate-manifest.mjs:32-40`); kapı
 sahipleri ada göre çözümlendiği için bu kural eklenir.
 
+**Ad biçimi neden slug.** Agent adları generated dosya yollarına doğrudan gömülüyor
+(`sync-agent-config.mjs:409,419,425`). Yalnız `/` yasaklamak yetmez: ters bölü, kontrol
+karakterleri, Windows'ta ayrılmış karakterler ve yalnız büyük/küçük harfle ayrışan
+adlar da yol çakışması üretir. Portatif slug kuralı bunların hepsini kapatır.
+
+**Routing zorunluluğu neden var.** `routing` şemada opsiyonel (`manifest-schema.md:33`) ama
+uygun executor'lar ondan türüyor. Routing boşsa kurulum geçer, sonra **her plan çalışma
+anında reddedilir**. Bu yüzden preset açıkken en az bir uygun executor aranır.
+
 ## Kimlik biçimi
 
 `executor` ve `reviews[].by` alanları **`<ekosistem>/<agent-adı>`** biçimindedir.
 
 - Ekosistem: `claude` | `codex` | `opencode`.
-- İlk `/` ayraçtır; agent adları `/` içeremez (yukarıdaki değişmez).
+- İlk `/` ayraçtır; agent adları slug kuralı gereği `/` içeremez.
 - `skipped` kayıtlarında `by` değeri özel sabit **`system`**'dir (ekosistem taşımaz).
 
-Çalışma anında `work-plan`: adın gerçek bir agent olduğunu, **uygun executor'lardan biri**
-olduğunu ve ekosistemin o agent'ın etkin hedeflerinde bulunduğunu denetler.
+Çalışma anında `work-plan` üç şeyi birden denetler:
+
+1. Ad gerçek bir agent ve **uygun executor'lardan biri**.
+2. Ekosistem o agent'ın etkin hedeflerinde bulunuyor.
+3. **Ekosistem, o an çalışılan ekosistemin kendisi** (`identity.ecosystem === currentEcosystem`).
+
+Üçüncü şart olmadan bir Codex oturumu `claude/backend-developer` değerini kabul eder, sonra
+onu çağıramaz — çekirdek spec ekosistem sınırını geçmiyor. `reviews[].by` de aynı prefix'ten
+üretilir.
+
+### Plan dosyası kimliği
+
+Her plan **değişmez bir `id`** taşır ve dosya adı `<id>-<slug>.md` biçimindedir. `id`
+oluşturulduğunda verilir, klasörler arasında taşınırken **korunur**, hiçbir zaman
+değişmez. Çakışma olursa (aynı `id` iki dosyada) bu bir hatadır ve `work-plan` yeni dosya
+yazmaz.
+
+`inbox/` kaydı da `id` taşır; `draft/`'a analiz edilirken **aynı `id` korunur**, böylece
+kaydın izi kaybolmaz.
 
 ## Yaşam döngüsü
 
@@ -187,7 +251,7 @@ done/         arşiv
 
 | Olay | Nereden → Nereye | Artefakt |
 |---|---|---|
-| Ham kayıt analiz edilir | `inbox/` → `draft/` | Plan yazılır, `revision: 1`; inbox kaydı silinir |
+| Ham kayıt analiz edilir | `inbox/` → `draft/` | Plan yazılır, `revision: 1`; `id`, `created`, `source` **korunur** (yakalama anının kaydıdır); inbox dosyası silinir |
 | Plan doğrudan yazılır | — → `draft/` | `revision: 1` |
 | Kapı 1 onaylar | `draft/` (kalır) | `reviews.plan-review` += `approved` |
 | Kapı 1 reddeder | `draft/` (kalır) | `reviews.plan-review` += `rejected`; gerekçe `## Denetim notları`'na |
@@ -203,6 +267,7 @@ done/         arşiv
 | Kapı 3 sahibi `null` | `in-progress/` → `done/` | `reviews.code-review` += `skipped` (`by: system`); **ek kullanıcı onayı istenmez** — kullanıcı kapı 2'de zaten onayladı |
 | İş iptal edilir | `draft/`, `approved/`, `in-progress/` → `done/` | `outcome: cancelled`; gerekçe `## Denetim notları`'na |
 | Ham kayıt iptal edilir | `inbox/` → **silinir** | Inbox kaydında `revision`/`reviews` yoktur; `done/`'a taşınmaz |
+| **Kapı sahibi manifest'te değişir** | `approved/`, `in-progress/` → `draft/` | `planReviewPassed` bozulur; plan kapısı yeni sahiple yeniden geçilir. `## İlerleme` korunur. **`done/` etkilenmez** |
 
 ### Klasör değişmezleri
 
@@ -211,8 +276,18 @@ done/         arşiv
 | `inbox/` | `revision`, `reviews`, `executor`, `outcome` **bulunmaz** |
 | `draft/` | `revision` var; `## İlerleme` **`Başlamadı`** sentinel'iyle mevcut |
 | `approved/` | `planReviewPassed` **doğru** olmalı |
-| `in-progress/` | `planReviewPassed` doğru; `## İlerleme` doldurulmuş |
-| `done/` | Ya `outcome: cancelled`, ya da `planReviewPassed` doğru **ve** o hareket `doneAuthorized` ile yetkilendirilmiş |
+| `in-progress/` | `planReviewPassed` doğru; `## İlerleme` (`s:progress`) doldurulmuş |
+| `done/` | **Arşivdir, yeniden değerlendirilmez** — aşağıya bak |
+
+**`done/` neden yeniden değerlendirilmez.** `planReviewPassed` *güncel* manifest sahibine
+bakar. Kapı sahibi sonradan değişirse tamamlanmış işler geriye dönük "geçersiz" olurdu —
+oysa onlar zamanında kurallara uygun bitmişti. `done/` bir **arşivdir**: içindeki kayıtlar
+(`reviews[].by`, `at`, `verdict`) tamamlanma anındaki durumu zaten taşır ve o hâliyle
+okunur. Değişmez yalnız girişte uygulanır, sonradan değil.
+
+**`doneAuthorized` bir klasör değişmezi değildir.** Saklanmadığı için dosyaya bakarak
+doğrulanamaz; yalnız `in-progress/ → done/` **geçişinin koruması**dır. Geçiş anında
+denetlenir, sonra unutulur.
 
 ## Veri modeli
 
@@ -313,11 +388,15 @@ Plan dosyasına bakarak hesaplanır, dosyayla birlikte taşınır:
 | `planReviewer` | Koşul |
 |---|---|
 | Bir agent adı | `reviews.plan-review` son kaydı `approved`, `kayıt.revision === plan.revision`, **ve** `kayıt.by` güncel çözümlenmiş sahiple aynı |
-| `null` | Son kayıt `skipped` **ve** sahip hâlâ `null` |
+| `null` | Son kayıt `skipped`, `kayıt.revision === plan.revision`, **ve** sahip hâlâ `null` |
 
 `by` karşılaştırması şart: kapı sahibi sonradan değiştirilirse eski denetleyicinin onayı
-geçerli kalmamalıdır. `null` durumunda `revision` eşitliği aranmaz — atlama plan içeriğine
-bağlı değildir.
+geçerli kalmamalıdır.
+
+**`null` durumunda da `revision` eşitliği aranır.** İlk taslak atlamayı revizyondan muaf
+tutuyordu, ama bu sınır tablosuyla çelişiyordu: "her planlama değişikliği
+`planReviewPassed`'i bozar" kuralı istisna kaldırmaz. Plan değişince yeni bir `skipped`
+kaydı düşülür — ucuz bir işlem ve kural tek parça kalır.
 
 ### `doneAuthorized` — anlık
 
@@ -397,7 +476,12 @@ eklenmez.
 | V8 | Kapı sahibinin etkin hedefleri uygun executor birleşimini kapsamıyor | Reddedilir |
 | V9 | Kapı sahibi `targets` taşımıyor, `targetsDefault`'tan kapsıyor | Kabul edilir |
 | V10 | İki agent aynı ada sahip | Reddedilir |
-| V11 | Agent adı `/` içeriyor | Reddedilir |
+| V11 | Agent adı slug kuralına uymuyor (`/`, `\`, boşluk, büyük harf, kontrol karakteri) | Reddedilir |
+| V12 | İki agent yalnız büyük/küçük harfle ayrışıyor (`Dev` / `dev`) | Reddedilir |
+| V13 | `planGate: true` ama hiç uygun executor yok (routing boş ya da yalnız kod yazmayan roller) | Reddedilir |
+| V14 | `planReviewer` anahtarı hiç yok | Reddedilir |
+| V15 | Kök `planGate` nesne değil (dizi/string) | Reddedilir |
+| V16 | Kapı sahibi değeri string ya da `null` değil (sayı/nesne) | Reddedilir |
 
 ### `sync-agent-config.mjs --selftest`
 
@@ -414,6 +498,11 @@ eklenmez.
 | W2 | Preset kapalı kurulum | Hiçbiri oluşmaz, mirror üretilmez, `.agent-work/` yoktur |
 | W3 | `codeReviewer` verilmiş kurulum | Routing/governance metni o adla yazılır |
 | W4 | `codeReviewer: null` kurulum | Evrensel code-review kuralı metinde hiç yer almaz |
+
+> **Kapalılık kuralı.** Bu spec'teki her normatif satır (manifest değişmezleri, klasör
+> değişmezleri, geçiş tablosu, alan sınıflandırması) **en az bir** pozitif ya da negatif
+> senaryoya eşlenmelidir. Uygulama planı yazılırken bu eşleme tablo hâlinde çıkarılır;
+> eşlenmemiş satır kalırsa ya senaryo eklenir ya kural gereksizdir.
 
 ### Runtime kabul matrisi
 
@@ -445,15 +534,26 @@ eklenmez.
 | R24 | `.agent-work/` yok | İskeleti kurmayı teklif eder |
 | R25 | Kullanıcı "plansız yap" der | Hiç dosya oluşmaz |
 | R26 | Preset kapalı, skill kurulu | Doğru mesaj, var olmayan komuta yönlendirme yok |
+| R27 | `title` / `domain` / `paths` değişir | Üçü de `revision` artırır, `planReviewPassed` bozulur |
+| R28 | `adr` alanı eklenir | `revision` **artmaz** |
+| R29 | Kapı sahibi değişince `approved/`'daki iş | `draft/`'a döner, yeniden geçilir |
+| R30 | Kapı sahibi değişince `done/`'daki iş | **Dokunulmaz**, arşiv geçerli kalır |
+| R31 | Inbox'tan analiz edilen planın `id`/`created`/`source` değerleri | Korunur, yeniden üretilmez |
 
 **Değişmez savunmaları (negatif senaryolar):**
 
 | # | Senaryo | Beklenen |
 |---|---|---|
 | N1 | `approved/`'a `planReviewPassed` yanlışken taşıma denenir | Reddedilir |
-| N2 | `in-progress/`'e `## İlerleme` doldurulmadan geçilir | Reddedilir |
+| N2 | `in-progress/`'e `s:progress` doldurulmadan geçilir | Reddedilir |
 | N3 | `done/`'a `doneAuthorized` olmadan taşıma denenir | Reddedilir |
-| N4 | `inbox/` kaydına `revision`/`reviews` eklenir | Reddedilir |
+| N4 | `inbox/` kaydına `revision`, `reviews`, `executor` ya da `outcome` eklenir (dördü ayrı ayrı) | Reddedilir |
+| N5 | `executor` uygun executor listesinde değil (routing'siz kod yazan agent) | Reddedilir |
+| N6 | `executor` ekosistemi o an çalışılan ekosistem değil | Reddedilir |
+| N7 | `outcome` `done/` dışında bir klasörde | Reddedilir |
+| N8 | `outcome` değeri `cancelled` dışında | Reddedilir |
+| N9 | `created` ya da `source` değiştirilmeye çalışılır | Reddedilir |
+| N10 | Aynı `id` iki dosyada | Reddedilir, yeni dosya yazılmaz |
 
 ## Kararlar
 
@@ -473,7 +573,12 @@ eklenmez.
 | 12 | `codeReviewer` evrensel gate'in tek otoritesi; metni setup yazar | Generator prose üretmiyor (`sync-agent-config.mjs:348`) |
 | 13 | Tüm bölümler her zaman mevcut; `## İlerleme` sentinel'li | Şablon yaşam döngüsü R1 ile çelişiyordu |
 | 14 | `outcome: cancelled` yalnız `done/`'da, revizyon-etkilemez | `done/` iki sonucu barındırıyor |
-| 15 | Kimlik `<ekosistem>/<agent-adı>`, ad `/` içeremez | Ayrıştırma belirsizliği kalmasın |
+| 15 | Kimlik `<ekosistem>/<agent-adı>`; ad portatif slug | Adlar dosya yoluna gömülüyor; `/` yasağı tek başına yetmez |
+| 15b | Ekosistem, o an çalışılan ekosistem olmalı | Çekirdek ekosistem sınırını geçmiyor |
+| 15c | Plan değişmez bir `id` taşır, taşımalarda korunur | Beş klasör arasında dosya kimliği gerekiyor |
+| 15d | `done/` arşivdir, yeniden değerlendirilmez | Kapı sahibi değişince tamamlanmış işler geriye dönük geçersiz olmamalı |
+| 15e | `doneAuthorized` geçiş korumasıdır, klasör değişmezi değil | Saklanmadığı için dosyaya bakarak doğrulanamaz |
+| 15f | Makine işaretleri (`s:*`) çeviriden bağımsız | Bölüm başlıkları `docLanguage`'e çevriliyor |
 | 16 | Topolojiye referans verilmez | `topology` yalnız Claude hedefi için |
 | 17 | Tek `executor`; çoklu domain'de danışma | Path→executor eşlemesi YAGNI |
 | 18 | Eşik yok, kaçış kullanıcıda ve izlenmez | Eşik kararını agent verirse kapı sessizce atlanır |
