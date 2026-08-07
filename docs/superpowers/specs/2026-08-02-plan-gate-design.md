@@ -107,6 +107,16 @@ architect'in, yazma" denir:
 | `agent-md-rich.md:119` | developer yasağı `<arch-root>/` içeriyor | `<arch-root>/` yasaktan **çıkar** |
 | `governance-defaults.md:53` | developer `consults: [architect]` | `consults` **boş** olur |
 | `governance-defaults.md:55` | "`docs/<arch-root>/` altına yazma; architect'e işaret et" | Bu cümle **yazılmaz** |
+| `governance-defaults.md:56` | "mimari etkili kararda architect'e danış" | Danışma hedefi **kullanıcıya** döner |
+| `agent-md-rich.md:73-74` | "doküman güncellemesi için architect'e sevk eder" | Bu cümle **yazılmaz** |
+| `team-builder-setup/SKILL.md:143` | "developer → architect'e danışır" varsayılanı | Varsayılan **boş** `consults` olur |
+| `team-builder-setup/SKILL.md:166` | "şüphede architect'e danışılır" | "şüphede **kullanıcıya** sorulur" olur |
+| `team-builder-setup/SKILL.md:184` | Workaround preseti "belirsizlikte mimara gidilir" | "belirsizlikte **kullanıcıya** sorulur" olur |
+
+**Architect yoksa danışma hedefi kullanıcıdır.** Repo'nun danışma zinciri her yerde
+architect'e işaret ediyor; o rol yoksa zincirin ucu boşta kalmamalı — belirsizlik
+kullanıcıya taşınır. Bu, plan kapısının kapı 1'i atlayıp kullanıcıya gitmesiyle de
+tutarlıdır.
 
 Architect yoksa `docs/` özel sahipliği olmayan sıradan bir dizindir; kod yolu sahipliği
 kuralları (routing) neyse o geçerlidir. Üç prose kaynağı da aynı koşula bağlanır.
@@ -387,8 +397,20 @@ source: agent:backend-developer      # user | agent:<ad>
 ---
 ```
 
-Gövde iki-üç cümle. Analiz edilmemiştir; başka alan taşımaz.
-Dosya adı: `<id>-<slug>.md` (örn. `20260802-01-kupon-dogrulama.md`).
+Gövde iki-üç cümle. Analiz edilmemiştir.
+
+**Anahtar listesi kapalıdır:** yalnız `id`, `title`, `created`, `source`. Başka herhangi
+bir anahtar — tanınan (`revision`, `reviews`, `executor`, `outcome`) ya da tanınmayan —
+kaydı geçersiz kılar.
+
+**`source` grameri:** `user` **veya** `agent:<agent-adı>`; `<agent-adı>` slug kuralına
+uyar. Değer **yakalama anının kaydıdır**: o agent sonradan manifest'ten çıkarılsa bile
+kayıt geçerli kalır, çünkü geçmişte olanı anlatır.
+
+**Dosya adı:** `<id>-<slug>.md` (örn. `20260802-01-kupon-dogrulama.md`). `<slug>`,
+`title`'dan türetilir ve agent adlarıyla aynı kurala uyar: `^[a-z0-9]+(?:-[a-z0-9]+)*$`.
+Türetme kayıpsız olmak zorunda değildir (Türkçe karakterler sadeleştirilir, uzun başlıklar
+kısaltılır); tekilliği sağlayan `id`'dir, slug yalnız okunabilirlik içindir.
 
 **`id` biçimi:** `<YYYYMMDD>-<n{2,}>` — oluşturulduğu gün ve o gün içindeki sıra; **en az**
 iki hane, gerekirse daha fazla (`-99`'dan sonra `-100` gelir, hata verilmez).
@@ -654,9 +676,9 @@ eklenmez.
 | R18 | **`planReviewer`** değiştirildi | Eski sahibin onayı geçersiz, yeni sahiple yeniden geçilir |
 | R18b | **`codeReviewer`** değiştirildi | Hiçbir dosya taşınmaz; bir sonraki `done/` hareketinde yeni sahip çalışır |
 | R19 | Denetleyici bayat `reviewed_revision` döndürür | Kayıt yazılmaz, denetim tekrarlanır |
-| R20 | `draft/`'tan iptal | `done/`'a taşınır, `outcome: cancelled` |
-| R21 | `approved/`'tan iptal | Aynı |
-| R22 | `in-progress/`'ten iptal | Aynı |
+| R20 | `draft/`'tan iptal | `done/`'a taşınır; `outcome: cancelled` **ve** yeni `<!-- note:cancelled -->` kaydı |
+| R21 | `approved/`'tan iptal | Aynı — `outcome` **ve** yeni etiketli not birlikte aranır |
+| R22 | `in-progress/`'ten iptal | Aynı; ayrıca kod review **çalıştırılmaz** |
 | R23 | `inbox/` kaydı iptal | Silinir, `done/`'a taşınmaz |
 | R24 | `.agent-work/` yok | İskeleti kurmayı teklif eder |
 | R25 | Kullanıcı "plansız yap" der | Hiç dosya oluşmaz |
@@ -700,6 +722,14 @@ eklenmez.
 | N15 | `approved`/`rejected` kaydında `by` değeri `system` | Reddedilir |
 | N16 | `rejected` kaydında `reasons` boş dizi | Reddedilir |
 | N17 | İptal geçişinde `s:review-notes`'ta yalnız eski notlar var, yeni iptal kaydı yok | Reddedilir |
+| N18 | Denetim kaydında `by` biçimi bozuk (`architect`, `claude/`, `//x`) | Reddedilir |
+| N19 | Denetim kaydında `verdict` bilinmeyen bir değer (`ok`, `pending`) | Reddedilir |
+| N20 | Denetim kaydında `revision` tam sayı değil (`"3"`, `3.5`, `0`, `-1`) | Reddedilir |
+| N21 | Denetim kaydında `reasons` dizi değil (string ya da yok) | Reddedilir |
+| N22 | `inbox/` kaydında izin listesi dışında herhangi bir anahtar | Reddedilir |
+| N23 | `inbox/` kaydında `source` grameri bozuk (`agent:`, `Agent:X`, boş) | Reddedilir |
+| N24 | Dosya adındaki slug kurala uymuyor (büyük harf, boşluk, Türkçe karakter) | Reddedilir |
+| N25 | Dosya adında slug hiç yok (`20260802-01.md`) | Reddedilir |
 
 ## Kararlar
 
@@ -729,6 +759,9 @@ eklenmez.
 | 15h | İptal, yeni ve etiketli bir gerekçe kaydı ister | "Bölüm boş değil" kontrolünü eski bir not da geçer |
 | 15i | Architect yoksa `docs/` yasağı ve architect atıfları **tüm** prose kaynaklarında kalkar | Aksi halde `docs/` sahipsizken yasak sürer |
 | 15j | `planReviewPassed` kimliği `executor` ekosisteminden kurulur, çağıran oturumdan değil | Plan dosyaları paylaşılıyor; kalıcı yüklem geçici bağlama bağlanamaz |
+| 15k | `inbox/` anahtar listesi kapalı; `source` grameri tanımlı | Açık uçlu şema doğrulanamaz |
+| 15l | Slug okunabilirlik içindir, tekilliği `id` sağlar | Kayıpsız türetme zorunluluğu gereksiz kısıt olurdu |
+| 15m | Architect yoksa danışma hedefi kullanıcıdır | Danışma zincirinin ucu boşta kalmamalı |
 | 16 | Topolojiye referans verilmez | `topology` yalnız Claude hedefi için |
 | 17 | Tek `executor`; çoklu domain'de danışma | Path→executor eşlemesi YAGNI |
 | 18 | Eşik yok, kaçış kullanıcıda ve izlenmez | Eşik kararını agent verirse kapı sessizce atlanır |
