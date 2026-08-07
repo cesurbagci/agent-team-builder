@@ -244,9 +244,10 @@ Bu projede **plan kapısı** açıktır: kod yazılmadan önce plan yazılır, d
 - **`revision`** yalnız planlama içeriği değişince artar: `title`, `domain`, `paths`,
   `executor` ve `s:what` / `s:how` / `s:questions` bölümleri. `s:review-notes`,
   `s:progress`, `reviews` ve `adr` **artırmaz**.
-- **`id`** `<YYYYMMDD>-<nn>` biçimindedir (en az iki hane), değişmez, dosya adı
-  `<id>-<slug>.md`. Yeni id verirken `.agent-work/` altındaki **tüm** klasörleri tara ve o
-  güne ait en büyük sırayı bir artır.
+- **`id`** `<YYYYMMDD>-<n{2,}>` biçimindedir (en az iki hane; 99'dan sonra üç hane),
+  değişmez; dosya adı `<id>-<slug>.md`, `<slug>` `title`'dan türetilir ve
+  `^[a-z0-9]+(?:-[a-z0-9]+)*$` kuralına uyar. Yeni id verirken `.agent-work/` altındaki
+  **tüm** klasörleri tara ve o güne ait en büyük sırayı bir artır.
 
 ## Plan yaz
 
