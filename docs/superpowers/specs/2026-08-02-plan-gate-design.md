@@ -82,10 +82,11 @@ komuta yönlendirmez.
 | `agent-md-rich.md` | developer ve denetleyici rollere `## Plan Kapısı` bölümü |
 | `manifest-schema.md` | `constitution.planGate` + `planGate` kök nesnesi + ad tekilliği; "4 preset, tümü default true" düzeltilir |
 | `validate-manifest.mjs` | `planGate` doğrulaması + ad tekilliği + ad biçimi |
-| `wizard-state.md` | constitution örneği 5 alana çıkar |
+| `wizard-state.md` | constitution örneği 5 alana çıkar; **`answers.planGate`** eklenir (iki kapı sahibi cevabı) |
 | `README.md` (iki dil) | "all on by default" düzeltilir |
 | `routing.md` | `.agent-work/**` notu; `docs/** → architect` satırının architect'siz takımda üretilmediği; code-review satırının `codeReviewer`'dan geldiği |
-| `agent-md-rich.md` (ek) | developer'ın `docs/` yasağı **koşullu** hale gelir — architect'siz takımda `docs/` sahipsizdir |
+| `agent-md-rich.md` (ek) | developer'ın `docs/` yasağı ve architect'e atıflar **koşullu** hale gelir (satır 49, 67, 72, 119) |
+| `governance-defaults.md` (ek) | developer `consults` ve `<arch-root>` yasağı architect varlığına bağlanır (satır 53, 55) |
 | `governance-defaults.md` | Reviewer'ın evrensel gate tanımının `planGate.codeReviewer`'a bağlanması |
 | `canonical-source.md`, `sync-pipeline.md` | `.agent-work/` generated değildir |
 
@@ -102,6 +103,10 @@ architect'in, yazma" denir:
 | `agent-md-rich.md:49` | developer: "`docs/` altına yazmam (orası architect'in)" | Bu cümle **yazılmaz** |
 | `agent-md-rich.md:67` | developer yasak listesinde `docs/` | `docs/` **listeden çıkar** |
 | `team-builder-setup/SKILL.md:162` | routing taslağında architect satırı öneriliyor | Öneri **atlanır** |
+| `agent-md-rich.md:72` | "architect: doc tarafını ben güncellerim" | Bu cümle **yazılmaz** |
+| `agent-md-rich.md:119` | developer yasağı `<arch-root>/` içeriyor | `<arch-root>/` yasaktan **çıkar** |
+| `governance-defaults.md:53` | developer `consults: [architect]` | `consults` **boş** olur |
+| `governance-defaults.md:55` | "`docs/<arch-root>/` altına yazma; architect'e işaret et" | Bu cümle **yazılmaz** |
 
 Architect yoksa `docs/` özel sahipliği olmayan sıradan bir dizindir; kod yolu sahipliği
 kuralları (routing) neyse o geçerlidir. Üç prose kaynağı da aynı koşula bağlanır.
@@ -129,6 +134,18 @@ anahtarı da zorunlu olduğu için bunlar atlanamaz:
 Sihirbaz seçimden hemen sonra **erişilebilirliği** doğrular (seçilen sahibin etkin
 hedefleri, uygun executor'ların birleşimini kapsıyor mu) ve kapsamıyorsa nedenini sade
 dille söyleyip yeniden sorar. Üretim (Adım 8a) bu iki değer kesinleşmeden başlamaz.
+
+Cevaplar sihirbaz durum kaydına yazılır (`wizard-state.md`):
+
+```jsonc
+"answers": {
+  ...,
+  "planGate": { "planReviewer": "architect", "codeReviewer": null }
+}
+```
+
+Bu şart: kurulum iki alt sorunun ortasında kesilirse, resume edildiğinde cevaplar
+kaybolmamalı ve sorular baştan sorulmamalıdır.
 
 ### Projede üretilecekler (preset açıkken)
 
@@ -401,7 +418,7 @@ adr: docs/mimari/backend/adr/0003-kupon-dogrulama.md
 
 | Alan | Kural | `revision` artırır |
 |---|---|---|
-| `id` | Zorunlu, **değişmez**, `<YYYYMMDD>-<nn>` | Hayır |
+| `id` | Zorunlu, **değişmez**, `<YYYYMMDD>-<n{2,}>` | Hayır |
 | `title` | Zorunlu | **Evet** |
 | `revision` | Zorunlu, 1'den başlar | — |
 | `created`, `source` | Zorunlu, **değiştirilemez** | Hayır |
@@ -458,11 +475,22 @@ yazar.** Denetleyicilerin yetkileri değişmez.
 
 Kapı 1 ile kapı 3'ün doğası farklıdır ve **tek bir kural ikisini birden tanımlayamaz**.
 
-### `planReviewPassed(plan, manifest, currentEcosystem)` — kalıcı
+### `planReviewPassed(plan, manifest)` — kalıcı
 
-Plan dosyasına bakarak hesaplanır, dosyayla birlikte taşınır. `currentEcosystem`
-parametresi şart: karşılaştırılacak sahip kimliği `<currentEcosystem>/<planReviewer>`
-biçiminde kurulur.
+Plan dosyasına bakarak hesaplanır, dosyayla birlikte taşınır ve **çağıran oturumdan
+bağımsızdır**.
+
+Karşılaştırılacak sahip kimliği **planın kendi `executor` ekosisteminden** kurulur:
+`<executor.ecosystem>/<planReviewer>`. `currentEcosystem` bu hesaba **girmez**.
+
+> **Neden.** Plan dosyaları commit edilip paylaşılıyor. Kimlik çağıran oturumdan
+> türetilseydi, Codex oturumunda onaylanmış bir planı OpenCode oturumu açtığında kimlik
+> `opencode/architect` olur, kayıtta ise `codex/architect` yazardı — onay geçersiz
+> görünürdü. Kalıcı bir yüklem geçici bir bağlama bağlanamaz.
+>
+> `currentEcosystem` yalnız **çalışma yetkisi** kontrolünde kullanılır:
+> `executor.ecosystem === currentEcosystem` — yani "bu oturumda bu işi ben yürütebilir
+> miyim". Bu ayrı bir sorudur ve dosyaya yazılmaz.
 
 | `planReviewer` | Koşul |
 |---|---|
@@ -592,7 +620,8 @@ eklenmez.
 | W2 | Preset kapalı kurulum | Hiçbiri oluşmaz, mirror üretilmez, `.agent-work/` yoktur |
 | W3 | `codeReviewer` verilmiş kurulum | Routing/governance metni o adla yazılır |
 | W4 | `codeReviewer: null` kurulum | Evrensel code-review kuralı metinde hiç yer almaz |
-| W5 | Architect'siz takım kurulumu | `docs/** → architect` satırı yok; developer talimatında `docs/` yasağı yok |
+| W5 | Architect'siz takım kurulumu | `docs/** → architect` satırı yok; developer talimatında `docs/` yasağı ve architect atıfları yok; `consults` boş |
+| W6 | Kurulum iki kapı sorusunun ortasında kesilir, resume edilir | `answers.planGate`'teki cevap korunur, soru yeniden sorulmaz |
 
 > **Kapalılık kuralı — bu spec içinde uygulanmıştır.** Her normatif satır (manifest
 > değişmezleri, klasör değişmezleri, geçiş tablosu, alan sınıflandırması) yukarıdaki
@@ -639,6 +668,14 @@ eklenmez.
 | R29b | `planReviewer` değişince `in-progress/`'teki iş | `draft/`'a döner, `s:progress` korunur |
 | R30 | `planReviewer` değişince `done/`'daki iş | **Dokunulmaz**, arşiv geçerli kalır |
 | R31 | Inbox'tan analiz edilen planın `id`/`created`/`source` değerleri | Korunur, yeniden üretilmez |
+| R32 | `s:what` bölümü değişir | `revision` artar, `planReviewPassed` bozulur |
+| R33 | `s:questions` bölümü değişir | `revision` artar, `planReviewPassed` bozulur |
+| R34 | Aynı gün 99 plan varken 100.'sü açılır | `id` `-100` olur, hata verilmez |
+| R35 | `in-progress/`'teki iş iptal edilir | `done/`'a taşınır; `outcome: cancelled` **ve** `s:review-notes`'a yeni `<!-- note:cancelled -->` kaydı eklenir; kod review çalıştırılmaz |
+| R36 | Plan Codex oturumunda onaylandı, OpenCode oturumunda açılır | `planReviewPassed` **doğru kalır** — kimlik `executor` ekosisteminden kurulur |
+| R37 | `.agents/skills/`'ten çağrı, hedefler yalnız `codex` | `currentEcosystem` = `codex`, soru sorulmaz |
+| R38 | `.agents/skills/`'ten çağrı, hedefler `codex` ve `opencode` | Skill **durur ve sorar** |
+| R39 | `.agents/skills/`'ten çağrı, ne `codex` ne `opencode` hedefli | **Dur** — bu konumdan çağrı desteklenmiyor |
 
 **Değişmez savunmaları (negatif senaryolar):**
 
@@ -690,7 +727,8 @@ eklenmez.
 | 15f | Makine işaretleri (`s:*`) çeviriden bağımsız | Bölüm başlıkları `docLanguage`'e çevriliyor |
 | 15g | `currentEcosystem` skill konumundan; `.agents/` altında `{codex,opencode}` kesişiminden | `.agents/skills` koşulsuz üretiliyor, tek-hedef varsayımı yanlış sonuç verir |
 | 15h | İptal, yeni ve etiketli bir gerekçe kaydı ister | "Bölüm boş değil" kontrolünü eski bir not da geçer |
-| 15i | Architect yoksa `docs/` yasağı üç prose kaynağında birden kalkar | Aksi halde `docs/` sahipsizken yasak sürer |
+| 15i | Architect yoksa `docs/` yasağı ve architect atıfları **tüm** prose kaynaklarında kalkar | Aksi halde `docs/` sahipsizken yasak sürer |
+| 15j | `planReviewPassed` kimliği `executor` ekosisteminden kurulur, çağıran oturumdan değil | Plan dosyaları paylaşılıyor; kalıcı yüklem geçici bağlama bağlanamaz |
 | 16 | Topolojiye referans verilmez | `topology` yalnız Claude hedefi için |
 | 17 | Tek `executor`; çoklu domain'de danışma | Path→executor eşlemesi YAGNI |
 | 18 | Eşik yok, kaçış kullanıcıda ve izlenmez | Eşik kararını agent verirse kapı sessizce atlanır |
