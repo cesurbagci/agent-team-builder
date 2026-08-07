@@ -31,7 +31,13 @@
 
 ### Task 1: Yapısal doğrulayıcı
 
-Şablonların ve sözleşmenin tutarlılığını makine tarafından denetler. TDD ile önce doğrulayıcı yazılır; sonraki task'lar onu yeşil tutmak zorundadır.
+Şablonların ve sözleşmenin tutarlılığını makine tarafından denetler. Doğrulayıcı **önce** yazılır; Task 2, 3 ve 4 onu yeşil tutmak zorundadır.
+
+> **Neden kod ve selftest aynı adımda.** Bu task'ın çıktısı bir doğrulayıcıdır; `--selftest`
+> onun kendi testidir ve fixture'ları doğrulayıcının sabitlerine (`SECTION_MARKERS`,
+> `PROGRESS_SENTINEL`) dayanır. İkisini ayrı adımlara bölmek testi tanımsız sabitlere
+> bağlardı. Kırmızı-yeşil döngüsü Step 2–3'te yaşanır: selftest yeşil, gerçek repo kırmızı
+> (dosyalar henüz yok) — ve sonraki üç task onu yeşile çevirir.
 
 **Files:**
 - Create: `team-builder-shared/validate-plan-gate.mjs`
