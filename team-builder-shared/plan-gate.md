@@ -103,7 +103,7 @@ kuralıdır ve skill'e aittir.
 | Klasör | Değişmez |
 |---|---|
 | `inbox/` | `revision`, `reviews`, `executor`, `outcome` bulunmaz |
-| `draft/` | `revision` var; `s:progress` sentinel'li |
+| `draft/` | `revision` var; `s:progress` mevcut — hiç başlanmamışsa sentinel'li, `in-progress/`'ten geri döndüyse korunmuş ilerlemeyle |
 | `approved/` | `planReviewPassed` doğru |
 | `in-progress/` | `planReviewPassed` doğru; `s:progress` doldurulmuş |
 | `done/` | **Arşivdir, yeniden değerlendirilmez** |

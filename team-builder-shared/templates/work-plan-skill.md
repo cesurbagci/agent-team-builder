@@ -8,8 +8,9 @@ description: Bu projede plan kapısı açık. Bir iş için plan yazar, denetlet
 Bu projede **plan kapısı** açıktır: kod yazılmadan önce plan yazılır, denetlenir ve
 **kullanıcı onaylar**. Onaysız kod yazılmaz.
 
-Bu dosya plan kapısının **tek otoritesidir**. Kuralın tamamı burada; başka bir dosyaya
-bakma.
+Bu dosya plan kapısının **tek otoritesidir**: kapının bütün kuralları burada yazılıdır ve
+kural için başka bir belgeye bakman gerekmez. Projenin kendi dosyalarını (manifest,
+routing tablosu, `TEMPLATE.md`, ADR'ler) elbette okursun — onlar kural değil, veridir.
 
 ## Önce: hangi mod?
 
@@ -20,8 +21,9 @@ bakma.
 | "Şunu not et", "sonra bakarız" | **Inbox** |
 | "Plansız yap" | Kapı atlanır; hiçbir dosya oluşturulmaz, `.agent-work/`'e yazılmaz, iş izlenmez |
 
-`.agent-work/` dizini yoksa — hangi modda olursan ol — iskeleti kurmayı teklif et:
-`inbox/ draft/ approved/ in-progress/ done/` ve `TEMPLATE.md`.
+Plan kapısı açıkken `.agent-work/` dizini yoksa — hangi modda olursan ol — iskeleti kurmayı
+teklif et: `inbox/ draft/ approved/ in-progress/ done/` ve `TEMPLATE.md`. Kapı kapalıysa
+teklif etme (en alttaki bölüme bak).
 
 ## Hangi ekosistemdesin?
 
@@ -40,6 +42,12 @@ etmez. Projenin hedeflediği ekosistemlerle `{codex, opencode}` kesişimini al:
 - **Tek aday** → o ekosistemi kullan, soru sorma.
 - **İki aday** → **dur ve kullanıcıya sor**: "Bu oturum Codex mi OpenCode mu?" Tahmin etme.
 - **Hiç aday yok** → **dur**. Bu konumdan çağrı desteklenmiyor; kullanıcıya söyle.
+
+**Projenin hedeflediği ekosistemler** manifest'ten şöyle hesaplanır: her agent'ın **etkin
+hedefleri**nin birleşimi. Bir agent'ın etkin hedefleri kendi `targets` alanıdır; o alan
+yoksa projenin `targetsDefault` değeridir. `targetsDefault`'a tek başına bakma — her agent
+onu kendi `targets`'ıyla ezebilir, o yüzden yalnız `targetsDefault`'ta geçen bir ekosistem
+gerçekte hedeflenmiyor olabilir.
 
 ## Ortak kurallar
 
@@ -63,7 +71,7 @@ Sonucu klasöre göre değişir:
 |---|---|
 | `draft/` | Yerinde kalır; kapı 1 yeniden geçilir |
 | `approved/` | **`draft/`'a geri döner**, kapı 1 ve kapı 2 yeniden geçilir |
-| `in-progress/` | **`draft/`'a geri döner**; `s:progress` bölümü **korunur**, silinmez |
+| `in-progress/` | **`draft/`'a geri döner**; `s:progress` bölümü **korunur** — sentinel geri konmaz |
 | `done/` | **Dokunulmaz.** `done/` arşivdir, yeniden değerlendirilmez |
 
 `title` değişirse dosya adındaki slug'ı da yenile — `id` aynı kalır, dosya yeniden
@@ -117,32 +125,45 @@ ekosisteminden kurulur, senin oturumundan değil.
 | Bir agent adı | `plan-review`'ın **son** kaydı `approved`, `kayıt.revision === plan.revision`, ve `kayıt.by` = `<executor'ın ekosistemi>/<güncel denetleyici adı>` |
 | Tanımsız (`null`) | `plan-review`'ın **son** kaydı `skipped`, `kayıt.revision === plan.revision`, ve denetleyici hâlâ tanımsız |
 
+### `executor` geçerli mi?
+
+Bir planın `executor` alanını **her okuduğunda** — yalnız plan yazarken değil, havuzdan
+seçerken ve yarım işi devam ettirirken de — üçünü birden doğrula:
+
+1. Ad gerçek bir agent ve **uygun executor'lardan** biri: routing tablosunda geçiyor ve
+   kod yazıyor.
+2. `executor`'ın ekosistemi o agent'ın **etkin hedeflerinde** var.
+3. O ekosistem **senin oturumunun ekosistemi**.
+
+İlk ikisi sağlanmıyorsa plan bozuktur — işletme, kullanıcıya bildir. Üçüncüsü
+sağlanmıyorsa plan geçerlidir ama **çalıştırma yetkisi sende değildir**; o ekosistemde
+açılmayı bekler.
+
 ### Klasör değişmezleri
 
-Bir dosyayı taşımadan **önce** hedefin koşulunu doğrula; sağlanmıyorsa taşıma:
+Bu koşullar dosyanın **durduğu yerde** sağlanır. Bir geçişi tamamlarken önce dosyayı hedef
+klasörün koşulunu sağlayacak hale getir, **sonra** taşı — geçiş bitmeden ara adımlara
+bakılmaz, ama geçiş bittiğinde koşul sağlanmıyorsa hata vardır.
 
 | Klasör | Koşul |
 |---|---|
 | `inbox/` | `revision`, `reviews`, `executor`, `outcome` **bulunmaz** |
-| `draft/` | `revision` var; `s:progress` yalnız `<!-- progress:not-started -->` içerir |
-| `approved/` | `planReviewPassed` **doğru** |
-| `in-progress/` | `planReviewPassed` **doğru** ve `s:progress` doldurulmuş (sentinel silinmiş) |
+| `draft/` | `revision` var; `s:progress` bölümü mevcut — hiç başlanmamışsa `<!-- progress:not-started -->` sentinel'iyle, `in-progress/`'ten geri döndüyse korunmuş ilerlemeyle |
+| `approved/` | `planReviewPassed` **doğru**; `s:progress` `draft/`'taki gibi |
+| `in-progress/` | `planReviewPassed` **doğru** ve `s:progress` doldurulmuş (sentinel yok) |
 | `done/` | Arşiv. Ya başarılı tamamlama ya `outcome: cancelled` taşır; sonradan değiştirilmez |
 
 `outcome` alanı **yalnız `done/`'daki dosyalarda** bulunur ve tek geçerli değeri
-`cancelled`'dır. Başka bir klasördeki dosyada `outcome` varsa o dosya bozuktur.
+`cancelled`'dır. Başka bir klasörde duran bir dosyada `outcome` varsa o dosya bozuktur.
 
 ## Plan yaz
 
 1. **Sahibini bul.** İşin dokunacağı kod yollarına bak; projenin routing tablosundan o
    yolun sahibi developer'ı belirle. `executor` odur, `<ekosistem>/<ad>` biçiminde.
    Ekosistemi yukarıdaki tablodan çöz.
-   - `executor` **kod yazan** ve routing'de geçen bir agent olmalı; değilse plan yazma,
-     kullanıcıya sor.
+   Yukarıdaki üç geçerlilik kontrolünü uygula; sağlanmıyorsa plan yazma, kullanıcıya sor.
    - İş birden çok domain'e dokunuyorsa **tek** `executor` seç (ağırlık merkezine göre) ve
      diğer sahiplere danışmayı `s:how` bölümüne yaz. İki executor yazma.
-   - Var olan bir planın `executor` ekosistemi senin oturumunun ekosistemi değilse o işi
-     **işletme** — plan geçerlidir, ama çalıştırma yetkisi o ekosistemdedir.
 2. **`.agent-work/TEMPLATE.md`'yi kopyala** → `.agent-work/draft/<id>-<slug>.md`.
    `revision: 1`, `reviews` boş diziler, `s:progress` sentinel'li.
 3. **Gövdeyi doldur.** `s:what` sade dille ve örnekle, ölçülebilir kabul kriteriyle;
@@ -185,10 +206,11 @@ o iş için kural atlanır.
   başlık ve tek cümle özet ver; dosya adı ve alan adı dökme.
 - **"Şunu yapalım" / "şu ikisini yapalım"** → kullanıcı seçer. **Sıra dayatma** — havuz
   FIFO değildir.
-- Seçilen dosya için `planReviewPassed`'ı **yeniden doğrula** — sahibi değişmiş ya da plan
-  düzenlenmiş olabilir. Doğruysa `.agent-work/in-progress/`'e taşı, `s:progress`
-  sentinel'ini sil ve ilerlemeyi yaz: son durum, sıradaki adım, engel, dokunulan yerler.
-  Sentinel silinip yerine ilerleme yazılmadan dosya `in-progress/`'te duramaz.
+- Seçilen dosya için `planReviewPassed`'ı ve `executor` geçerliliğini **yeniden doğrula** —
+  sahibi değişmiş, plan düzenlenmiş ya da agent projeden çıkarılmış olabilir.
+- Doğruysa **önce** `s:progress`'i doldur (sentinel'i sil, yerine son durum / sıradaki adım
+  / engel / dokunulan yerler yaz), **sonra** dosyayı `.agent-work/in-progress/`'e taşı.
+  Sıra bu; boş `s:progress` ile `in-progress/`'e girilmez.
 - İşi her bıraktığında `s:progress`'i güncelle — başka bir oturum oradan devam edecek.
 
 ## İşi bitirme
@@ -198,12 +220,13 @@ o iş için kural atlanır.
    gerekçeyi `s:review-notes`'a da yaz ve iş `in-progress/`'te kalır.
    Denetleyici tanımlı değilse `{ by: system, at: <bugün>, revision: <plan.revision>,
    verdict: skipped, reasons: [] }` kaydı düş.
-2. **`done/`'a taşıma yetkisi:** son `code-review` kaydı `approved` **ya da** denetleyici
+2. Kalıcı bir mimari karar çıktıysa mimarlık rolüne ADR yazdır ve `adr:` alanına bağla —
+   bunu **taşımadan önce** yap; `done/` arşivdir, oraya girdikten sonra dosya değişmez.
+3. **`done/`'a taşıma yetkisi:** son `code-review` kaydı `approved` **ya da** denetleyici
    tanımsız olduğu için `skipped` ise taşı. Denetleyici tanımsızken kullanıcıdan **ek onay
    isteme** — kapı 3 yoktur, iş doğrudan biter.
-3. **Kod denetimi onayı tek seferliktir.** İş `done/`'a gitmeden kesilirse, devam
+4. **Kod denetimi onayı tek seferliktir.** İş `done/`'a gitmeden kesilirse, devam
    edildiğinde denetimi **yeniden** çalıştır — eski kayıt geçmiştir, yetki vermez.
-4. Kalıcı bir mimari karar çıktıysa mimarlık rolüne ADR yazdır ve `adr:` alanına bağla.
 
 ## Kapı sahipleri değişirse
 
@@ -222,8 +245,9 @@ Kurulumdan sonra plan ya da kod denetleyicisi değiştirilebilir. İkisi farklı
 
 - **`inbox/` kaydı** iptal edilirse `done/`'a taşınmaz, **silinir**.
 - **Diğer üç klasör:** `s:review-notes`'a **yeni** bir `<!-- note:cancelled -->` kaydı
-  ekle (gerekçesiyle), `outcome: cancelled` yaz ve dosyayı `done/`'a taşı. Bu üçü tek bir
-  geçiştir; `outcome` alanı dosya `done/`'a yerleştiğinde bulunur, ara durumda bekletme.
+  ekle (gerekçesiyle), `outcome: cancelled` yaz ve dosyayı `done/`'a taşı. Bu üçü **tek
+  bir geçiştir** — dosya geçiş bitmeden başka bir işe konu olmaz, ve geçiş bittiğinde
+  `outcome` yalnız `done/`'da durur. Yarıda bırakma.
 - **Kod denetimi çalıştırma** — yarıda bırakılan işi iptal etmek için kodunu onaylatmak
   anlamsızdır.
 - Gerekçe olarak **eski bir not yeterli değildir**; iptal geçişinde yeni ve etiketli bir

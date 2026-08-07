@@ -369,7 +369,7 @@ done/         arşiv
 | Klasör | Değişmez |
 |---|---|
 | `inbox/` | `revision`, `reviews`, `executor`, `outcome` **bulunmaz** |
-| `draft/` | `revision` var; `s:progress` bölümü **`<!-- progress:not-started -->`** sentinel'iyle mevcut |
+| `draft/` | `revision` var; `s:progress` bölümü mevcut — hiç başlanmamış planda **`<!-- progress:not-started -->`** sentinel'iyle, `in-progress/`'ten geri dönen planda **korunmuş ilerlemeyle** |
 | `approved/` | `planReviewPassed` **doğru** olmalı |
 | `in-progress/` | `planReviewPassed` doğru; `s:progress` doldurulmuş (sentinel yok) |
 | `done/` | **Arşivdir, yeniden değerlendirilmez** — aşağıya bak |
@@ -555,8 +555,10 @@ edildiğinde kod review yeniden çalıştırılır.
 
 ## Şablon
 
-Tüm bölümler **her zaman mevcuttur**; `s:progress` `draft/`'ta
-`<!-- progress:not-started -->` sentinel'iyle açılır ve `in-progress/`'e geçince doldurulur.
+Tüm bölümler **her zaman mevcuttur**; `s:progress` yeni planda
+`<!-- progress:not-started -->` sentinel'iyle açılır ve `in-progress/`'e geçmeden hemen
+önce doldurulur. Sentinel yalnız **hiç başlanmamış** planı işaretler: `in-progress/`'ten
+`draft/`'a geri dönen bir planın ilerlemesi korunur, sentinel geri konmaz.
 
 | Bölüm | İçerik | `revision` artırır |
 |---|---|---|
