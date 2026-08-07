@@ -1,5 +1,5 @@
 ---
-id: <YYYYMMDD-nn>
+id: <YYYYMMDD>-<sıra>
 title: <tek cümlelik iş başlığı>
 revision: 1
 created: <YYYY-MM-DD>

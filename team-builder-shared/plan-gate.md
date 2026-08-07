@@ -38,8 +38,10 @@ gövde bölümü sabit bir HTML yorumuyla işaretlenir:
 İşaretler tam bu yorum biçiminde yazılır; çıplak ad (`s:what`) düzyazıda da geçer ve
 kopyalanacak şey yorumun kendisidir.
 
-Sentinel: `<!-- progress:not-started -->` — `draft/`'ta bulunur, `in-progress/`'te silinir.
-İptal etiketi: `<!-- note:cancelled -->` — iptal geçişinde `s:review-notes`'a eklenir.
+İki sabit dize daha üretilir ve şablonlarda birebir bulunmalıdır: sentinel
+`<!-- progress:not-started -->` ve iptal etiketi `<!-- note:cancelled -->`. **Ne zaman
+yazılıp silindikleri runtime kuralıdır ve `work-plan` skill'ine aittir**, burada
+anlatılmaz.
 
 ## Veri modeli
 
@@ -91,10 +93,10 @@ paylaşılır ve onay hangi oturumdan bakıldığına göre değişmemelidir.
 | Bir agent adı | Son kayıt `approved`, `kayıt.revision === plan.revision`, `kayıt.by` güncel sahiple aynı |
 | `null` | Son kayıt `skipped`, `kayıt.revision === plan.revision`, sahip hâlâ `null` |
 
-**`doneAuthorized` — anlık.** `in-progress/ → done/` hareketini yetkilendirir, saklanmaz.
-Kod denetleyicisi varsa o hareketten hemen önce çalıştırılan denetim `approved` olmalı;
-`null` ise her zaman yetkilidir. **Yalnız başarılı tamamlamayı korur** — iptal ayrı bir
-geçiştir ve `outcome: cancelled` + yeni `<!-- note:cancelled -->` kaydı ister.
+**`doneAuthorized` — anlık.** `in-progress/ → done/` hareketini yetkilendirir, saklanmaz;
+bu yüzden dosyaya bakarak doğrulanamaz ve klasör değişmezi değildir. **Yalnız başarılı
+tamamlamayı korur** — iptal ayrı bir geçiştir. Yüklemin nasıl elde edildiği runtime
+kuralıdır ve skill'e aittir.
 
 ## Klasör değişmezleri
 
@@ -108,7 +110,10 @@ geçiştir ve `outcome: cancelled` + yeni `<!-- note:cancelled -->` kaydı ister
 
 `done/` neden yeniden değerlendirilmez: `planReviewPassed` güncel sahibe bakar; kapı sahibi
 sonradan değişirse tamamlanmış işler geriye dönük geçersiz görünürdü. Kayıtlar
-tamamlanma anındaki durumu zaten taşır.
+tamamlanma anındaki durumu zaten taşır. **Sahip değişiminin diğer klasörlerde ne
+yaptığı runtime kuralıdır ve skill'e aittir.**
+
+Frontmatter'da `status` alanı **yoktur**; durum dosyanın bulunduğu klasördür.
 
 ## Kurulum sırasında doğrulananlar
 
