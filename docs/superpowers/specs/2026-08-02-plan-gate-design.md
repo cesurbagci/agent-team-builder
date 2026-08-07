@@ -106,6 +106,11 @@ architect'in, yazma" denir:
 | `agent-md-rich.md:72` | "architect: doc tarafını ben güncellerim" | Bu cümle **yazılmaz** |
 | `agent-md-rich.md:119` | developer yasağı `<arch-root>/` içeriyor | `<arch-root>/` yasaktan **çıkar** |
 | `governance-defaults.md:53` | developer `consults: [architect]` | `consults` **boş** olur |
+| `governance-defaults.md:76,81,86` | QA / security-reviewer / doc-writer `consults: [architect]` | Üçünde de `consults` **boş** olur — aynı hatanın kopyaları |
+| `governance-defaults.md:87` | doc-writer: "Mimari kararları architect üretir" | Bu cümle **yazılmaz**; ADR yazma yasağı da kalkar (yazacak başka rol yoktur) |
+| `governance-defaults.md:63` | reviewer "gerekirse architect'e eskale eder" | Eskalasyon hedefi **kullanıcı** olur |
+| `agent-md-rich.md:122` | `consults: [architect]` → "mimari belirsizlikte architect'e sevk" eşlemesi | Eşleme **boş `consults`** durumunu da tanımlar: sevk hedefi kullanıcıdır |
+| `team-builder-setup/SKILL.md:130` | developer rol önerisi `consults: [architect]` taşır | Architect önerilmediyse öneri **boş `consults`** ile yapılır |
 | `governance-defaults.md:55` | "`docs/<arch-root>/` altına yazma; architect'e işaret et" | Bu cümle **yazılmaz** |
 | `governance-defaults.md:56` | "mimari etkili kararda architect'e danış" | Danışma hedefi **kullanıcıya** döner |
 | `agent-md-rich.md:73-74` | "doküman güncellemesi için architect'e sevk eder" | Bu cümle **yazılmaz** |
