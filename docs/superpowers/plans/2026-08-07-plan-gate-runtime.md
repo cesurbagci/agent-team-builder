@@ -117,7 +117,7 @@ Projeye `.agent-work/TEMPLATE.md` olarak kopyalanacak (sihirbaz `docLanguage`'de
 - Consumes: Task 1'in `SECTION_MARKERS`, `PROGRESS_SENTINEL`, `PLAN_FIELDS` sabitleri
 - Produces: `templates/plan.md` — Task 3 (skill şablonu) bu bölümlere atıf yapar
 
-- [ ] **Step 1: Şablonu yaz**
+- [x] **Step 1: Şablonu yaz**
 
 `team-builder-shared/templates/plan.md`:
 
@@ -174,7 +174,7 @@ Bu bölüm `revision` artırmaz.>
 > çevrilir. (2) `s:progress` `draft/`'ta `<!-- progress:not-started -->` sentinel'iyle
 > durur; `in-progress/`'e geçince sentinel silinip ilerleme yazılır.
 
-- [ ] **Step 2: Doğrulayıcıyı çalıştır**
+- [x] **Step 2: Doğrulayıcıyı çalıştır**
 
 ```bash
 node team-builder-shared/validate-plan-gate.mjs --root .
@@ -187,7 +187,7 @@ Beklenen: `templates/plan.md` ile ilgili hata **kalmamalı**. Kalan hatalar yaln
 - team-builder-shared/templates/work-plan-skill.md missing
 ```
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add team-builder-shared/templates/plan.md
@@ -207,7 +207,7 @@ Projeye `.agent-source/skills/work-plan/SKILL.md` olarak yazılacak skill. **Run
 - Consumes: Task 2'nin bölüm işaretleri
 - Produces: runtime prosedürü — Task 4 (`plan-gate.md`) buna yönlendirir, tekrarlamaz
 
-- [ ] **Step 1: Skill şablonunu yaz**
+- [x] **Step 1: Skill şablonunu yaz**
 
 `team-builder-shared/templates/work-plan-skill.md`:
 
@@ -345,7 +345,7 @@ komuta yönlendirme.
 - İptal ederken eski bir notu gerekçe saymak — **yeni** ve etiketli kayıt gerekir.
 ````
 
-- [ ] **Step 2: Doğrulayıcıyı çalıştır**
+- [x] **Step 2: Doğrulayıcıyı çalıştır**
 
 ```bash
 node team-builder-shared/validate-plan-gate.mjs --root .
@@ -353,7 +353,7 @@ node team-builder-shared/validate-plan-gate.mjs --root .
 
 Beklenen: yalnız `plan-gate.md missing` hatası kalmalı.
 
-- [ ] **Step 3: Şablonun `SKILL.md` adını taşımadığını doğrula**
+- [x] **Step 3: Şablonun `SKILL.md` adını taşımadığını doğrula**
 
 ```bash
 find team-builder-shared -name 'SKILL.md'
@@ -361,7 +361,7 @@ find team-builder-shared -name 'SKILL.md'
 
 Beklenen: **boş çıktı.**
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add team-builder-shared/templates/work-plan-skill.md
@@ -381,7 +381,7 @@ Sihirbazın okuduğu referans: hangi dosyalar üretilir, veri modeli nedir, kabu
 - Consumes: Task 2 ve 3'ün şablonları
 - Produces: kurulum sözleşmesi — Plan 2'deki sihirbaz entegrasyonu buna dayanır
 
-- [ ] **Step 1: Sözleşmeyi yaz**
+- [x] **Step 1: Sözleşmeyi yaz**
 
 `team-builder-shared/plan-gate.md`:
 
@@ -551,7 +551,7 @@ Architect yoksa `docs/` özel sahipliği olmayan sıradan bir dizindir ve danı�
 kalırken yasak sürer.
 ````
 
-- [ ] **Step 2: Doğrulayıcının tamamen yeşil olduğunu gör**
+- [x] **Step 2: Doğrulayıcının tamamen yeşil olduğunu gör**
 
 ```bash
 node team-builder-shared/validate-plan-gate.mjs --root .
@@ -559,7 +559,7 @@ node team-builder-shared/validate-plan-gate.mjs --root .
 
 Beklenen: `Plan gate artifacts are valid.` ve exit 0.
 
-- [ ] **Step 3: Selftest'lerin bozulmadığını doğrula**
+- [x] **Step 3: Selftest'lerin bozulmadığını doğrula**
 
 ```bash
 node team-builder-shared/validate-plan-gate.mjs --selftest && node team-builder-shared/validate-manifest.mjs --selftest && node team-builder-shared/sync-agent-config.mjs --selftest
@@ -567,7 +567,7 @@ node team-builder-shared/validate-plan-gate.mjs --selftest && node team-builder-
 
 Beklenen: üç kez `SELFTEST PASS`.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add team-builder-shared/plan-gate.md
@@ -578,7 +578,7 @@ git commit -m "feat: add the plan gate setup contract"
 
 ## Uygulama sonrası doğrulama
 
-- [ ] **Artefakt doğrulayıcısı yeşil**
+- [x] **Artefakt doğrulayıcısı yeşil**
 
 ```bash
 node team-builder-shared/validate-plan-gate.mjs --root .
@@ -586,13 +586,13 @@ node team-builder-shared/validate-plan-gate.mjs --root .
 
 Beklenen: `Plan gate artifacts are valid.`
 
-- [ ] **Üç selftest de geçiyor**
+- [x] **Üç selftest de geçiyor**
 
 ```bash
 node team-builder-shared/validate-plan-gate.mjs --selftest && node team-builder-shared/validate-manifest.mjs --selftest && node team-builder-shared/sync-agent-config.mjs --selftest
 ```
 
-- [ ] **Kurulum tuzağı yok**
+- [x] **Kurulum tuzağı yok**
 
 ```bash
 find team-builder-shared -name 'SKILL.md'
@@ -600,7 +600,7 @@ find team-builder-shared -name 'SKILL.md'
 
 Beklenen: boş çıktı.
 
-- [ ] **Kurulum hâlâ çalışıyor ve şablon global skill olmuyor**
+- [x] **Kurulum hâlâ çalışıyor ve şablon global skill olmuyor**
 
 ```bash
 rm -rf /tmp/tb-pg && mkdir -p /tmp/tb-pg && HOME=/tmp/tb-pg ./install.sh opencode >/dev/null && find /tmp/tb-pg -name 'SKILL.md' | sed 's|.*/skills/||' | sort
@@ -615,7 +615,7 @@ senaryonun beklediği davranış skill metninde tarif edilmiş mi? Skill kurulup
 projede çalıştırılmadan tam kabul yapılamaz (o Plan 2 sonrasıdır); bu adım yalnız
 **metinsel kapsama** kontrolüdür — tarif edilmeyen bir davranış varsa skill eksiktir.
 
-- [ ] **Generator davranışı değişmedi**
+- [x] **Generator davranışı değişmedi**
 
 ```bash
 git diff --stat main -- team-builder-shared/sync-agent-config.mjs team-builder-shared/validate-manifest.mjs
