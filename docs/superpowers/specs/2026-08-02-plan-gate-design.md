@@ -34,8 +34,15 @@ yazılmış kod var. Yaklaşım baştan yanlışsa o emek çöpe gidiyor.
 | **B** | Çapraz ekosistem çağırma + verdict protokolü | **Ayrı spec** |
 | **C** | Inbox'ın dış sisteme (Jira vb.) bağlanması | Ayrı spec |
 
-Bu spec **tek ekosistem içinde** çalışır: kapılar projenin kendi agent'larıyla, aynı
-oturumda (subagent olarak) yürütülür. Harici CLI çağrısı yoktur.
+Bu spec **tek ekosistem içinde** çalışır: kapılar projenin kendi agent'larıyla, **aynı
+oturumda** yürütülür; harici CLI çağrısı yoktur.
+
+**Topolojiden bağımsızdır.** Repo iki topoloji destekliyor (`manifest-schema.md:22`):
+`subagent` (lead dağıtır) ve `native` (peer-to-peer agent teams). Denetleyici çağrısı
+"**seçili topolojiye uygun aynı-oturum agent çağrısı**" olarak tanımlanır — `subagent`
+topolojisinde subagent olarak, `native` topolojisinde teammate olarak. Sözleşme her iki
+durumda aynıdır: denetleyici `{verdict, reviewed_revision, reasons}` döndürür, dosyayı
+`work-plan` yazar.
 
 **B için bırakılan kanca:** plan frontmatter'ındaki `reviews.<kapı>[]` kayıtları
 `<ekosistem>/<rol>` biçimindedir. Çekirdekte her zaman projenin kendi ekosistemi yazılır;
@@ -123,7 +130,8 @@ dosyalar Türkçe **referanstır**, verbatim kopyalanmaz.
 Setup yalnız boş iskeleti bir kez kurar. Generated-file ledger'ı da onu sahiplenmez.
 
 **2. Şablon `docs/` altına konmaz.** `docs/` architect'in yazma alanıdır (`routing.md:20`);
-developer oradan **okuyabilir** ama yazamaz (`agent-md-rich.md:49,67`). Plan dosyaları
+developer oradan **okuyabilir** ama yazamaz (`agent-md-rich.md:49,67`; reviewer'ın hiç
+yazma alanı yok — `:65,68`). Plan dosyaları
 sürekli değişen çalışma artefaktıdır, bu yüzden architect'in sahibi olduğu ağacın dışında
 durmalıdır — şablon da onlarla aynı yerde olur ki tek bir çalışma alanı kalsın.
 
@@ -166,8 +174,26 @@ Yukarıdaki şema mutlu yolu gösterir. Tam liste:
 | İş bırakılır | `in-progress/` (kalır) | `## İlerleme` güncellenir |
 | **Kapı 3 onaylar** | `in-progress/` → `done/` | `reviews.code-review` += approved |
 | **Kapı 3 reddeder** | `in-progress/` (kalır) | `reviews.code-review` += rejected; gerekçe `## Denetim notları`'na |
-| İş iptal edilir | herhangi → `done/` | `## Denetim notları`'na iptal gerekçesi; `reviews`'a dokunulmaz |
-| Kapı sahibi `null` | ilgili kapı | `reviews.<kapı>` += `skipped`, akış devam eder |
+| **Planlama içeriği `approved/`'da değişir** | `approved/` → `draft/` | `revision` artar; plan kapısından yeniden geçer |
+| **Planlama içeriği `in-progress/`'te değişir** | `in-progress/` → `draft/` | `revision` artar; `## İlerleme` korunur, iş sonra kaldığı yerden sürer |
+| İş iptal edilir (`draft/`, `approved/`, `in-progress/`) | → `done/` | `outcome: cancelled` yazılır; gerekçe `## Denetim notları`'na |
+| **Ham kayıt iptal edilir** | `inbox/` → silinir | Inbox kaydında `revision`/`reviews` yoktur; `done/`'a taşınmaz |
+| Kapı sahibi `null` | ilgili kapı | `reviews.<kapı>` += `skipped` (`by: system`), akış devam eder |
+
+#### Klasör değişmezleri
+
+Veri modeli, klasörün ima ettiğiyle çelişen durumlar üretebilir. Bunlar **geçersizdir** ve
+`work-plan` bu duruma düşmez:
+
+| Klasör | Değişmez |
+|---|---|
+| `approved/` | Plan review kapısı **geçilmiş** olmalı (sahip varsa `approved` + revision eşleşir; `null` ise `skipped`) |
+| `in-progress/` | Aynı koşul; ayrıca `## İlerleme` bölümü açılmış olmalı |
+| `done/` | Ya kod review kapısı geçilmiş olmalı, ya da `outcome: cancelled` olmalı |
+| `inbox/` | `revision`, `reviews`, `executor` **bulunmaz** — bunlar analiz sonrası eklenir |
+
+`done/` iki farklı sonucu barındırır; ayırt edici alan **`outcome`**: yoksa iş tamamlandı,
+`cancelled` ise iptal edildi. Ayrı bir klasör açılmaz.
 
 **Kullanıcının "plansız yap" kaçışı:** hiç plan dosyası oluşturulmaz ve `.agent-work/`'e
 hiçbir şey yazılmaz. Bilinçli bir atlamadır, izlenmez. (İzlenmesi istenirse kullanıcı
@@ -216,7 +242,32 @@ konfigürasyonunun şekli değişmesin.
 | `planReviewer`, `codeReviewer` | Nesne varsa **ikisi de zorunlu**; değer bir agent adı ya da `null` |
 | `reviewerEcosystem` | Zorunlu; şimdilik tek geçerli değer `"same-as-executor"` |
 | Uygunluk | Kapı sahibi olarak verilen agent `writesCode: false` olmalı |
-| Erişilebilirlik | Kapı sahibi agent, `executor`'ın ekosisteminde üretiliyor olmalı (`targets` içermeli) |
+| Erişilebilirlik | Kapı sahibinin **etkin hedefleri**, olası her executor'ın hedeflerini kapsamalı (aşağıya bak) |
+| Ad tekilliği | `agents[].name` değerleri benzersiz olmalı |
+
+#### Erişilebilirlik neden manifest seviyesinde tanımlanır
+
+İlk taslak "kapı sahibi, `executor`'ın ekosisteminde üretiliyor olmalı" diyordu. Bu kural
+**doğrulayıcıya verilemez**: `executor` plan dosyasına ait bir değerdir, `validate(doc)` ise
+yalnız manifest'i görür (`validate-manifest.mjs:19`). Kural manifest verisinden
+kurulamadığı için yeniden tanımlandı:
+
+**Kurulum anında (doğrulayıcı):** *olası executor'lar* = `routing[].role` olarak geçen ve
+`writesCode: true` olan agent'lar. Her `null` olmayan kapı sahibinin **etkin hedefleri**,
+bu executor'ların etkin hedeflerinin **birleşimini kapsamalıdır**. Aksi halde bir iş,
+denetleyicisi o ekosistemde bulunmayan bir executor'a düşebilir.
+
+**Çalışma anında (`work-plan` skill'i):** plandaki `executor` gerçek bir kod yazan agent
+adı mı, ve o agent'ın etkin hedefleri planın ekosistemini içeriyor mu — bu ikisi orada
+denetlenir.
+
+> **Etkin hedef** = `agents[].targets`, yoksa kök `targetsDefault`. Doğrulayıcı zaten bu
+> çözümlemeyi yapıyor (`validate-manifest.mjs:57`); spec'in önceki "literal `targets`"
+> ifadesi yanlıştı.
+
+Ayrıca doğrulayıcı bugün agent adı tekilliğini denetlemiyor — aynı ad iki kez geçse
+`Set`'e sessizce ekleniyor (`validate-manifest.mjs:32-40`). Kapı sahipleri ada göre
+çözümlendiği için bu artık bir belirsizlik kaynağıdır; tekillik kuralı eklenir.
 
 Doğrulayıcı bunların hepsini denetler; hata kurulum anında çıkar, çalışma anında değil.
 
@@ -237,16 +288,26 @@ Doğrulayıcı bunların hepsini denetler; hata kurulum anında çıkar, çalı�
 Repo'nun mevcut kuralları iki şeyi zaten sabitliyor:
 
 - **Reviewer hiçbir dosyaya yazmaz** — `agent-md-rich.md:48` "kod yazmam, dosya
-  değiştirmem, yalnız rapor üretirim"; `:63,67` çalışma klasörü "hiçbiri".
+  değiştirmem, yalnız rapor üretirim"; `:65` çalışma klasörü "hiçbiri", `:68` "her şeyi
+  okurum, hiçbir şeye yazmam".
 - **Reviewer gate'i zaten evrenseldir** — `routing.md:74` "her kod değişikliği
   tamamlandıktan sonra reviewer çağrılır (review olmadan iş 'tamam' sayılmaz)";
   `governance-defaults.md:66` "her çıktı review gate'inden geçer".
 
 Bu yüzden:
 
-**`planGate.codeReviewer` yeni bir kapı kurmaz.** Zaten var olan reviewer gate'ini
-**işaret eder** ve tek yaptığı, o denetimin sonucunu plan dosyasına **kaydettirmektir**.
-Takımda reviewer yoksa değeri `null` olur ve o zaman zaten evrensel gate de yoktur.
+**`planGate.codeReviewer` o evrensel gate'in sahibidir.** Ayrı bir kapı kurulmaz ve
+sabit `reviewer` adı da kullanılmaz; routing'deki evrensel code-review satırı **bu alandan
+üretilir**:
+
+| `codeReviewer` | Sonuç |
+|---|---|
+| Bir agent adı | Evrensel code-review satırı o ad ile üretilir; denetim sonucu ayrıca plan dosyasına kaydedilir |
+| `null` | Evrensel code-review satırı **hiç üretilmez** — o projede kod review kapısı yoktur |
+
+Yani `planGate` açıkken `routing.md:45,74` ve `governance-defaults.md:66`'daki sabit
+reviewer referansları bu alana bağlanır. İki ayrı kapı ya da iki ayrı sahip kavramı
+kalmaz.
 
 **`.agent-work/` altına yalnız `work-plan` akışını yürüten agent yazar.** Denetleyiciler
 (plan reviewer / code reviewer) dosya değiştirmez; yapılandırılmış bir **sonuç** döndürür:
@@ -322,26 +383,65 @@ adr: docs/mimari/backend/adr/0003-kupon-dogrulama.md
 | `reviews.<kapı>[]` | O kapının karar geçmişi (silinmez, birikir) |
 | `adr` | Kalıcı karar çıktıysa ADR bağlantısı |
 
+#### Kayıt şeması (normatif)
+
+Her `reviews.<kapı>[]` girdisi tek bir şemaya uyar:
+
+```yaml
+{ by: <ekosistem>/<rol> | system, at: <YYYY-MM-DD>, revision: <n>,
+  verdict: approved | rejected | skipped, reasons: [<madde>, ...] }
+```
+
+| Alan | Kural |
+|---|---|
+| `by` | Denetleyen agent; **`skipped` kayıtlarında `system`** |
+| `at` | Kayıt tarihi |
+| `revision` | Kaydın verildiği andaki `plan.revision` |
+| `verdict` | Üç değerden biri |
+| `reasons` | **Her zaman dizi.** `rejected` ise boş olamaz; diğerlerinde boş olabilir |
+
+**Denetleyici çıktısı → kayıt eşlemesi:** denetleyici `{verdict, reviewed_revision,
+reasons}` döndürür; `work-plan` `by`'yi çözümlenmiş kapı sahibinden, `at`'i tarihten üretir,
+`revision` alanına `reviewed_revision`'ı yazar. `reviewed_revision` o an diskteki
+`plan.revision`'dan farklıysa kayıt **yazılmaz** — plan denetim sırasında değişmiştir,
+denetim tekrarlanır.
+
 #### `revision` neyi sayar
 
 Onayın hangi içeriğe verildiğini bilmek için planın kendi sürüm numarası gerekir. Ama her
 dosya değişikliği onayı bozmamalı — yoksa ilerleme notu yazmak plan onayını düşürürdü.
 
-**`revision`'ı artıran değişiklikler** (planlama içeriği):
-`title`, `domain`, `paths`, ve gövdedeki `## Ne ve neden`, `## Nasıl`, `## Açık sorular`
-bölümleri.
+**`revision`'ı artıran değişiklikler:** `title`, `domain`, `paths`, **`executor`**, ve
+`## İlerleme` ile `## Denetim notları` **dışındaki her gövde bölümü**.
 
-**Artırmayan değişiklikler** (defter tutma ve yürütme):
-`## İlerleme` ve `## Denetim notları` bölümleri, `reviews`, `executor`, `adr`, ve dosyanın
-klasörler arasında taşınması.
+`executor` bilerek bu listededir: işi kimin yapacağı değişmişse plan onayı da o değişikliği
+görmemiştir.
+
+**Artırmayan değişiklikler** (defter tutma): `## İlerleme`, `## Denetim notları`, `reviews`,
+`adr`, ve dosyanın klasörler arasında taşınması.
 
 #### Bir kapı ne zaman geçilmiş sayılır
 
-`reviews.<kapı>` dizisinin **son kaydı** `verdict: approved` **ve**
-`kayıt.revision === plan.revision` ise o kapı geçilmiştir. Aksi halde geçilmemiştir —
-hiç kayıt yoksa, son kayıt `rejected` ise, ya da onay eski bir revizyona aitse.
+Kural **yapılandırmaya duyarlıdır** — kapının o anki sahibine bakar:
 
-Bu tek kural üç durumu birden çözer: bekliyor, reddedildi, onay bayatladı.
+| Kapı sahibi | Geçilmiş sayılma koşulu |
+|---|---|
+| Bir agent adı | Son kayıt `approved`, `kayıt.revision === plan.revision`, **ve** `kayıt.by` güncel çözümlenmiş sahiple aynı |
+| `null` | Son kayıt `skipped`, `kayıt.revision === plan.revision`, **ve** sahip hâlâ `null` |
+
+`by` karşılaştırması şart: kapı sahibi kurulumdan sonra değiştirilirse eski denetleyicinin
+onayı geçerli kalmamalıdır.
+
+Bu kural dört durumu birden çözer: bekliyor, reddedildi, onay bayatladı, denetleyici değişti.
+
+#### Revizyon geçerliliği yalnız plan review'a uygulanır
+
+Plan `revision`'ı **planlama içeriğini** tanımlar, yazılan kodu değil. Bu yüzden kod
+review onayı bir revizyona bağlanamaz — plan hiç değişmeden kod değişebilir.
+
+**Kod review onayı tek seferlik yetkidir:** yalnız o andaki `in-progress/ → done/`
+hareketini yetkilendirir. İş `done/`'a gitmeden kesilir ve sonra devam ederse, kod review
+**yeniden çalıştırılır**; eski kayıt geçmiş olarak durur ama yetki vermez.
 
 **Kayıtlar asla silinmez (Codex bulgu 5).** Reddedilen bir kapının kaydı kalır ve red
 gerekçesi görünür olur. `verdict` üç değer alır:
@@ -409,7 +509,7 @@ karşılar; `.agent-memory/` emsali de kökte tek.
 | `planReviewer` boş | Kapı 1 atlanır; plan doğrudan kullanıcıya |
 | `codeReviewer` boş | Kapı 3 atlanır; iş biterken doğrudan kullanıcıya |
 | Plan review sonrası gövde değişti | `revision` artar, o kapının kaydı geçersizleşir, yeniden geçer; kullanıcı "gerek yok" diyebilir |
-| Plan reddedildi | `draft/`'ta kalır, `reviews.plan-review` temizlenir, red gerekçesi gövdeye yazılır |
+| Plan reddedildi | `draft/`'ta kalır; `rejected` kaydı **durur** (silinmez), sonraki kayıt onu geçersiz kılar; gerekçe `## Denetim notları`'na |
 | İş yarıda kaldı | `in-progress/`'te kalır; `## İlerleme` nerede kalındığını söyler |
 | Preset kapalıyken skill çağrıldı | "Plan kapısı bu projede kapalı. Açmak kurulum sonrası bir işlemdir ve proje-yükseltme skill'i gerektirir." der — var olmayan komuta yönlendirmez |
 | `.agent-work/` yok | İskeleti kurmayı teklif eder |
@@ -466,9 +566,15 @@ edilir; her biri bir kez elle yürütülüp doğrulanır:
 | R13 | Kapı 3 reddeder | `in-progress/`'te kalır, gerekçe `## Denetim notları`'nda |
 | R14 | `planReviewer: null` | Kapı 1 atlanır, `reviews.plan-review` += `skipped`, akış kullanıcıya gider |
 | R15 | `codeReviewer: null` | Kapı 3 atlanır, `skipped` kaydı düşer, iş kullanıcı onayıyla `done/`'a gider |
-| R16 | İş iptal edilir | `done/`'a taşınır, iptal gerekçesi `## Denetim notları`'nda |
+| R16 | İş iptal edilir | `done/`'a taşınır, `outcome: cancelled`, gerekçe `## Denetim notları`'nda |
 | R17 | `.agent-work/` yok, skill çağrılır | İskeleti kurmayı teklif eder |
 | R18 | Kullanıcı "plansız yap" der | Hiç plan dosyası oluşmaz, `.agent-work/`'e yazılmaz |
+| R19 | `approved/`'daki planın `## Nasıl` bölümü değişir | `revision` artar, dosya `draft/`'a döner, kapı 1 yeniden geçilir |
+| R20 | `in-progress/`'teki planın `executor`'ı değişir | `revision` artar, `draft/`'a döner, `## İlerleme` korunur |
+| R21 | Kod review onaylandı, iş `done/`'a gitmeden kesildi, sonra devam edildi | Kod review **yeniden** çalıştırılır; eski kayıt yetki vermez |
+| R22 | Kapı sahibi kurulumdan sonra değiştirildi | Eski sahibin onayı geçersiz sayılır, yeni sahiple yeniden geçilir |
+| R23 | Denetleyici, plan denetim sırasında değişmişken sonuç döndürür | `reviewed_revision` uyuşmaz, kayıt yazılmaz, denetim tekrarlanır |
+| R24 | `inbox/` kaydı iptal edilir | Silinir; `done/`'a taşınmaz |
 
 ## Kararlar
 
