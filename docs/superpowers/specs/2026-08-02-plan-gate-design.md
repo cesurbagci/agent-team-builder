@@ -353,7 +353,7 @@ done/         arşiv
 | Plan düzeltilir | `draft/` (kalır) | `revision` artar |
 | Kapı 2 — kullanıcı onaylar | `draft/` → `approved/` | — |
 | Kapı 2 — kullanıcı değişiklik ister | `draft/` (kalır) | Geri bildirim `s:review-notes` bölümüne |
-| Havuzdan seçilir | `approved/` → `in-progress/` | `s:progress` doldurulmaya başlar |
+| Havuzdan seçilir | `approved/` → `in-progress/` | `s:progress` **taşımadan önce** doldurulur; boş `s:progress` ile `in-progress/`'e girilmez |
 | İş bırakılır | `in-progress/` (kalır) | `s:progress` güncellenir |
 | Planlama içeriği değişir | `approved/` veya `in-progress/` → `draft/` | `revision` artar; `s:progress` korunur |
 | Kapı 3 onaylar | `in-progress/` → `done/` | `reviews.code-review` += `approved` |
@@ -370,7 +370,7 @@ done/         arşiv
 |---|---|
 | `inbox/` | `revision`, `reviews`, `executor`, `outcome` **bulunmaz** |
 | `draft/` | `revision` var; `s:progress` bölümü mevcut — hiç başlanmamış planda **`<!-- progress:not-started -->`** sentinel'iyle, `in-progress/`'ten geri dönen planda **korunmuş ilerlemeyle** |
-| `approved/` | `planReviewPassed` **doğru** olmalı |
+| `approved/` | `planReviewPassed` **doğru** olmalı; `s:progress` `draft/`'taki gibi (sentinel ya da korunmuş ilerleme) |
 | `in-progress/` | `planReviewPassed` doğru; `s:progress` doldurulmuş (sentinel yok) |
 | `done/` | **Arşivdir, yeniden değerlendirilmez** — aşağıya bak |
 
@@ -700,6 +700,8 @@ eklenmez.
 | R37 | `.agents/skills/`'ten çağrı, hedefler yalnız `codex` | `currentEcosystem` = `codex`, soru sorulmaz |
 | R38 | `.agents/skills/`'ten çağrı, hedefler `codex` ve `opencode` | Skill **durur ve sorar** |
 | R39 | `.agents/skills/`'ten çağrı, ne `codex` ne `opencode` hedefli | **Dur** — bu konumdan çağrı desteklenmiyor |
+| R40 | `draft/`'a geri dönmüş yarım iş yeniden onaylanır | `approved/`'a taşınır; `s:progress` **korunur**, sentinel geri konmaz |
+| R41 | Geri dönmüş iş havuzdan tekrar seçilir | `in-progress/`'e geçer; mevcut ilerleme **korunup güncellenir**, sıfırlanmaz |
 
 **Değişmez savunmaları (negatif senaryolar):**
 
@@ -749,7 +751,7 @@ eklenmez.
 | 10 | Kayıt şeması tek; `reasons` her zaman dizi | Tekil/çoğul karışıklığı üç yerde çelişki üretmişti |
 | 11 | `.agent-work/`'e yalnız `work-plan` akışı yazar | `agent-md-rich.md:48,65,68` reviewer'a yazma alanı vermiyor |
 | 12 | `codeReviewer` evrensel gate'in tek otoritesi; metni setup yazar | Generator prose üretmiyor (`sync-agent-config.mjs:348`) |
-| 13 | Tüm bölümler her zaman mevcut; `s:progress` sentinel'li | Şablon yaşam döngüsü R1 ile çelişiyordu |
+| 13 | Tüm bölümler her zaman mevcut; sentinel yalnız **hiç başlanmamış** planı işaretler | Şablon yaşam döngüsü R1 ile çelişiyordu; sentinel'i her `draft/`'a şart koşmak geri dönen işin ilerlemesini sildirirdi |
 | 14 | `outcome: cancelled` yalnız `done/`'da, revizyon-etkilemez | `done/` iki sonucu barındırıyor |
 | 15 | Kimlik `<ekosistem>/<agent-adı>`; ad portatif slug | Adlar dosya yoluna gömülüyor; `/` yasağı tek başına yetmez |
 | 15b | Ekosistem, o an çalışılan ekosistem olmalı | Çekirdek ekosistem sınırını geçmiyor |

@@ -104,7 +104,7 @@ kuralıdır ve skill'e aittir.
 |---|---|
 | `inbox/` | `revision`, `reviews`, `executor`, `outcome` bulunmaz |
 | `draft/` | `revision` var; `s:progress` mevcut — hiç başlanmamışsa sentinel'li, `in-progress/`'ten geri döndüyse korunmuş ilerlemeyle |
-| `approved/` | `planReviewPassed` doğru |
+| `approved/` | `planReviewPassed` doğru; `s:progress` `draft/`'taki gibi (sentinel ya da korunmuş ilerleme) |
 | `in-progress/` | `planReviewPassed` doğru; `s:progress` doldurulmuş |
 | `done/` | **Arşivdir, yeniden değerlendirilmez** |
 
@@ -138,7 +138,7 @@ Bu doğrulamaların kod tarafı `validate-manifest.mjs`'e aittir (ayrı iş).
 nasıl davrandığını ölçüyor. Bu yüzden kabul **elle yürütülen senaryolarla** yapılır ve
 senaryo listesi tasarım dokümanındadır:
 
-- **R1–R39** — yaşam döngüsünün her geçişi (plan yazımı, kapı onayı/reddi, revizyon
+- **R1–R41** — yaşam döngüsünün her geçişi (plan yazımı, kapı onayı/reddi, revizyon
   bayatlaması, havuz seçimi, yarım iş devamı, iptal, ekosistem çözümlemesi)
 - **N1–N25** — değişmez savunmaları (geçersiz klasör hareketi, bozuk kayıt şeması, kapalı
   inbox anahtar listesi, dosya adı/`id` uyumsuzluğu)

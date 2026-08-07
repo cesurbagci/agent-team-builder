@@ -208,9 +208,12 @@ o iş için kural atlanır.
   FIFO değildir.
 - Seçilen dosya için `planReviewPassed`'ı ve `executor` geçerliliğini **yeniden doğrula** —
   sahibi değişmiş, plan düzenlenmiş ya da agent projeden çıkarılmış olabilir.
-- Doğruysa **önce** `s:progress`'i doldur (sentinel'i sil, yerine son durum / sıradaki adım
-  / engel / dokunulan yerler yaz), **sonra** dosyayı `.agent-work/in-progress/`'e taşı.
-  Sıra bu; boş `s:progress` ile `in-progress/`'e girilmez.
+- Doğruysa **önce** `s:progress`'i doldur, **sonra** dosyayı `.agent-work/in-progress/`'e
+  taşı. Sıra bu; boş `s:progress` ile `in-progress/`'e girilmez.
+  - `s:progress` sentinel içeriyorsa (iş hiç başlamamış): sentinel'i sil, yerine son durum
+    / sıradaki adım / engel / dokunulan yerler yaz.
+  - Sentinel yoksa iş **daha önce başlamış ve geri dönmüştür**: oradaki ilerlemeyi
+    **koru**, üstüne yaz — sıfırlama. Yapılmış işi kaybetmek bu akışın en pahalı hatasıdır.
 - İşi her bıraktığında `s:progress`'i güncelle — başka bir oturum oradan devam edecek.
 
 ## İşi bitirme
