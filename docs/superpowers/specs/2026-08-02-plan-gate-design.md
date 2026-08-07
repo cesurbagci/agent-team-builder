@@ -4,7 +4,8 @@
 - **Durum:** Onaylandı — uygulama planı bekliyor
 - **Kapsam:** 5. anayasa preseti olarak plan kapısı + onaylanmış iş havuzu, **tek ekosistem içinde**
 
-> **Revizyon notu (2. tur).** İlk sürüm Codex review'ından 11, revize sürüm 13 bulgu aldı.
+> **Revizyon notu (3. tur).** Üç Codex review turu: 11, 13 ve 10 bulgu. Bu sürüm üçünü de
+> karşılıyor.
 > Bu sürüm hepsini karşılıyor ve **kapsam ikiye bölündü**: çapraz ekosistem çağırma
 > (`agent-invoke`, ortak verdict şeması, read-only güvenliği) buradan çıkarıldı ve
 > `2026-08-XX-agent-invoke-design.md` olarak ayrı ele alınacak. Sebep: verdict protokolü
@@ -86,7 +87,8 @@ yönlendirmez.
 | `validate-manifest.mjs` | `planGate` boolean + kök nesne doğrulaması |
 | `wizard-state.md` | constitution örneği 5 alana çıkar |
 | `README.md` (iki dil) | "all on by default" düzeltilir |
-| `routing.md` | `.agent-work/**` sahipliği notu |
+| `routing.md` | `.agent-work/**` sahipliği notu; `docs/** → architect` satırının architect'siz takımda üretilmediği |
+| `governance-defaults.md` | Reviewer'ın evrensel gate tanımı ile `planGate.codeReviewer` ilişkisi (yeni kapı değil, kayıt) |
 | `canonical-source.md`, `sync-pipeline.md` | `.agent-work/` generated değildir |
 
 ### Sihirbaz soru düzeni (Codex bulgu 4 — çözüm)
@@ -120,8 +122,10 @@ dosyalar Türkçe **referanstır**, verbatim kopyalanmaz.
 **1. `.agent-work/` generated değildir.** `sync` onu üretmez, drift kontrolüne sokmaz.
 Setup yalnız boş iskeleti bir kez kurar. Generated-file ledger'ı da onu sahiplenmez.
 
-**2. Şablon `docs/` altına konmaz.** Routing'de `docs/** → architect` kuralı her zaman
-eklenir; şablon `docs/` altında olsaydı planı yazacak developer kendi şablonuna erişemezdi.
+**2. Şablon `docs/` altına konmaz.** `docs/` architect'in yazma alanıdır (`routing.md:20`);
+developer oradan **okuyabilir** ama yazamaz (`agent-md-rich.md:49,67`). Plan dosyaları
+sürekli değişen çalışma artefaktıdır, bu yüzden architect'in sahibi olduğu ağacın dışında
+durmalıdır — şablon da onlarla aynı yerde olur ki tek bir çalışma alanı kalsın.
 
 ## Yaşam döngüsü
 
@@ -145,6 +149,30 @@ done/         arşiv (+ kalıcı karar çıktıysa ADR)
 
 **Durum = bulunduğu klasör.** Frontmatter'da `status` alanı yoktur.
 
+### Tüm geçişler (Codex bulgu 6)
+
+Yukarıdaki şema mutlu yolu gösterir. Tam liste:
+
+| Olay | Nereden → Nereye | Artefakt |
+|---|---|---|
+| Ham kayıt analiz edilir | `inbox/` → `draft/` | Plan yazılır, `revision: 1` |
+| Plan doğrudan yazılır | — → `draft/` | `revision: 1` |
+| **Kapı 1 onaylar** | `draft/` (kalır) | `reviews.plan-review` += approved |
+| **Kapı 1 reddeder** | `draft/` (kalır) | `reviews.plan-review` += rejected; gerekçe `## Denetim notları`'na |
+| Plan düzeltilir | `draft/` (kalır) | `revision` artar; kapı 1 kaydı bayatlar |
+| **Kapı 2 — kullanıcı onaylar** | `draft/` → `approved/` | — |
+| **Kapı 2 — kullanıcı değişiklik ister** | `draft/` (kalır) | Geri bildirim `## Denetim notları`'na; düzeltme `revision`'ı artırır |
+| Havuzdan seçilir | `approved/` → `in-progress/` | `## İlerleme` açılır |
+| İş bırakılır | `in-progress/` (kalır) | `## İlerleme` güncellenir |
+| **Kapı 3 onaylar** | `in-progress/` → `done/` | `reviews.code-review` += approved |
+| **Kapı 3 reddeder** | `in-progress/` (kalır) | `reviews.code-review` += rejected; gerekçe `## Denetim notları`'na |
+| İş iptal edilir | herhangi → `done/` | `## Denetim notları`'na iptal gerekçesi; `reviews`'a dokunulmaz |
+| Kapı sahibi `null` | ilgili kapı | `reviews.<kapı>` += `skipped`, akış devam eder |
+
+**Kullanıcının "plansız yap" kaçışı:** hiç plan dosyası oluşturulmaz ve `.agent-work/`'e
+hiçbir şey yazılmaz. Bilinçli bir atlamadır, izlenmez. (İzlenmesi istenirse kullanıcı
+`inbox/` kaydı açtırabilir — ama bu zorunlu değildir.)
+
 ### Kapıları hangi rol tutar (Codex bulgu 7 — çözüm)
 
 Rol adları **sabit varsayılmaz**; sihirbaz özel adlara izin veriyor ve `writesCode: false`
@@ -160,6 +188,38 @@ olan birden fazla agent olabilir. Bu yüzden kapı sahipleri **manifest'te açı
 Sihirbaz bunu kurulumda sorar (aday listesi: `writesCode: false` olan agent'lar), doğrulayıcı
 da değerlerin gerçek agent adları olduğunu denetler. `null` = o kapı yok.
 
+**Denetleyici hangi ekosistemde çalışır?** Çekirdek kural: **executor'ın ekosisteminde.**
+Değerler çıplak rol adıdır; ekosistem plandaki `executor`'dan türer. Doğrulayıcı, seçilen
+kapı sahibinin o ekosistemde gerçekten üretildiğini denetler (agent'ın `targets`'ı o
+ekosistemi içermeli) — aksi halde kurulum sırasında hata verir, çalışma anında değil.
+
+Bu kural manifest'te açıkça yazılır:
+
+```jsonc
+"planGate": {
+  "planReviewer": "architect",
+  "codeReviewer": "reviewer",
+  "reviewerEcosystem": "same-as-executor"   // şimdilik tek geçerli değer
+}
+```
+
+`reviewerEcosystem` alanı bugün tek değer alıyor ama **şimdi tanımlanıyor** ki çapraz
+ekosistem fazı geldiğinde `"codex"` gibi bir değer eklemek yeterli olsun; kapı sahibi
+konfigürasyonunun şekli değişmesin.
+
+#### Manifest değişmezleri (Codex bulgu 4 — normatif)
+
+| Kural | Davranış |
+|---|---|
+| `constitution.planGate: true` | Kök `planGate` nesnesi **zorunludur**; yoksa manifest geçersiz |
+| `constitution.planGate` `false` ya da yok | Kök `planGate` nesnesi **bulunmamalıdır**; varsa manifest geçersiz |
+| `planReviewer`, `codeReviewer` | Nesne varsa **ikisi de zorunlu**; değer bir agent adı ya da `null` |
+| `reviewerEcosystem` | Zorunlu; şimdilik tek geçerli değer `"same-as-executor"` |
+| Uygunluk | Kapı sahibi olarak verilen agent `writesCode: false` olmalı |
+| Erişilebilirlik | Kapı sahibi agent, `executor`'ın ekosisteminde üretiliyor olmalı (`targets` içermeli) |
+
+Doğrulayıcı bunların hepsini denetler; hata kurulum anında çıkar, çalışma anında değil.
+
 | Adım | Kim | Boşsa |
 |---|---|---|
 | Plan yazımı | Kod yolunun sahibi developer (`routing[]`) | — |
@@ -168,9 +228,42 @@ da değerlerin gerçek agent adları olduğunu denetler. `null` = o kapı yok.
 | İşletme | `executor` | — |
 | **Kapı 3** — kod review | `planGate.codeReviewer` | Kapı atlanır, iş biterken doğrudan kullanıcıya |
 
-> **routing ile çelişki notu.** `routing.md:18` `docs/** → architect` satırını "her zaman
+> **routing ile çelişki notu.** `routing.md:20` `docs/** → architect` satırını "her zaman
 > eklenir" diyor. Architect'siz bir takımda o satır da üretilmez; `routing.md` bu koşulu
 > belirtecek şekilde güncellenir. Aksi halde var olmayan bir role yönlendirme kalır.
+
+### Denetim sözleşmesi ve kim yazar (oturum içi)
+
+Repo'nun mevcut kuralları iki şeyi zaten sabitliyor:
+
+- **Reviewer hiçbir dosyaya yazmaz** — `agent-md-rich.md:48` "kod yazmam, dosya
+  değiştirmem, yalnız rapor üretirim"; `:63,67` çalışma klasörü "hiçbiri".
+- **Reviewer gate'i zaten evrenseldir** — `routing.md:74` "her kod değişikliği
+  tamamlandıktan sonra reviewer çağrılır (review olmadan iş 'tamam' sayılmaz)";
+  `governance-defaults.md:66` "her çıktı review gate'inden geçer".
+
+Bu yüzden:
+
+**`planGate.codeReviewer` yeni bir kapı kurmaz.** Zaten var olan reviewer gate'ini
+**işaret eder** ve tek yaptığı, o denetimin sonucunu plan dosyasına **kaydettirmektir**.
+Takımda reviewer yoksa değeri `null` olur ve o zaman zaten evrensel gate de yoktur.
+
+**`.agent-work/` altına yalnız `work-plan` akışını yürüten agent yazar.** Denetleyiciler
+(plan reviewer / code reviewer) dosya değiştirmez; yapılandırılmış bir **sonuç** döndürür:
+
+```
+verdict:           approved | rejected
+reviewed_revision: <planın o anki revision değeri>
+reasons:           [kısa madde listesi]   # rejected ise zorunlu
+```
+
+`work-plan` bu sonucu `reviews.<kapı>[]`'ya kayıt olarak ekler ve gerekiyorsa dosyayı bir
+sonraki klasöre taşır. Denetleyicinin yetkileri değişmez.
+
+> Bu, kapsam dışı bırakılan **çapraz-CLI verdict protokolü değildir**. Burada denetleyici
+> aynı oturumda subagent olarak çalışır; sözleşme yalnız cevabın hangi üç alanı taşıması
+> gerektiğini söyler. Farklı ekosistemlerin CLI çıktılarını normalize etmek ayrı spec'in
+> işidir ve bu üç alan orada da hedef biçim olarak kullanılabilir.
 
 ### Kapı 2'nin sunum kuralı
 
@@ -205,6 +298,7 @@ Gövde iki-üç cümle. Analiz edilmemiştir.
 ```yaml
 ---
 title: Kupon alanına doğrulama ekle
+revision: 3
 domain: backend
 paths: [apps/api/src/coupon/**]
 created: 2026-08-02
@@ -212,36 +306,64 @@ source: agent:backend-developer
 executor: claude/backend-developer
 reviews:
   plan-review:
-    - { by: claude/architect, at: 2026-08-02, revision: 3, verdict: approved }
+    - { by: claude/architect, at: 2026-08-02, revision: 2, verdict: rejected, reason: "kabul kriteri ölçülemez" }
+    - { by: claude/architect, at: 2026-08-03, revision: 3, verdict: approved }
   code-review: []
 adr: docs/mimari/backend/adr/0003-kupon-dogrulama.md
 ---
 ```
 
-**`reviews` kapı bazlıdır (Codex bulgu F).** Düz bir `reviewed_by` listesi plan review ile
-kod review'ı ayıramaz — özellikle aynı agent iki kapıya da bakıyorsa. Her kayıt hangi
-revizyonu onayladığını taşır; plan gövdesi değişince `revision` artar ve o kapının kaydı
-geçersizleşir.
-
 | Alan | Anlamı |
 |---|---|
+| `revision` | Planlama içeriğinin sürümü; **1'den başlar**, zorunlu |
 | `domain`, `paths` | Hangi projeye/modüle ait |
 | `source` | Kaydı kim açtı |
 | `executor` | İşin sahibi — `<ekosistem>/<rol>` |
-| `reviews.<kapı>[]` | O kapıdan kim, hangi revizyonda, hangi kararla geçirdi |
+| `reviews.<kapı>[]` | O kapının karar geçmişi (silinmez, birikir) |
 | `adr` | Kalıcı karar çıktıysa ADR bağlantısı |
+
+#### `revision` neyi sayar
+
+Onayın hangi içeriğe verildiğini bilmek için planın kendi sürüm numarası gerekir. Ama her
+dosya değişikliği onayı bozmamalı — yoksa ilerleme notu yazmak plan onayını düşürürdü.
+
+**`revision`'ı artıran değişiklikler** (planlama içeriği):
+`title`, `domain`, `paths`, ve gövdedeki `## Ne ve neden`, `## Nasıl`, `## Açık sorular`
+bölümleri.
+
+**Artırmayan değişiklikler** (defter tutma ve yürütme):
+`## İlerleme` ve `## Denetim notları` bölümleri, `reviews`, `executor`, `adr`, ve dosyanın
+klasörler arasında taşınması.
+
+#### Bir kapı ne zaman geçilmiş sayılır
+
+`reviews.<kapı>` dizisinin **son kaydı** `verdict: approved` **ve**
+`kayıt.revision === plan.revision` ise o kapı geçilmiştir. Aksi halde geçilmemiştir —
+hiç kayıt yoksa, son kayıt `rejected` ise, ya da onay eski bir revizyona aitse.
+
+Bu tek kural üç durumu birden çözer: bekliyor, reddedildi, onay bayatladı.
+
+**Kayıtlar asla silinmez (Codex bulgu 5).** Reddedilen bir kapının kaydı kalır ve red
+gerekçesi görünür olur. `verdict` üç değer alır:
+
+| `verdict` | Anlamı |
+|---|---|
+| `approved` | Kapı geçildi |
+| `rejected` | Reddedildi; `reason` zorunlu, gerekçe `## Denetim notları`'na da yazılır |
+| `skipped` | O kapının sahibi `null`; kayıt "bu kapı yoktu" der, sessiz atlama olmaz |
 
 ### Plan gövdesi — zorunlu bölümler (Codex bulgu D)
 
 Şablon serbest metin değildir; denetleyici tanımsız bir gövdeyi tutarlı denetleyemez.
 `TEMPLATE.md` şu bölümleri zorunlu tutar:
 
-| Bölüm | İçerik |
-|---|---|
-| `## Ne ve neden` | Sade dille, örnekle. **Kabul kriteri** burada. |
-| `## Nasıl` | Yaklaşım, etkilenen bileşenler, riskler |
-| `## Açık sorular` | Yoksa "yok" yazılır — boş bırakılmaz |
-| `## İlerleme` | `in-progress/`'e geçince doldurulur (aşağıya bak) |
+| Bölüm | İçerik | `revision` artırır mı |
+|---|---|---|
+| `## Ne ve neden` | Sade dille, örnekle. **Kabul kriteri** burada. | Evet |
+| `## Nasıl` | Yaklaşım, etkilenen bileşenler, riskler | Evet |
+| `## Açık sorular` | Yoksa "yok" yazılır — boş bırakılmaz | Evet |
+| `## Denetim notları` | Kapıların red gerekçeleri ve kullanıcı geri bildirimi | Hayır |
+| `## İlerleme` | `in-progress/`'e geçince doldurulur (aşağıya bak) | Hayır |
 
 **Kapı 1'in reddetme ölçütleri:** kabul kriteri yok/ölçülemez, etkilenen yollar
 `paths` ile tutarsız, açık soru cevapsız bırakılmış, yaklaşım mevcut bir ADR'ye aykırı.
@@ -299,48 +421,74 @@ generator'ın, iskelet ve şablonlar sihirbazın işidir.
 
 **`validate-manifest.mjs --selftest`:**
 1. `constitution.planGate` boolean; string reddedilir; `true` ve `false` kabul edilir.
-2. `planGate.planReviewer` / `codeReviewer` verilmişse manifest'teki gerçek agent adları
-   olmalı; tanımsız ad reddedilir; `null` kabul edilir.
+2. `planGate: true` ama kök `planGate` nesnesi yok → reddedilir.
+3. `planGate` `false`/yok ama kök nesne var → reddedilir.
+4. Kök nesnede `planReviewer` ya da `codeReviewer` eksik → reddedilir; `null` kabul edilir.
+5. Kapı sahibi tanımsız bir agent adı → reddedilir.
+6. Kapı sahibi `writesCode: true` olan bir agent → reddedilir.
+7. Kapı sahibi, `executor`'ın ekosisteminde üretilmiyor (`targets` içermiyor) → reddedilir.
+8. `reviewerEcosystem` eksik ya da `"same-as-executor"` dışında → reddedilir.
 
 **`sync-agent-config.mjs --selftest`:**
-3. `.agent-source/skills/work-plan/` kaynağı ekosistem skill dizinlerine mirror'lanır.
-4. `.agent-work/` içine konan dosya sync sonrası yerinde durur, `--check` temiz çıkar ve
-   ledger'da görünmez — generator o dizini hiç sahiplenmez.
+9. `.agent-source/skills/work-plan/` kaynağı ekosistem skill dizinlerine mirror'lanır.
+10. `.agent-work/` içine konan dosya sync sonrası yerinde durur, `--check` temiz çıkar ve
+    ledger'da görünmez — generator o dizini hiç sahiplenmez.
 
 **Sihirbaz çıktısı (elle kabul listesi):**
-5. Preset açık kurulumda: `.agent-work/` + beş alt dizin, `README.md`, `TEMPLATE.md`,
-   `.agent-source/skills/work-plan/SKILL.md` oluşur ve **metinleri `docLanguage` dilindedir**.
-6. Preset kapalı kurulumda: hiçbiri oluşmaz, hiçbir mirror üretilmez.
+11. Preset açık kurulumda: `.agent-work/` + beş alt dizin, `README.md`, `TEMPLATE.md`,
+    `.agent-source/skills/work-plan/SKILL.md` oluşur ve **metinleri `docLanguage` dilindedir**.
+12. Preset kapalı kurulumda: hiçbiri oluşmaz, hiçbir mirror üretilmez, `.agent-work/` yoktur.
+    `TEMPLATE.md`'nin zorunlu bölümleri yalnız `templates/plan.md` üzerinden denetlenir.
 
-**Runtime senaryo matrisi (Codex bulgu G).** `work-plan` skill'i insan tarafından şu
-senaryolarla kabul edilir — her biri bir kez elle yürütülüp doğrulanır:
+> **Preset kapalıyken skill davranışı test edilmez (Codex bulgu 2).** Preset kapalı
+> kurulumda `work-plan` skill'i hiç kurulmaz, dolayısıyla çağrılamaz — "kapalıyken doğru
+> mesajı ver" diye bir senaryo mantıksızdır. Skill'in o mesajı yalnız **tek bir gerçek
+> durumda** anlamlıdır: skill kurulu (preset açık kurulmuş) ama sonradan manifest'te
+> `planGate` `false` yapılmış. R10 bu duruma göre yazılmıştır.
+
+**Runtime senaryo matrisi.** `work-plan` skill'i insan tarafından şu senaryolarla kabul
+edilir; her biri bir kez elle yürütülüp doğrulanır:
 
 | # | Senaryo | Beklenen |
 |---|---|---|
-| R1 | Yeni iş, plan yazılır | `draft/`'ta dosya, zorunlu bölümler dolu |
-| R2 | Kapı 1 onaylar | `reviews.plan-review` kaydı düşer, kullanıcıya sade özet sunulur |
-| R3 | Kapı 1 reddeder | `draft/`'ta kalır, gerekçe gövdede |
-| R4 | Kullanıcı onaylar | `approved/`'a taşınır |
-| R5 | Onay sonrası gövde değişir | `revision` artar, kapı 1 kaydı geçersizleşir |
-| R6 | Havuzdan iki iş seçilir | İkisi `in-progress/`'e geçer, sıra dayatılmaz |
-| R7 | İş yarıda bırakılır, yeni oturum açılır | `## İlerleme`'den kaldığı yer okunur |
-| R8 | Kapı 3 onaylar | `done/`'a taşınır |
-| R9 | `planReviewer: null` | Kapı 1 atlanır, akış kullanıcıya gider |
-| R10 | Preset kapalı, skill çağrılır | Doğru mesaj, var olmayan komuta yönlendirme yok |
+| R1 | Yeni iş, plan yazılır | `draft/`'ta dosya, zorunlu bölümler dolu, `revision: 1` |
+| R2 | Kapı 1 onaylar | `reviews.plan-review` += approved (revision eşleşir), kullanıcıya sade özet |
+| R3 | Kapı 1 reddeder | `draft/`'ta kalır, kayıt `rejected` + `reason`, gerekçe `## Denetim notları`'nda |
+| R4 | Red sonrası düzeltilir | `revision` artar, kapı 1 yeniden geçilir |
+| R5 | Kullanıcı onaylar | `approved/`'a taşınır |
+| R6 | Kullanıcı değişiklik ister | `draft/`'ta kalır, geri bildirim `## Denetim notları`'nda |
+| R7 | Onaylı planın gövdesi değişir | `revision` artar, kapı 1 onayı bayatlar, yeniden geçilmesi gerekir |
+| R8 | `## İlerleme` güncellenir | `revision` **artmaz**, hiçbir onay bayatlamaz |
+| R9 | Havuzdan iki iş seçilir | İkisi `in-progress/`'e geçer, sıra dayatılmaz |
+| R10 | Skill kurulu ama `planGate` sonradan `false` yapılmış | "Bu projede plan kapısı kapalı; açmak proje-yükseltme skill'i gerektirir" der; var olmayan komuta yönlendirmez |
+| R11 | İş yarıda bırakılır, yeni oturum | `## İlerleme`'den kaldığı yer okunur |
+| R12 | Kapı 3 onaylar | `done/`'a taşınır |
+| R13 | Kapı 3 reddeder | `in-progress/`'te kalır, gerekçe `## Denetim notları`'nda |
+| R14 | `planReviewer: null` | Kapı 1 atlanır, `reviews.plan-review` += `skipped`, akış kullanıcıya gider |
+| R15 | `codeReviewer: null` | Kapı 3 atlanır, `skipped` kaydı düşer, iş kullanıcı onayıyla `done/`'a gider |
+| R16 | İş iptal edilir | `done/`'a taşınır, iptal gerekçesi `## Denetim notları`'nda |
+| R17 | `.agent-work/` yok, skill çağrılır | İskeleti kurmayı teklif eder |
+| R18 | Kullanıcı "plansız yap" der | Hiç plan dosyası oluşmaz, `.agent-work/`'e yazılmaz |
 
 ## Kararlar
 
 | # | Karar | Gerekçe |
 |---|---|---|
 | 1 | Anayasa preseti + projeye kurulan skill; hook değil | Hook Claude'a özgü; çok hedefli repoda kapı tek ekosistemde çalışırdı |
-| 2 | Preset default kapalı, **ayrı soruda** sorulur | Artefakt üreten tek kural; ayrıca 4-seçenek sınırı ile çakışmaz |
+| 2 | Preset default kapalı, **ayrı soruda** sorulur | Artefakt üretiyor; ayrıca 4-seçenek sınırıyla çakışmaz |
 | 3 | `plan-gate.md` = kurulum sözleşmesi, skill = runtime prosedürü | Aynı kural iki yerde anlatılırsa drift olur |
-| 4 | Kapı sahipleri manifest'te ad olarak yazılır | Rol adları özelleştirilebilir; `writesCode:false` tek başına ayırt etmiyor |
-| 5 | Durum = klasör; `in-progress/` + gövdede `## İlerleme` | Klasör "başladı"yı, bölüm "nerede kaldı"yı söyler |
-| 6 | Tek `executor`; çoklu domain'de danışma, gerekirse plan bölünür | Path→executor eşlemesi yeni kavram getirir, YAGNI |
-| 7 | `reviews` kapı bazlı ve `revision` taşır | Düz liste plan/kod review'ı ayıramaz, bayatlığı da anlamaz |
-| 8 | Gövdenin zorunlu bölümleri var | Denetleyici tanımsız gövdeyi tutarlı denetleyemez |
-| 9 | Eşik yok, kaçış kullanıcıda | Eşik kararını agent verirse kapı sessizce atlanır |
-| 10 | Tüm insan-okur çıktılar `docLanguage`'de üretilir | Sihirbazın kendi dil sözleşmesi |
-| 11 | Preset açma/kapama proje-yükseltme skill'ine ait | `sync` yeni kaynak yaratmıyor; buradaki talimat yanlış olurdu |
-| 12 | Çapraz ekosistem ayrı spec | Verdict protokolü başlı başına iş; çekirdek ona bağlı kalmamalı |
+| 4 | Kapı sahipleri manifest'te ad olarak yazılır, değişmezleri normatif | Rol adları özelleştirilebilir; `writesCode:false` tek başına ayırt etmiyor |
+| 5 | Denetleyici, `executor`'ın ekosisteminde çalışır; `reviewerEcosystem` şimdi tanımlanır | İkinci faz alan **eklesin**, konfigürasyonun şeklini değiştirmesin |
+| 6 | `planGate.codeReviewer` yeni kapı kurmaz; mevcut evrensel reviewer gate'ini işaret eder ve sonucunu kaydeder | `routing.md:74` ve `governance-defaults.md:66` o gate'i zaten zorunlu kılıyor |
+| 7 | `.agent-work/`'e yalnız `work-plan` akışı yazar; denetleyiciler sonuç döndürür | `agent-md-rich.md:48,63` reviewer'a hiçbir yazma alanı vermiyor |
+| 8 | `revision` planlama içeriğini sayar; ilerleme ve defter tutma artırmaz | Aksi halde ilerleme notu yazmak plan onayını düşürürdü |
+| 9 | Kapı geçildi = son kayıt `approved` **ve** revision eşleşiyor | Tek kural bekliyor/reddedildi/bayatladı üçünü birden çözer |
+| 10 | Karar kayıtları silinmez; `approved\|rejected\|skipped` | Boş dizi üç farklı durumu ayıramıyordu |
+| 11 | Durum = klasör; `in-progress/` + gövdede `## İlerleme` | Klasör "başladı"yı, bölüm "nerede kaldı"yı söyler |
+| 12 | Tek `executor`; çoklu domain'de danışma, gerekirse plan bölünür | Path→executor eşlemesi yeni kavram getirir, YAGNI |
+| 13 | Gövdenin zorunlu bölümleri ve kapı 1'in reddetme ölçütleri tanımlı | Denetleyici tanımsız gövdeyi tutarlı denetleyemez |
+| 14 | Eşik yok, kaçış kullanıcıda ve izlenmez | Eşik kararını agent verirse kapı sessizce atlanır |
+| 15 | Tüm insan-okur çıktılar `docLanguage`'de üretilir | Sihirbazın kendi dil sözleşmesi |
+| 16 | Preset açma/kapama proje-yükseltme skill'ine ait | `sync` yeni kaynak yaratmıyor; buradaki talimat yanlış olurdu |
+| 17 | Preset kapalıyken skill davranışı test edilmez | Skill hiç kurulmadığı için çağrılamaz; R10 gerçek duruma göre yazıldı |
+| 18 | Çapraz ekosistem ayrı spec | Verdict protokolü başlı başına iş; çekirdek ona bağlı kalmamalı |
