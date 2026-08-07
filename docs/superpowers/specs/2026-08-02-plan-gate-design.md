@@ -176,7 +176,7 @@ değişen çalışma artefaktıdır ve architect'in ağacının dışında durma
 | Ad tekilliği | `agents[].name` değerleri benzersiz olmalı |
 | Ad biçimi | `agents[].name` **portatif slug** olmalı: `^[a-z0-9]+(?:-[a-z0-9]+)*$` |
 | Ad tekilliği (büyük/küçük) | Karşılaştırma **büyük/küçük harf duyarsız** yapılır |
-| Routing zorunluluğu | `constitution.planGate: true` ise **en az bir uygun executor** bulunmalı |
+| Routing zorunluluğu | `constitution.planGate: true` ise **hedeflenen her ekosistemde en az bir uygun executor** bulunmalı |
 
 **Erişilebilirlik neden böyle tanımlı.** İlk taslak "kapı sahibi, `executor`'ın
 ekosisteminde olmalı" diyordu; bu doğrulayıcıya verilemez çünkü `executor` plan dosyasına
@@ -195,7 +195,10 @@ adlar da yol çakışması üretir. Portatif slug kuralı bunların hepsini kapa
 
 **Routing zorunluluğu neden var.** `routing` şemada opsiyonel (`manifest-schema.md:33`) ama
 uygun executor'lar ondan türüyor. Routing boşsa kurulum geçer, sonra **her plan çalışma
-anında reddedilir**. Bu yüzden preset açıkken en az bir uygun executor aranır.
+anında reddedilir**. Kontrol **ekosistem başınadır**: manifest birden çok ekosistemi
+hedefleyebilir (`manifest-schema.md:21`) ve çalışma anında `executor` o anki ekosistemde
+olmak zorundadır. Yalnız "global olarak bir executor var" demek, o ekosistemde iş
+yapılamayacağı durumu kaçırır.
 
 ## Kimlik biçimi
 
@@ -210,6 +213,23 @@ anında reddedilir**. Bu yüzden preset açıkken en az bir uygun executor aran�
 1. Ad gerçek bir agent ve **uygun executor'lardan biri**.
 2. Ekosistem o agent'ın etkin hedeflerinde bulunuyor.
 3. **Ekosistem, o an çalışılan ekosistemin kendisi** (`identity.ecosystem === currentEcosystem`).
+
+#### `currentEcosystem` nasıl belirlenir
+
+Skill kendi yüklendiği dizinden türetir:
+
+| Skill'in konumu | `currentEcosystem` |
+|---|---|
+| `.claude/skills/` | `claude` |
+| `.opencode/skills/` | `opencode` |
+| `.agents/skills/` | **Belirsiz** — Codex ve OpenCode ikisi de okur |
+
+Belirsiz durumda sırayla: manifest'te **tek** ekosistem hedefleniyorsa o kullanılır; birden
+fazla varsa skill **durur ve kullanıcıya sorar**. Sessizce tahmin etmez — yanlış ekosistem
+seçmek, çağrılamayacak bir denetleyici yazmak demektir.
+
+Bu yüzden `executor` ve `reviews[].by` değerleri her zaman bu çözümlenmiş ekosistemle
+yazılır.
 
 Üçüncü şart olmadan bir Codex oturumu `claude/backend-developer` değerini kabul eder, sonra
 onu çağıramaz — çekirdek spec ekosistem sınırını geçmiyor. `reviews[].by` de aynı prefix'ten
@@ -254,29 +274,30 @@ done/         arşiv
 | Ham kayıt analiz edilir | `inbox/` → `draft/` | Plan yazılır, `revision: 1`; `id`, `created`, `source` **korunur** (yakalama anının kaydıdır); inbox dosyası silinir |
 | Plan doğrudan yazılır | — → `draft/` | `revision: 1` |
 | Kapı 1 onaylar | `draft/` (kalır) | `reviews.plan-review` += `approved` |
-| Kapı 1 reddeder | `draft/` (kalır) | `reviews.plan-review` += `rejected`; gerekçe `## Denetim notları`'na |
+| Kapı 1 reddeder | `draft/` (kalır) | `reviews.plan-review` += `rejected`; gerekçe `s:review-notes` bölümüne |
 | Kapı 1 sahibi `null` | `draft/` (kalır) | `reviews.plan-review` += `skipped` (`by: system`) |
 | Plan düzeltilir | `draft/` (kalır) | `revision` artar |
 | Kapı 2 — kullanıcı onaylar | `draft/` → `approved/` | — |
-| Kapı 2 — kullanıcı değişiklik ister | `draft/` (kalır) | Geri bildirim `## Denetim notları`'na |
-| Havuzdan seçilir | `approved/` → `in-progress/` | `## İlerleme` doldurulmaya başlar |
-| İş bırakılır | `in-progress/` (kalır) | `## İlerleme` güncellenir |
-| Planlama içeriği değişir | `approved/` veya `in-progress/` → `draft/` | `revision` artar; `## İlerleme` korunur |
+| Kapı 2 — kullanıcı değişiklik ister | `draft/` (kalır) | Geri bildirim `s:review-notes` bölümüne |
+| Havuzdan seçilir | `approved/` → `in-progress/` | `s:progress` doldurulmaya başlar |
+| İş bırakılır | `in-progress/` (kalır) | `s:progress` güncellenir |
+| Planlama içeriği değişir | `approved/` veya `in-progress/` → `draft/` | `revision` artar; `s:progress` korunur |
 | Kapı 3 onaylar | `in-progress/` → `done/` | `reviews.code-review` += `approved` |
-| Kapı 3 reddeder | `in-progress/` (kalır) | `reviews.code-review` += `rejected`; gerekçe `## Denetim notları`'na |
+| Kapı 3 reddeder | `in-progress/` (kalır) | `reviews.code-review` += `rejected`; gerekçe `s:review-notes` bölümüne |
 | Kapı 3 sahibi `null` | `in-progress/` → `done/` | `reviews.code-review` += `skipped` (`by: system`); **ek kullanıcı onayı istenmez** — kullanıcı kapı 2'de zaten onayladı |
-| İş iptal edilir | `draft/`, `approved/`, `in-progress/` → `done/` | `outcome: cancelled`; gerekçe `## Denetim notları`'na |
+| İş iptal edilir | `draft/`, `approved/`, `in-progress/` → `done/` | `outcome: cancelled`; gerekçe `s:review-notes` bölümüne |
 | Ham kayıt iptal edilir | `inbox/` → **silinir** | Inbox kaydında `revision`/`reviews` yoktur; `done/`'a taşınmaz |
-| **Kapı sahibi manifest'te değişir** | `approved/`, `in-progress/` → `draft/` | `planReviewPassed` bozulur; plan kapısı yeni sahiple yeniden geçilir. `## İlerleme` korunur. **`done/` etkilenmez** |
+| **`planReviewer` manifest'te değişir** | `approved/`, `in-progress/` → `draft/` | `planReviewPassed` bozulur; plan kapısı yeni sahiple yeniden geçilir. `s:progress` korunur. **`done/` etkilenmez** |
+| **`codeReviewer` manifest'te değişir** | Hiçbir dosya taşınmaz | Kapı 3 anlık olduğu için geçmişi etkilemez; bir sonraki `done/` hareketinde yeni sahip çalışır |
 
 ### Klasör değişmezleri
 
 | Klasör | Değişmez |
 |---|---|
 | `inbox/` | `revision`, `reviews`, `executor`, `outcome` **bulunmaz** |
-| `draft/` | `revision` var; `## İlerleme` **`Başlamadı`** sentinel'iyle mevcut |
+| `draft/` | `revision` var; `s:progress` bölümü **`<!-- progress:not-started -->`** sentinel'iyle mevcut |
 | `approved/` | `planReviewPassed` **doğru** olmalı |
-| `in-progress/` | `planReviewPassed` doğru; `## İlerleme` (`s:progress`) doldurulmuş |
+| `in-progress/` | `planReviewPassed` doğru; `s:progress` doldurulmuş (sentinel yok) |
 | `done/` | **Arşivdir, yeniden değerlendirilmez** — aşağıya bak |
 
 **`done/` neden yeniden değerlendirilmez.** `planReviewPassed` *güncel* manifest sahibine
@@ -295,6 +316,7 @@ denetlenir, sonra unutulur.
 
 ```yaml
 ---
+id: 20260802-01
 title: Kupon alanında doğrulama eksik
 created: 2026-08-02
 source: agent:backend-developer      # user | agent:<ad>
@@ -302,11 +324,17 @@ source: agent:backend-developer      # user | agent:<ad>
 ```
 
 Gövde iki-üç cümle. Analiz edilmemiştir; başka alan taşımaz.
+Dosya adı: `<id>-<slug>.md` (örn. `20260802-01-kupon-dogrulama.md`).
+
+**`id` biçimi:** `<YYYYMMDD>-<nn>` — oluşturulduğu gün ve o gün içindeki iki haneli sıra.
+Portatiftir (yalnız rakam ve tire), sıralanabilir, elle okunabilir. Yeni kayıt açılırken
+`.agent-work/` altındaki **tüm** klasörler taranır ve o güne ait en büyük sıra bir artırılır.
 
 ### Plan dosyası
 
 ```yaml
 ---
+id: 20260802-01
 title: Kupon alanına doğrulama ekle
 revision: 3
 created: 2026-08-02
@@ -325,6 +353,7 @@ adr: docs/mimari/backend/adr/0003-kupon-dogrulama.md
 
 | Alan | Kural | `revision` artırır |
 |---|---|---|
+| `id` | Zorunlu, **değişmez**, `<YYYYMMDD>-<nn>` | Hayır |
 | `title` | Zorunlu | **Evet** |
 | `revision` | Zorunlu, 1'den başlar | — |
 | `created`, `source` | Zorunlu, **değiştirilemez** | Hayır |
@@ -334,7 +363,7 @@ adr: docs/mimari/backend/adr/0003-kupon-dogrulama.md
 | `outcome` | **Yalnız `done/`'da**, tek değer `cancelled` | Hayır |
 | `adr` | Opsiyonel | Hayır |
 
-Gövde bölümlerinden `## İlerleme` ve `## Denetim notları` **artırmaz**; diğer her bölüm
+Gövde bölümlerinden `s:progress` ve `s:review-notes` **artırmaz**; diğer her bölüm
 artırır.
 
 `executor` bilerek artıran listededir: işi kimin yapacağı değişmişse plan onayı da o
@@ -407,6 +436,11 @@ kaydı düşülür — ucuz bir işlem ve kural tek parça kalır.
 | Bir agent adı | O hareketten hemen önce çalıştırılan kod review'ın sonucu `approved` |
 | `null` | Her zaman yetkilidir (kapı yok) |
 
+**`doneAuthorized` yalnız başarılı tamamlamayı korur.** İptal ayrı bir geçiştir ve ayrı bir
+koruması vardır: `outcome: cancelled` yazılmış olması **ve** `s:review-notes` bölümünde
+gerekçe bulunması. İptal için kod review çalıştırılmaz — yarıda bırakılan bir işi iptal
+etmek için kodunu onaylatmak anlamsız olurdu.
+
 **Kod review onayı bir revizyona bağlanamaz** çünkü plan `revision`'ı planlama içeriğini
 tanımlar, yazılan kodu değil — plan hiç değişmeden kod değişebilir. Bu yüzden kod review
 kaydı geçmiş olarak durur ama **yetki vermez**: iş `done/`'a gitmeden kesilirse, devam
@@ -414,16 +448,16 @@ edildiğinde kod review yeniden çalıştırılır.
 
 ## Şablon
 
-Tüm bölümler **her zaman mevcuttur**; `## İlerleme` `draft/`'ta `Başlamadı` sentinel'iyle
-açılır ve `in-progress/`'e geçince doldurulur.
+Tüm bölümler **her zaman mevcuttur**; `s:progress` `draft/`'ta
+`<!-- progress:not-started -->` sentinel'iyle açılır ve `in-progress/`'e geçince doldurulur.
 
 | Bölüm | İçerik | `revision` artırır |
 |---|---|---|
-| `## Ne ve neden` | Sade dille, örnekle. **Kabul kriteri** burada | Evet |
-| `## Nasıl` | Yaklaşım, etkilenen bileşenler, riskler | Evet |
-| `## Açık sorular` | Yoksa "yok" yazılır | Evet |
-| `## Denetim notları` | Kapı red gerekçeleri, kullanıcı geri bildirimi, iptal gerekçesi | Hayır |
-| `## İlerleme` | `Başlamadı` \| son durum, sıradaki adım, engel, dokunulan yerler | Hayır |
+| `s:what` | Sade dille, örnekle. **Kabul kriteri** burada | Evet |
+| `s:how` | Yaklaşım, etkilenen bileşenler, riskler | Evet |
+| `s:questions` | Yoksa "yok" yazılır | Evet |
+| `s:review-notes` | Kapı red gerekçeleri, kullanıcı geri bildirimi, iptal gerekçesi | Hayır |
+| `s:progress` | `<!-- progress:not-started -->` \| son durum, sıradaki adım, engel, dokunulan yerler | Hayır |
 
 **Kapı 1'in reddetme ölçütleri:** kabul kriteri yok/ölçülemez, `paths` gövdeyle tutarsız,
 açık soru cevapsız, yaklaşım mevcut bir ADR'ye aykırı.
@@ -469,6 +503,7 @@ eklenmez.
 | V1 | `constitution.planGate` string | Reddedilir |
 | V2 | `planGate: true`, kök nesne yok | Reddedilir |
 | V3 | `planGate: false`, kök nesne var | Reddedilir |
+| V3b | `constitution.planGate` **hiç yok** ama kök nesne var | Reddedilir |
 | V4 | Kök nesnede `codeReviewer` eksik | Reddedilir |
 | V5 | `planReviewer: null`, `codeReviewer: null` | Kabul edilir |
 | V6 | Kapı sahibi tanımsız ad | Reddedilir |
@@ -479,6 +514,7 @@ eklenmez.
 | V11 | Agent adı slug kuralına uymuyor (`/`, `\`, boşluk, büyük harf, kontrol karakteri) | Reddedilir |
 | V12 | İki agent yalnız büyük/küçük harfle ayrışıyor (`Dev` / `dev`) | Reddedilir |
 | V13 | `planGate: true` ama hiç uygun executor yok (routing boş ya da yalnız kod yazmayan roller) | Reddedilir |
+| V13b | `planGate: true`, hedeflenen bir ekosistemde hiç uygun executor yok (ör. `targetsDefault` `[claude,codex]` ama tüm uygun executor'lar yalnız `claude` hedefliyor) | Reddedilir |
 | V14 | `planReviewer` anahtarı hiç yok | Reddedilir |
 | V15 | Kök `planGate` nesne değil (dizi/string) | Reddedilir |
 | V16 | Kapı sahibi değeri string ya da `null` değil (sayı/nesne) | Reddedilir |
@@ -499,30 +535,32 @@ eklenmez.
 | W3 | `codeReviewer` verilmiş kurulum | Routing/governance metni o adla yazılır |
 | W4 | `codeReviewer: null` kurulum | Evrensel code-review kuralı metinde hiç yer almaz |
 
-> **Kapalılık kuralı.** Bu spec'teki her normatif satır (manifest değişmezleri, klasör
-> değişmezleri, geçiş tablosu, alan sınıflandırması) **en az bir** pozitif ya da negatif
-> senaryoya eşlenmelidir. Uygulama planı yazılırken bu eşleme tablo hâlinde çıkarılır;
-> eşlenmemiş satır kalırsa ya senaryo eklenir ya kural gereksizdir.
+> **Kapalılık kuralı — bu spec içinde uygulanmıştır.** Her normatif satır (manifest
+> değişmezleri, klasör değişmezleri, geçiş tablosu, alan sınıflandırması) yukarıdaki
+> V/S/W/R/N kümelerinden **en az birine** eşlenir. Uygulama planı bu eşlemeyi yeniden
+> türetmez; yalnız senaryoları çalıştırılabilir hâle getirir. Yeni bir normatif satır
+> eklenirse ona bir senaryo da eklenir.
 
 ### Runtime kabul matrisi
 
 | # | Senaryo | Beklenen |
 |---|---|---|
-| R1 | Ham kayıttan plan yazılır | `inbox/` kaydı silinir, `draft/`'ta `revision: 1`, `## İlerleme` = `Başlamadı` |
+| R1 | Ham kayıttan plan yazılır | `inbox/` kaydı silinir, `draft/`'ta `revision: 1`, `s:progress` = `<!-- progress:not-started -->` |
 | R2 | Doğrudan plan yazılır (inbox'sız) | `draft/`'ta `revision: 1`, tüm bölümler mevcut |
 | R3 | Kapı 1 onaylar | `approved` kaydı, `reasons: []`, revision eşleşir |
-| R4 | Kapı 1 reddeder | `draft/`'ta kalır, `rejected` + boş olmayan `reasons`, gerekçe `## Denetim notları`'nda |
+| R4 | Kapı 1 reddeder | `draft/`'ta kalır, `rejected` + boş olmayan `reasons`, gerekçe `s:review-notes` bölümünde |
 | R5 | Red sonrası düzeltilir | `revision` artar, kapı 1 yeniden geçilir, eski kayıt durur |
 | R6 | Kullanıcı onaylar | `approved/`'a taşınır |
-| R7 | Kullanıcı değişiklik ister | `draft/`'ta kalır, geri bildirim `## Denetim notları`'nda; düzeltme `revision`'ı artırır |
-| R8 | `approved/`'da `## Nasıl` değişir | `revision` artar, `draft/`'a döner |
-| R9 | `in-progress/`'te `executor` değişir | `revision` artar, `draft/`'a döner, `## İlerleme` korunur |
-| R10 | `## İlerleme` güncellenir | `revision` **artmaz**, `planReviewPassed` bozulmaz |
+| R7 | Kullanıcı değişiklik ister | `draft/`'ta kalır, geri bildirim `s:review-notes` bölümünde; düzeltme `revision`'ı artırır |
+| R8 | `approved/`'da `s:how` değişir | `revision` artar, `draft/`'a döner |
+| R9 | `in-progress/`'te `executor` değişir | `revision` artar, `draft/`'a döner, `s:progress` korunur |
+| R10 | `s:progress` güncellenir | `revision` **artmaz**, `planReviewPassed` bozulmaz |
 | R11 | Havuzdan iki iş seçilir | İkisi `in-progress/`'e geçer, sıra dayatılmaz |
-| R12 | İş bırakılır, yeni oturum | `## İlerleme`'den kaldığı yer okunur |
-| R13 | Kapı 3 onaylar | `done/`'a taşınır |
-| R14 | Kapı 3 reddeder | `in-progress/`'te kalır, gerekçe `## Denetim notları`'nda |
-| R15 | `planReviewer: null` | `skipped` kaydı, akış kullanıcıya gider |
+| R12 | İş bırakılır, yeni oturum | `s:progress`'ten kaldığı yer okunur |
+| R13 | Kapı 3 onaylar | `done/`'a taşınır; `reviews.code-review` son kaydı `approved` |
+| R14 | Kapı 3 reddeder | `in-progress/`'te kalır, gerekçe `s:review-notes` bölümünde |
+| R15 | `planReviewer: null` | `skipped` kaydı (`by: system`, revision eşleşir), akış kullanıcıya gider |
+| R15b | `planReviewer: null` iken plan düzeltilir | `revision` artar, `planReviewPassed` bozulur, **yeni** `skipped` kaydı düşülür |
 | R16 | `codeReviewer: null` | `skipped` kaydı, iş doğrudan `done/`'a gider, ek onay istenmez |
 | R17 | Kod review onaylandı, `done/`'a gitmeden kesildi, devam edildi | Kod review **yeniden** çalışır; eski kayıt yetki vermez |
 | R18 | Kapı sahibi değiştirildi | Eski sahibin onayı geçersiz, yeni sahiple yeniden geçilir |
@@ -536,6 +574,7 @@ eklenmez.
 | R26 | Preset kapalı, skill kurulu | Doğru mesaj, var olmayan komuta yönlendirme yok |
 | R27 | `title` / `domain` / `paths` değişir | Üçü de `revision` artırır, `planReviewPassed` bozulur |
 | R28 | `adr` alanı eklenir | `revision` **artmaz** |
+| R28b | `s:review-notes` bölümü değişir | `revision` **artmaz**, `planReviewPassed` bozulmaz |
 | R29 | Kapı sahibi değişince `approved/`'daki iş | `draft/`'a döner, yeniden geçilir |
 | R30 | Kapı sahibi değişince `done/`'daki iş | **Dokunulmaz**, arşiv geçerli kalır |
 | R31 | Inbox'tan analiz edilen planın `id`/`created`/`source` değerleri | Korunur, yeniden üretilmez |
@@ -545,8 +584,10 @@ eklenmez.
 | # | Senaryo | Beklenen |
 |---|---|---|
 | N1 | `approved/`'a `planReviewPassed` yanlışken taşıma denenir | Reddedilir |
+| N1b | `in-progress/`'e `planReviewPassed` yanlışken taşıma denenir | Reddedilir |
 | N2 | `in-progress/`'e `s:progress` doldurulmadan geçilir | Reddedilir |
-| N3 | `done/`'a `doneAuthorized` olmadan taşıma denenir | Reddedilir |
+| N3 | `done/`'a **tamamlama olarak** `doneAuthorized` olmadan taşıma denenir | Reddedilir |
+| N3b | `done/`'a **iptal olarak** `outcome: cancelled` ya da gerekçe olmadan taşıma denenir | Reddedilir |
 | N4 | `inbox/` kaydına `revision`, `reviews`, `executor` ya da `outcome` eklenir (dördü ayrı ayrı) | Reddedilir |
 | N5 | `executor` uygun executor listesinde değil (routing'siz kod yazan agent) | Reddedilir |
 | N6 | `executor` ekosistemi o an çalışılan ekosistem değil | Reddedilir |
@@ -571,7 +612,7 @@ eklenmez.
 | 10 | Kayıt şeması tek; `reasons` her zaman dizi | Tekil/çoğul karışıklığı üç yerde çelişki üretmişti |
 | 11 | `.agent-work/`'e yalnız `work-plan` akışı yazar | `agent-md-rich.md:48,65,68` reviewer'a yazma alanı vermiyor |
 | 12 | `codeReviewer` evrensel gate'in tek otoritesi; metni setup yazar | Generator prose üretmiyor (`sync-agent-config.mjs:348`) |
-| 13 | Tüm bölümler her zaman mevcut; `## İlerleme` sentinel'li | Şablon yaşam döngüsü R1 ile çelişiyordu |
+| 13 | Tüm bölümler her zaman mevcut; `s:progress` sentinel'li | Şablon yaşam döngüsü R1 ile çelişiyordu |
 | 14 | `outcome: cancelled` yalnız `done/`'da, revizyon-etkilemez | `done/` iki sonucu barındırıyor |
 | 15 | Kimlik `<ekosistem>/<agent-adı>`; ad portatif slug | Adlar dosya yoluna gömülüyor; `/` yasağı tek başına yetmez |
 | 15b | Ekosistem, o an çalışılan ekosistem olmalı | Çekirdek ekosistem sınırını geçmiyor |
