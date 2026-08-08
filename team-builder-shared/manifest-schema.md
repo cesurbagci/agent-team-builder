@@ -75,7 +75,8 @@ Generated dosyalar **elle değiştirilmez**; kaynak burasıdır.
 - `model_reasoning_effort` (verildiyse) `{low, medium, high}` içinde olmalı.
 - Her `skills[].enforcement` `{mandatory, when-needed}` içinde olmalı.
 - `lead` verildiyse bir agent `name`'i olmalı.
-- `routing[].path` ve `routing[].role` dolu olmalı; `routing[].role` bir agent `name`'i olmalı.
+- `routing[].path` dolu bir **string** olmalı (generator yolları `typeof === "string"` ile eşler; sayı gibi bir değer doğrulamayı geçip üretimde sessizce düşerdi) ve `routing[].role` dolu olmalı; `routing[].role` bir agent `name`'i olmalı.
+- Bir yolun verildiği rol **dosya yazabilmeli** (`sandbox_mode` `read-only` değil; alan yoksa `writesCode`). Routing sahipliktir ve bağlayıcıdır — yazamayan bir rol onu yerine getiremez.
 - `constitution` alanları (verildiyse) boolean olmalı.
 - `writesCode` (verildiyse) boolean olmalı — kapı sahipliği bu alana bakar, falsy bir
   sayı/metin "kod yazmıyor" sayılamaz.

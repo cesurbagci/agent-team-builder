@@ -233,8 +233,10 @@ o iş için kural atlanır.
    önce** yap; `done/` arşivdir, oraya girdikten sonra dosya değişmez.
 3. **`done/`'a taşıma yetkisi:** son `code-review` kaydı **ve** `kayıt.revision ===
    plan.revision` şartı birlikte sağlanmalı — `planReviewPassed`'daki ile aynı ölçü:
-   - denetleyici bir ad taşıyorsa: son kayıt `approved` ve `kayıt.revision` planın
-     `revision`'ına eşit;
+   - denetleyici bir ad taşıyorsa: son kayıt `approved`, `kayıt.revision` planın
+     `revision`'ına eşit **ve** `kayıt.by` **güncel** denetleyiciyle aynı. Denetleyici
+     sonradan değiştiyse eski sahibin onayı yetki vermez — kapı 3'ü yeni sahiple
+     çalıştır (`planReviewPassed` kapı 1 için aynı şeyi yapar);
    - denetleyici tanımsızsa: son kayıt `skipped`, `kayıt.revision` eşit **ve** denetleyici
      **hâlâ** tanımsız. Sonradan bir kod denetleyicisi tanımlandıysa eski `skipped` kaydı
      yetki vermez; kapı 3'ü çalıştır.

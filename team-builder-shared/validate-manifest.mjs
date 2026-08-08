@@ -328,13 +328,37 @@ export function validate(doc) {
           errors.push(`routing[${i}]: nesne olmalı`);
           return;
         }
-        if (!r.path) errors.push(`routing[${i}]: path dolu olmalı`);
+        // Must be a string, not merely truthy: the generator matches routes
+        // with `typeof path === 'string'`, so a number here validates and is
+        // then silently dropped — the role keeps its write permission and
+        // loses the directory that justified it.
+        if (typeof r.path !== "string" || r.path === "") {
+          errors.push(`routing[${i}]: path dolu bir string olmalı`);
+        }
         if (!r.role) {
           errors.push(`routing[${i}]: role dolu olmalı`);
         } else if (!agentsByName.has(r.role)) {
           errors.push(`routing[${i}]: role "${r.role}" bir agent name olmalı`);
         }
       });
+    }
+  }
+
+  // The routing table assigns ownership, and routing.md makes that ownership
+  // binding ("bypass = mimari ihlal"). A role that cannot change files cannot
+  // discharge it: Codex would tell it to write a directory OpenCode denies it,
+  // and the mandatory route would name an agent incapable of taking the work.
+  // A reviewer belongs to the table as a gate, not as a path.
+  for (const r of Array.isArray(doc.routing) ? doc.routing : []) {
+    const owner = r && r.role ? agentsByName.get(r.role) : undefined;
+    if (!owner) continue;
+    const mayWrite = owner.sandbox_mode
+      ? owner.sandbox_mode !== "read-only"
+      : owner.writesCode !== false;
+    if (!mayWrite) {
+      errors.push(
+        `routing: "${r.path}" yolu "${r.role}" rolüne verilmiş ama o rol dosya yazamıyor (sandbox_mode "read-only" ya da yazma izni yok) — yol sahipliği yazabilen bir role verilmeli`
+      );
     }
   }
 
@@ -722,6 +746,49 @@ if (process.argv.includes("--selftest")) {
       ],
     },
     "routing'de en az bir yol verilmeli"
+  );
+
+  // V7f — a path routed to a role that cannot write it. Codex would announce a
+  // write area the other targets deny, and the binding route would name an
+  // agent that cannot take the work.
+  expectReject(
+    "V7f path routed to a read-only role",
+    {
+      targetsDefault: ["claude"],
+      routing: [
+        { path: "src/**", role: "dev" },
+        { path: "src/auth/**", role: "security-reviewer" },
+      ],
+      agents: [
+        { name: "dev", model: "sonnet" },
+        {
+          name: "security-reviewer",
+          model: "opus",
+          writesCode: false,
+          sandbox_mode: "read-only",
+        },
+      ],
+    },
+    "dosya yazamıyor"
+  );
+
+  // V7g — a non-string path passes a truthiness check but the generator drops
+  // it, leaving the owner with a write permission and no directory.
+  expectReject(
+    "V7g routing path is not a string",
+    {
+      targetsDefault: ["claude"],
+      routing: [{ path: 123, role: "doc-writer" }],
+      agents: [
+        {
+          name: "doc-writer",
+          model: "haiku",
+          writesCode: false,
+          sandbox_mode: "workspace-write",
+        },
+      ],
+    },
+    "path dolu bir string olmalı"
   );
 
   // …and the same roster is fine once the route exists.

@@ -106,14 +106,6 @@ architect'in, yazma" denir:
 | `agent-md-rich.md:72` | "architect: doc tarafını ben güncellerim" | Bu cümle **yazılmaz** |
 | `agent-md-rich.md:119` | developer yasağı `<arch-root>/` içeriyor | `<arch-root>/` yasaktan **çıkar** |
 | `governance-defaults.md:53` | developer `consults: [architect]` | `consults` **boş** olur |
-
-> **Sahiplik architect'e değil, routing'e bağlıdır.** Tablodaki "yazılmaz / çıkar / üretilmez"
-> kararları, dokümanı sahiplenen **hiçbir** rol kalmadığı durum içindir. Architect yok ama
-> doc-writer varsa (`governance-defaults.md` → Doc Writer), doküman yolu routing'de ona verilir
-> ve bu satırlar **silinmez — sahibin adıyla yazılır**. Üretimdeki ölçü tektir: routing'de kod
-> yazmayan (`writesCode: false`) bir role verilmiş her yol o rolün yazma alanıdır ve herkes için
-> yasaktır; böyle bir yol yoksa yasak da yoktur. Bu, `<arch-root>`/`docs/` gibi bir yol dizgisine
-> değil rolün yazarlığına baktığı için per-module yerleşimde (`modules/<m>/docs/**`) de çalışır.
 | `governance-defaults.md:76,81,86` | QA / security-reviewer / doc-writer `consults: [architect]` | Üçünde de `consults` **boş** olur — aynı hatanın kopyaları |
 | `governance-defaults.md:87` | doc-writer: "Mimari kararları architect üretir" | Bu cümle **yazılmaz**; ADR yazma yasağı da kalkar (yazacak başka rol yoktur) |
 | `governance-defaults.md:63` | reviewer "gerekirse architect'e eskale eder" | Eskalasyon hedefi **kullanıcı** olur |
@@ -125,6 +117,14 @@ architect'in, yazma" denir:
 | `team-builder-setup/SKILL.md:143` | "developer → architect'e danışır" varsayılanı | Varsayılan **boş** `consults` olur |
 | `team-builder-setup/SKILL.md:166` | "şüphede architect'e danışılır" | "şüphede **kullanıcıya** sorulur" olur |
 | `team-builder-setup/SKILL.md:184` | Workaround preseti "belirsizlikte mimara gidilir" | "belirsizlikte **kullanıcıya** sorulur" olur |
+
+> **Sahiplik architect'e değil, routing'e bağlıdır.** Tablodaki "yazılmaz / çıkar / üretilmez"
+> kararları, dokümanı sahiplenen **hiçbir** rol kalmadığı durum içindir. Architect yok ama
+> doc-writer varsa (`governance-defaults.md` → Doc Writer), doküman yolu routing'de ona verilir
+> ve bu satırlar **silinmez — sahibin adıyla yazılır**. Üretimdeki ölçü tektir: routing'de kod
+> yazmayan (`writesCode: false`) bir role verilmiş her yol o rolün yazma alanıdır ve herkes için
+> yasaktır; böyle bir yol yoksa yasak da yoktur. Bu, `<arch-root>`/`docs/` gibi bir yol dizgisine
+> değil rolün yazarlığına baktığı için per-module yerleşimde (`modules/<m>/docs/**`) de çalışır.
 
 **Architect yoksa danışma hedefi kullanıcıdır.** Repo'nun danışma zinciri her yerde
 architect'e işaret ediyor; o rol yoksa zincirin ucu boşta kalmamalı — belirsizlik
@@ -546,7 +546,7 @@ kaydı düşülür — ucuz bir işlem ve kural tek parça kalır.
 
 | `codeReviewer` | Koşul |
 |---|---|
-| Bir agent adı | O hareketten hemen önce çalıştırılan kod review'ın sonucu `approved` **ve** kaydın `revision`'ı planın `revision`'ına eşit |
+| Bir agent adı | O hareketten hemen önce çalıştırılan kod review'ın sonucu `approved`, kaydın `revision`'ı planın `revision`'ına eşit **ve** `kayıt.by` güncel denetleyiciyle aynı |
 | `null` | Kapı yoktur, ama hareket serbest değildir: `skipped` kaydı düşülür ve son kayıt `skipped`, `revision` eşit **ve** `codeReviewer` **hâlâ** `null` olmalıdır |
 
 > **Neden `null` de koşulludur.** "Her zaman yetkili" demek, kapı sonradan açıldığında

@@ -27,11 +27,16 @@ color: <purple | blue | green | red | yellow | ...>
 ```
 
 - `tools`: writesCode developer'lar `Read, Grep, Glob, Write, Edit, Bash`. Kod yazmayan
-  roller için ölçü **routing**'dir, rol adı değil: routing'de kendisine bir yol verilmiş
-  doc-only roller (architect, doc-writer, …) o yola yazacakları için `Read, Grep, Glob,
-  Write, Edit, Bash` alır — production koda yazmadıkları gövdede netleştirilir. Yol
-  verilmemiş roller (reviewer, security-reviewer) `Read, Grep, Glob` (+reviewer için
-  `Bash`) alır.
+  roller için ölçü rol adı değil, **iki şartın birlikte sağlanması**dır: routing'de
+  kendisine bir yol verilmiş **ve** `sandbox_mode` `read-only` değil. İkisi de sağlanıyorsa
+  (architect, doc-writer, …) `Read, Grep, Glob, Write, Edit, Bash` alır — production koda
+  yazmadıkları gövdede netleştirilir. Sağlanmıyorsa (reviewer, security-reviewer; ya da
+  yolu olmayan herhangi bir doc-only rol) `Read, Grep, Glob` (+reviewer için `Bash`) alır.
+
+  > Bu, Codex `developer_instructions`'ın ve OpenCode `permission.edit`'in kullandığı
+  > **aynı** ölçüdür (`sandbox_mode`, yoksa `writesCode`). Üç hedef aynı soruya farklı
+  > cevap verirse aynı rol bir yerde yazma alanı alıp başka yerde reddedilir — son üç
+  > denetim turunun bulduğu hataların çoğu tam olarak buydu.
 - `model`, `color`: manifest `agents[].model` / `agents[].color`.
 - `memory: project` her zaman (per-agent memory disiplini, anayasa preset 3).
 - Codex-özel metadata (`model_reasoning_effort`, `sandbox_mode`, `nickname_candidates`,

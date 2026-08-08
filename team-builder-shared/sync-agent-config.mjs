@@ -318,20 +318,35 @@ function renderDeveloperInstructions(agent, manifest, projectName) {
   // `docs/guides/**` sits inside `docs/**`. Routing resolves most-specific
   // first, so barring this agent from the parent outright would contradict
   // the grant it was just given; name the exception instead.
-  const routeBase = p => p.replace(/\*+$/, '').replace(/\/+$/, '')
-  // Routes carry globs, so the containing route has to be matched as a pattern:
-  // `*` spans one segment, `**` spans any number. A literal prefix test would
-  // miss `modules/pay/docs/guides/**` inside `modules/*/docs/**`.
+  // The directory a route governs: `docs/**` governs `docs`.
+  const scopeOf = p => p.replace(/\/+$/, '').replace(/\/\*+$/, '')
+  // The containing route is matched as a pattern built from the glob as
+  // written — `*` spans part of one segment, `**` spans any number of segments
+  // including none, and a wildcard-free route names a directory and governs
+  // what sits under it. Comparing stripped strings instead conflated `docs/**`
+  // (whole subtree), `docs/*` (one level) and `docs`, so `docs/*` "contained"
+  // `docs/a/b/**`, `**` contained nothing, and an inner `**` could not match
+  // zero segments.
+  const routeMatcher = glob => {
+    const g = /\*/.test(glob) ? glob : `${glob.replace(/\/+$/, '')}/**`
+    const segs = g.split('/').filter(seg => seg !== '')
+    let source = '^'
+    segs.forEach((seg, i) => {
+      const last = i === segs.length - 1
+      if (seg === '**') {
+        source += last ? '(?:[^/]+/)*[^/]*' : '(?:[^/]+/)*'
+      } else {
+        source +=
+          seg.replace(/[.+^${}()|[\]\\?]/g, '\\$&').replace(/\*/g, '[^/]*') +
+          (last ? '' : '/')
+      }
+    })
+    return new RegExp(`${source}$`)
+  }
   const nestedIn = (inner, outer) => {
-    const pattern = routeBase(outer)
-      .split('/')
-      .map(seg =>
-        seg === '**'
-          ? '.*'
-          : seg.replace(/[.+^${}()|[\]\\?]/g, '\\$&').replace(/\*/g, '[^/]*')
-      )
-      .join('/')
-    return new RegExp(`^${pattern}/`).test(routeBase(inner))
+    const innerScope = scopeOf(inner)
+    if (innerScope === scopeOf(outer)) return false
+    return routeMatcher(outer).test(innerScope)
   }
   const prohibit = route => {
     const carved = ownRoutes.filter(o => nestedIn(o.path, route.path))
@@ -1062,6 +1077,49 @@ async function runSelftest() {
     ).includes('haric'),
     'a single-star segment must not swallow a deeper path'
   )
+  // Three patterns a star-stripping comparison got wrong. Each is a valid
+  // routing pair, and each produced a contradictory instruction.
+  const globCases = [
+    // `**` governs everything, so the carve-out is required.
+    [['**', 'docs/guides/**'], true, 'a blanket ** route must still carve out a nested owner'],
+    // An inner `**` has to be able to match zero segments.
+    [
+      ['modules/**/docs/**', 'modules/docs/guides/**'],
+      true,
+      'an inner ** must match zero segments',
+    ],
+    // `docs/*` reaches one level only, so `docs/a/b/**` is not inside it.
+    [
+      ['docs/*', 'docs/a/b/**'],
+      false,
+      'a single-star route must not be treated as covering a deeper path',
+    ],
+    // …but it does reach one level.
+    [['docs/*', 'docs/a/**'], true, 'a single-star route still covers its own level'],
+    // A route with no wildcard names a directory and governs what is under it.
+    [['docs', 'docs/guides/**'], true, 'a wildcard-free route governs its subtree'],
+    // Two roles on the same path: neither is inside the other, so the
+    // prohibition carries no exception.
+    [['**', '**'], false, 'a route identical to the prohibited one is not nested in it'],
+  ]
+  for (const [[outer, inner], wantCarve, why] of globCases) {
+    const rendered = renderDeveloperInstructions(
+      { name: 'doc-writer', writesCode: false, sandbox_mode: 'workspace-write' },
+      {
+        docLanguage: 'tr',
+        routing: [
+          { path: outer, role: 'architect' },
+          { path: inner, role: 'doc-writer' },
+        ],
+        agents: [
+          { name: 'architect', writesCode: false, sandbox_mode: 'workspace-write' },
+          { name: 'doc-writer', writesCode: false, sandbox_mode: 'workspace-write' },
+        ],
+      },
+      'demo'
+    )
+    assert(rendered.includes('haric') === wantCarve, why)
+  }
 
   // A code directory that merely reads like documentation belongs to the role
   // that writes code there; a routing row without a role names nobody.
