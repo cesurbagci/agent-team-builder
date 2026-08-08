@@ -167,6 +167,24 @@ export async function validatePlanGateArtifacts(rootDir) {
         errors.push('templates/work-plan-skill.md frontmatter needs a description')
       }
     }
+
+    // plan-gate.md never ships anywhere; this skill is the only copy of the
+    // rules a project ever sees. A marker it stops naming is a section agents
+    // stop writing, while the template still reserves a place for it — so the
+    // shipped file is held to the same standard as the setup contract.
+    for (const marker of SECTION_MARKERS) {
+      if (!skillTpl.includes(`<!-- ${marker} -->`)) {
+        errors.push(
+          `templates/work-plan-skill.md does not document marker <!-- ${marker} -->`
+        )
+      }
+    }
+    if (!skillTpl.includes(PROGRESS_SENTINEL)) {
+      errors.push(`templates/work-plan-skill.md does not document ${PROGRESS_SENTINEL}`)
+    }
+    if (!skillTpl.includes(CANCEL_NOTE_TAG)) {
+      errors.push(`templates/work-plan-skill.md does not document ${CANCEL_NOTE_TAG}`)
+    }
   }
 
   // A file literally named SKILL.md under team-builder-shared/ would be picked
@@ -260,6 +278,12 @@ const GOOD_SKILL = [
   '---',
   '',
   '# work-plan',
+  '',
+  // The shipped skill is the only copy of the rules a project sees, so it must
+  // name every machine marker it expects agents to write.
+  ...SECTION_MARKERS.map((m) => `<!-- ${m} -->`),
+  PROGRESS_SENTINEL,
+  CANCEL_NOTE_TAG,
   '',
 ].join('\n')
 
@@ -371,6 +395,25 @@ async function runSelftest() {
       'work-plan-skill.md must start with YAML frontmatter',
       'a skill template with no frontmatter',
       () => fs.writeFile(skillPath, '# work-plan\n')
+    )
+    await expectError(
+      'work-plan-skill.md does not document marker <!-- s:review-notes -->',
+      'a shipped skill that stopped naming a marker',
+      () =>
+        fs.writeFile(
+          skillPath,
+          GOOD_SKILL.replace('<!-- s:review-notes -->', 's:review-notes')
+        )
+    )
+    await expectError(
+      `work-plan-skill.md does not document ${PROGRESS_SENTINEL}`,
+      'a shipped skill missing the sentinel',
+      () => fs.writeFile(skillPath, GOOD_SKILL.replace(PROGRESS_SENTINEL, ''))
+    )
+    await expectError(
+      `work-plan-skill.md does not document ${CANCEL_NOTE_TAG}`,
+      'a shipped skill missing the cancellation tag',
+      () => fs.writeFile(skillPath, GOOD_SKILL.replace(CANCEL_NOTE_TAG, ''))
     )
     await expectError(
       'needs name: work-plan',
