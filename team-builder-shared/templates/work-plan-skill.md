@@ -86,6 +86,13 @@ adlandırılır.
 Türkçe karakter yok). Slug okunabilirlik içindir, tekilliği `id` sağlar; slug'sız dosya
 adı geçersizdir.
 
+**Slug'ı `title`'dan üretme kuralı** — çevirme, harf indirge: `ç→c ğ→g ı→i İ→i ö→o ş→s
+ü→u`, kalan harf-dışı karakterler tire olur, tireler tekilleşir, baştaki/sondaki tire
+düşer. Başlık uzunsa **ilk üç-dört anlamlı kelimede** kes. Başlığı İngilizceye çevirme:
+"Auth uçlarına oran sınırlama ekle" → `auth-uclarina-oran-sinirlama` (`auth-rate-limit`
+**değil**). Kural olmadan iki agent aynı başlık için farklı dosya adı üretir ve `title`
+değişip slug yenilendiğinde ad biçimi kayar.
+
 Yeni `id` verirken `.agent-work/` altındaki **tüm** klasörleri tara, o güne ait en büyük
 sırayı bir artır. Aynı `id`'yi taşıyan bir dosya zaten varsa **yazma, dur** — çakışmayı
 kullanıcıya bildir.
