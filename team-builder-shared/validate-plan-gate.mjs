@@ -159,10 +159,20 @@ export async function validatePlanGateArtifacts(rootDir) {
           if (!/^\s+\S/.test(lines[i])) break
           block.push(lines[i])
         }
+        // The gates are direct children of `reviews`. Accepting any depth let
+        // them sit under an intermediate key, where the runtime's
+        // `reviews.plan-review` finds nothing.
+        const indentOf = line => /^\s*/.exec(line)[0].length
+        const base = block.length > 0 ? indentOf(block[0]) : 0
         for (const gate of ['plan-review', 'code-review']) {
-          if (!block.some(line => new RegExp(`^\\s+${gate}:\\s*\\[\\s*\\]\\s*$`).test(line))) {
+          const found = block.some(
+            line =>
+              indentOf(line) === base &&
+              new RegExp(`^\\s*${gate}:\\s*\\[\\s*\\]\\s*$`).test(line)
+          )
+          if (!found) {
             errors.push(
-              `templates/plan.md reviews.${gate} must start as an empty array`
+              `templates/plan.md reviews.${gate} must be a direct child of reviews and start as an empty array`
             )
           }
         }
@@ -407,7 +417,7 @@ async function runSelftest() {
     // parent key leaves each gate to invent where its record goes.
     for (const gate of ['plan-review', 'code-review']) {
       await expectError(
-        `reviews.${gate} must start as an empty array`,
+        `reviews.${gate} must be a direct child`,
         `a plan template whose reviews omits ${gate}`,
         () =>
           fs.writeFile(
@@ -416,6 +426,21 @@ async function runSelftest() {
           )
       )
     }
+    // The gates are direct children of `reviews`. Nested one level deeper the
+    // keys still read as present, but the runtime's `reviews.plan-review`
+    // finds nothing there.
+    await expectError(
+      'must be a direct child of reviews',
+      'gate arrays nested under an intermediate key',
+      () =>
+        fs.writeFile(
+          planPath,
+          GOOD_PLAN.replace(
+            'reviews:\n  plan-review: []\n  code-review: []',
+            'reviews:\n  metadata:\n    plan-review: []\n    code-review: []'
+          )
+        )
+    )
     // The sentinel means "this progress section is untouched", so it has to be
     // in one, once. Elsewhere, replacing it either finds nothing or leaves a
     // copy behind and a resumed plan reads as not-started.

@@ -931,6 +931,23 @@ if (process.argv.includes("--selftest")) {
     },
     "kesişiyor ama biri ötekini kapsamıyor"
   );
+  // Every path `apps/**/main` matches is also matched by `apps/*/**`, so this
+  // is a nested pair, not an ambiguous one. Deciding containment by walking
+  // both token lists got this wrong: an inner `**` has to hold for every way
+  // it expands, and that is a different question from whether some expansion
+  // works.
+  expectAccept("V7k interior globstar nested under a star", {
+    targetsDefault: ["claude"],
+    routing: [
+      { path: "apps/*/**", role: "dev" },
+      { path: "apps/**/main", role: "other" },
+    ],
+    agents: [
+      { name: "dev", description: "rol aciklamasi", model: "sonnet" },
+      { name: "other", description: "rol aciklamasi", model: "sonnet" },
+    ],
+  });
+
   // …while a nested pair is exactly what the table is for.
   expectAccept("V7k nested routes stay valid", {
     targetsDefault: ["claude"],

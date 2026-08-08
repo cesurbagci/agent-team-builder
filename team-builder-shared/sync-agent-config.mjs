@@ -224,6 +224,14 @@ function stripFrontmatter(text) {
   return match ? text.slice(match[0].length) : text
 }
 
+// The frontmatter block itself, for checks that must not match prose lower
+// down the file. Returns null when the document does not open with one.
+function frontmatterOf(text) {
+  if (!text.startsWith('---')) return null
+  const match = text.match(/^---\n([\s\S]*?)\n---\n?/)
+  return match ? match[1] : null
+}
+
 function opencodeModel(agent) {
   if (agent.opencode_model) return agent.opencode_model
   return OPENCODE_MODEL_FALLBACK[agent.model] ?? 'anthropic/claude-sonnet-4-5'
@@ -489,6 +497,29 @@ async function syncAgents(ctx, manifest, projectName) {
     }
     const targets = agentTargets(agent, manifest)
 
+    // The Claude and OpenCode bodies come from this file verbatim, so its own
+    // frontmatter is never covered by the manifest checks. Claude will not
+    // load an agent without a description, and a name that disagrees with the
+    // manifest silently detaches the file from its routing and gate rules.
+    const sourceFrontmatter = frontmatterOf(await fs.readFile(source, 'utf8'))
+    if (sourceFrontmatter === null) {
+      ctx.mismatches.push(
+        `.agent-source/agents/${agent.name}.md must start with YAML frontmatter`
+      )
+    } else {
+      if (!/^description:\s*\S/m.test(sourceFrontmatter)) {
+        ctx.mismatches.push(
+          `.agent-source/agents/${agent.name}.md frontmatter needs a description`
+        )
+      }
+      const declared = /^name:\s*(\S+)\s*$/m.exec(sourceFrontmatter)
+      if (!declared || declared[1] !== agent.name) {
+        ctx.mismatches.push(
+          `.agent-source/agents/${agent.name}.md frontmatter name must be "${agent.name}"`
+        )
+      }
+    }
+
     if (targets.has('claude')) {
       const fileName = `${agent.name}.md`
       await ctx.copyExpected(source, ctx.resolveRoot('.claude', 'agents', fileName))
@@ -750,10 +781,40 @@ async function runSelftest() {
   )
 
   const architectBody =
-    '---\nname: architect\nmodel: opus\n---\n\n# Architect\n\nSkill: .claude/skills/demo-skill/SKILL.md\nDelege: technical-architect ajanina Task tool ile delege et.\n'
+    '---\nname: architect\ndescription: Mimari kararlar icin.\nmodel: opus\n---\n\n# Architect\n\nSkill: .claude/skills/demo-skill/SKILL.md\nDelege: technical-architect ajanina Task tool ile delege et.\n'
   await fs.writeFile(path.join(sourceRoot, 'agents', 'architect.md'), architectBody)
 
-  const developerBody = '---\nname: developer\nmodel: sonnet\n---\n\n# Developer\n\nKod yazar.\n'
+  // The Claude and OpenCode bodies are this file verbatim, so a source md
+  // without a description produces an agent Claude will not load, and a name
+  // that disagrees with the manifest detaches the file from its routing.
+  // Neither is visible to the manifest checks.
+  {
+    const sourcePath = path.join(sourceRoot, 'agents', 'architect.md')
+    const good = await fs.readFile(sourcePath, 'utf8')
+    for (const [label, broken, expected] of [
+      [
+        'a source md with no description',
+        good.replace('description: Mimari kararlar icin.\n', ''),
+        'needs a description',
+      ],
+      [
+        'a source md whose name disagrees with the manifest',
+        good.replace('name: architect', 'name: architekt'),
+        'frontmatter name must be "architect"',
+      ],
+      ['a source md with no frontmatter', '# Architect\n', 'must start with YAML frontmatter'],
+    ]) {
+      await fs.writeFile(sourcePath, broken)
+      const result = await silentGenerate({ root: fixtureRoot, checkOnly: true })
+      assert(
+        result.mismatches.some(m => m.includes(expected)),
+        `${label} must be reported (expected "${expected}", got ${JSON.stringify(result.mismatches)})`
+      )
+    }
+    await fs.writeFile(sourcePath, good)
+  }
+
+  const developerBody = '---\nname: developer\ndescription: Kod yazar.\nmodel: sonnet\n---\n\n# Developer\n\nKod yazar.\n'
   await fs.writeFile(path.join(sourceRoot, 'agents', 'developer.md'), developerBody)
 
   const claudeMd = '# CLAUDE\n\nProje talimati.\n'
@@ -1166,6 +1227,14 @@ async function runSelftest() {
       ['modules/*/docs/**', 'modules/pay/docs'],
       true,
       'a wildcard-free route is inside the subtree that contains it',
+    ],
+    // `a/*` also matches `a/somethingelse`, so it is not inside `a/a`. Deciding
+    // this needs a segment that is none of the literals in either route — with
+    // only `a` to try, the two look identical.
+    [
+      ['a/a', 'a/*'],
+      false,
+      'a wildcard is not contained by a literal that shares every segment name',
     ],
     // Overlapping without containment: `docs/y/z` is in `docs/*/*` and not in
     // `docs/x/*`, so the narrower route must not be carved out of it.
@@ -1747,7 +1816,7 @@ async function runOpencodeOnlySelftest() {
   )
   await fs.writeFile(
     path.join(sourceRoot, 'agents', 'architect.md'),
-    '---\nname: architect\nmodel: opus\n---\n\n# Architect\n\nSkill: .claude/skills/demo-skill/SKILL.md\n'
+    '---\nname: architect\ndescription: Mimari kararlar icin.\nmodel: opus\n---\n\n# Architect\n\nSkill: .claude/skills/demo-skill/SKILL.md\n'
   )
   // Present in the source but must NOT be emitted: claude is not a target.
   await fs.writeFile(path.join(sourceRoot, 'project', 'CLAUDE.md'), '# CLAUDE\n')

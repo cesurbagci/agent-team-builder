@@ -71,6 +71,11 @@ uğruna kuralı anlamsızlaştırır.
 Tablo satırı: `<glob/yol> → <rol>`. Eşleşme **en özgül (most-specific) yol önce**
 değerlendirilir; bir dosya birden fazla satıra uyarsa en dar glob kazanır.
 
+**Yol dilbilgisi (dar tutulur).** Segment ya düz metin, ya `*` (tek segment), ya `**` (sıfır ya da daha çok segment) olur. Segment içi kısmi joker (`src/*.ts`, `docs/a*`) ve `.`/`..` **kabul edilmez** — routing dizin sahipliği atar, dosya filtresi değil.
+İki yol **kısmen** çakışıyorsa (biri ötekini kapsamıyorsa, örn. `a/*/c` ile `a/b/*`)
+en özgül eşleşme kesişimde bir sahip seçemez; doğrulayıcı böyle bir tabloyu reddeder.
+Yollardan birini ötekinin altına al ya da tamamen ayır.
+
 > **Bu cümle tablonun yanına, CLAUDE.md/AGENTS.md'ye de yazılır.** Tablo çakışan satırlar
 > taşır (`docs/**` ve `docs/guides/**` gibi) ve çözüm kuralı olmadan hangi rolün sahip
 > olduğu okunamaz. Kural burada kalırsa projeye gitmez: bu dosya sihirbazın rehberidir,
