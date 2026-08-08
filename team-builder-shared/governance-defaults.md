@@ -54,7 +54,7 @@ Her developer rolü için varsayılan:
   (Karmaşık projelerde effort=high tercih edilebilir; sihirbaz proje karmaşıklığına göre yükseltebilir.)
 - `consults`: **[architect]** — architect takımda **yoksa boş `[]`**.
 - Kurallar (her developer'a, kendi domain'i doldurularak):
-  - Architect **varsa**: "Sadece kendi domain'inde (`<paths>`) kod yaz. `docs/` altına yazma — orası architect'in; gerekiyorsa ona işaret et." (Yasak **tüm `docs/`**'tur, yalnız mimari kök değil: architect tüm dokümantasyonun sahibidir.) Architect **yoksa** bu cümle **yazılmaz** — `docs/` özel sahipliği olmayan sıradan bir dizindir.
+  - Dokümantasyonu sahiplenen bir rol **varsa** — ölçü routing'dir, rol adı değil: kod yazmayan (`writesCode: false`) bir role verilmiş her yol o rolün yazma alanıdır — "Sadece kendi domain'inde (`<paths>`) kod yaz. `<o yol>` altına yazma — orası `<o rol>`ün; gerekiyorsa ona işaret et." Sahip architect ise yasak **tüm `docs/`**'tur, yalnız mimari kök değil. Doküman birden çok role bölündüyse her yol için ayrı satır yazılır. Böyle bir rol **yoksa** bu cümle **yazılmaz** — `docs/` özel sahipliği olmayan sıradan bir dizindir.
   - "Mimari etkili kararda (yeni bağımlılık, modül sınırı, yeni IPC/public API yüzeyi, şema/breaking change, güvenlik etkisi) implementasyonu durdurup **architect'e danış**." Architect **yoksa** danışma hedefi **kullanıcıdır**: "…implementasyonu durdurup kullanıcıya sor."
   - "Diğer domain'lerin kodunu okuyabilirsin ama yazamazsın."
 

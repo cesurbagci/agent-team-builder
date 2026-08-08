@@ -26,9 +26,12 @@ color: <purple | blue | green | red | yellow | ...>
 ---
 ```
 
-- `tools`: reviewer/doc-only roller `Read, Grep, Glob` (+reviewer için `Bash`). writesCode
-  developer'lar `Read, Grep, Glob, Write, Edit, Bash`. architect doc yazdığı için
-  `Read, Grep, Glob, Write, Edit, Bash` ama production koda yazmaz (gövdede netleştirilir).
+- `tools`: writesCode developer'lar `Read, Grep, Glob, Write, Edit, Bash`. Kod yazmayan
+  roller için ölçü **routing**'dir, rol adı değil: routing'de kendisine bir yol verilmiş
+  doc-only roller (architect, doc-writer, …) o yola yazacakları için `Read, Grep, Glob,
+  Write, Edit, Bash` alır — production koda yazmadıkları gövdede netleştirilir. Yol
+  verilmemiş roller (reviewer, security-reviewer) `Read, Grep, Glob` (+reviewer için
+  `Bash`) alır.
 - `model`, `color`: manifest `agents[].model` / `agents[].color`.
 - `memory: project` her zaman (per-agent memory disiplini, anayasa preset 3).
 - Codex-özel metadata (`model_reasoning_effort`, `sandbox_mode`, `nickname_candidates`,
@@ -46,8 +49,9 @@ Projenin stack'ini ve agent'ın domain'ini özetleyen 2-4 cümle. writesCode=fal
 ### `## Rol & Sınırlar`
 - Ne yapar, ne yapmaz.
 - `writesCode=false` → **"Kod yazma"** net madde (architect: "**tüm `docs/` dizinine yetkiliyim**, tüm dokümantasyonun sahibiyim; production koduna yazmam, sadece okurum"; reviewer: "kod yazmam, dosya değiştirmem, yalnız rapor üretirim").
-- `writesCode=true` → "Sadece kendi domain'imde kod yazarım." Architect **varsa** cümleye
-  "`docs/` altına yazmam (orası architect'in)" eklenir; architect **yoksa** eklenmez.
+- `writesCode=true` → "Sadece kendi domain'imde kod yazarım." Routing'de kod yazmayan bir
+  role verilmiş **her** yol için cümleye "`<yol>` altına yazmam (orası `<rol>`ün)" eklenir —
+  sahip architect de olabilir doc-writer da. Böyle bir yol yoksa eklenmez.
 
 ### `## Memory` *(anayasa preset 3 açıksa)*
 > Canonical memory dizinin `.agent-memory/<name>/` altındadır. Göreve başlamadan önce varsa

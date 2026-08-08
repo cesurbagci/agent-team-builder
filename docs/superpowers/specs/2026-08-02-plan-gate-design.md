@@ -106,6 +106,14 @@ architect'in, yazma" denir:
 | `agent-md-rich.md:72` | "architect: doc tarafını ben güncellerim" | Bu cümle **yazılmaz** |
 | `agent-md-rich.md:119` | developer yasağı `<arch-root>/` içeriyor | `<arch-root>/` yasaktan **çıkar** |
 | `governance-defaults.md:53` | developer `consults: [architect]` | `consults` **boş** olur |
+
+> **Sahiplik architect'e değil, routing'e bağlıdır.** Tablodaki "yazılmaz / çıkar / üretilmez"
+> kararları, dokümanı sahiplenen **hiçbir** rol kalmadığı durum içindir. Architect yok ama
+> doc-writer varsa (`governance-defaults.md` → Doc Writer), doküman yolu routing'de ona verilir
+> ve bu satırlar **silinmez — sahibin adıyla yazılır**. Üretimdeki ölçü tektir: routing'de kod
+> yazmayan (`writesCode: false`) bir role verilmiş her yol o rolün yazma alanıdır ve herkes için
+> yasaktır; böyle bir yol yoksa yasak da yoktur. Bu, `<arch-root>`/`docs/` gibi bir yol dizgisine
+> değil rolün yazarlığına baktığı için per-module yerleşimde (`modules/<m>/docs/**`) de çalışır.
 | `governance-defaults.md:76,81,86` | QA / security-reviewer / doc-writer `consults: [architect]` | Üçünde de `consults` **boş** olur — aynı hatanın kopyaları |
 | `governance-defaults.md:87` | doc-writer: "Mimari kararları architect üretir" | Bu cümle **yazılmaz**; ADR yazma yasağı da kalkar (yazacak başka rol yoktur) |
 | `governance-defaults.md:63` | reviewer "gerekirse architect'e eskale eder" | Eskalasyon hedefi **kullanıcı** olur |

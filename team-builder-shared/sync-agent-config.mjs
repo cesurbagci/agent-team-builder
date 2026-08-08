@@ -237,10 +237,16 @@ function opencodeAgentBody(source) {
 
 function renderOpencodeAgentMd(agent, manifest, source) {
   const writesCode = agent.writesCode !== false
-  const readOnly = agent.sandbox_mode === 'read-only' || !writesCode
+  // `writesCode` is a production-code prohibition carried in the role text;
+  // `sandbox_mode` is the filesystem permission. A doc-only owner is
+  // `writesCode: false` *and* `workspace-write` — denying its edits here would
+  // lock it out of the very directory routing put in its care.
+  const canEdit = agent.sandbox_mode
+    ? agent.sandbox_mode !== 'read-only'
+    : writesCode
   const mode = manifest.lead && agent.name === manifest.lead ? 'primary' : 'subagent'
-  const edit = readOnly ? 'deny' : 'allow'
-  const bash = readOnly ? 'ask' : 'allow'
+  const edit = canEdit ? 'allow' : 'deny'
+  const bash = canEdit && writesCode ? 'allow' : 'ask'
 
   const frontmatter =
     '---\n' +
@@ -279,42 +285,51 @@ function renderDeveloperInstructions(agent, manifest, projectName) {
   lines.push('(`tools`, `model`, `memory`, `color`) Codex konfigurasyonu olarak yorumlama.')
   lines.push('')
 
-  // Documentation ownership comes from routing, not from a role name. A team
-  // without a documentation owner must not tell developers to stay out of a
-  // directory nobody owns, and must not hand every non-writing role a write
-  // area it was never given.
-  // Documentation may be split across several roles — `docs/**` to one and
-  // `docs/guides/**` to another — so every docs route counts, not just the
-  // first. Taking one would hand this agent someone else's directory.
+  // Documentation ownership comes from routing, not from a role name and not
+  // from a path prefix. A directory routed to a role that does not write code
+  // is that role's to maintain, wherever the project puts it — `docs/**`, a
+  // per-module `modules/<m>/docs/**`, anywhere. Matching on the literal string
+  // "docs" instead would miss the per-module layout and would mistake a
+  // code directory that merely reads like one (`docsite/`) for documentation.
+  const docOwners = new Set(
+    (manifest.agents ?? [])
+      .filter(a => a && a.name && a.writesCode === false)
+      .map(a => a.name)
+  )
+  // Several roles may share the documentation, so every owned route counts,
+  // not just the first — taking one would hand this agent another's directory.
   const docsRoutes = (manifest.routing ?? []).filter(
-    r =>
-      r &&
-      r.role &&
-      typeof r.path === 'string' &&
-      // "docs" or "docs/..." only — a sibling like "docsite/" is not documentation.
-      (r.path === 'docs' || r.path.startsWith('docs/'))
+    r => r && typeof r.path === 'string' && docOwners.has(r.role)
   )
   const ownRoutes = docsRoutes.filter(r => r.role === agent.name)
   const otherRoutes = docsRoutes.filter(r => r.role !== agent.name)
 
+  // `docs/guides/**` sits inside `docs/**`. Routing resolves most-specific
+  // first, so barring this agent from the parent outright would contradict
+  // the grant it was just given; name the exception instead.
+  const routeBase = p => p.replace(/\*+$/, '').replace(/\/+$/, '')
+  const nestedIn = (inner, outer) =>
+    routeBase(inner).startsWith(routeBase(outer) + '/')
+  const prohibit = route => {
+    const carved = ownRoutes.filter(o => nestedIn(o.path, route.path))
+    const except = carved.length
+      ? ` (kendi yolun ${carved.map(o => `\`${o.path}\``).join(', ')} haric)`
+      : ''
+    lines.push(
+      `- \`${route.path}\` altina yazma${except}; orasi \`${route.role}\` rolunun.`
+    )
+  }
+
   if (writesCode) {
     lines.push("- Sadece kendi domain'inde kod yaz.")
-    for (const route of otherRoutes) {
-      lines.push(
-        `- \`${route.path}\` altina yazma; orasi \`${route.role}\` rolunun.`
-      )
-    }
+    otherRoutes.forEach(prohibit)
   } else {
     lines.push('- Production kod yazma.')
     if (ownRoutes.length > 0) {
       lines.push(
         `- Yazma alanin ${ownRoutes.map(r => `\`${r.path}\``).join(', ')} altidir.`
       )
-      for (const route of otherRoutes) {
-        lines.push(
-          `- \`${route.path}\` altina yazma; orasi \`${route.role}\` rolunun.`
-        )
-      }
+      otherRoutes.forEach(prohibit)
     } else {
       lines.push('- Dosya degistirme; yalniz okur ve rapor uretirsin.')
     }
@@ -817,12 +832,13 @@ async function runSelftest() {
   )
 
   // Documentation ownership is derived from routing, not from a role name.
-  // Without a docs owner nobody may be told to stay out of docs/, and no
-  // read-only role may be handed a write area it was never granted.
+  // Ownership is derived from the owner's writability, so every fixture below
+  // carries the agents its routing names — routing[].role must be a real agent
+  // (validate-manifest V-routing), and the derivation now reads writesCode.
   const ownedManifest = {
     docLanguage: 'tr',
     routing: [{ path: 'docs/**', role: 'architect' }],
-    agents: [],
+    agents: [{ name: 'architect', writesCode: false }, { name: 'dev' }],
   }
   const ownerText = renderDeveloperInstructions(
     { name: 'architect', writesCode: false },
@@ -839,15 +855,20 @@ async function runSelftest() {
     'a developer must be kept out of the routed docs path'
   )
 
-  // Documentation may be split between roles. Every docs route counts: the
-  // owner of one sub-path must still be kept out of the other.
+  // Documentation may be split between roles. Every owned route counts, and the
+  // sub-path owner must not be barred from the parent that contains its own
+  // grant — most-specific routing wins, so the exception has to be named.
   const splitManifest = {
     docLanguage: 'tr',
     routing: [
       { path: 'docs/**', role: 'architect' },
       { path: 'docs/guides/**', role: 'doc-writer' },
     ],
-    agents: [],
+    agents: [
+      { name: 'architect', writesCode: false },
+      { name: 'doc-writer', writesCode: false },
+      { name: 'dev' },
+    ],
   }
   const splitWriter = renderDeveloperInstructions(
     { name: 'doc-writer', writesCode: false },
@@ -859,27 +880,84 @@ async function runSelftest() {
     'a split docs owner must be granted its own route'
   )
   assert(
-    splitWriter.includes('`docs/**` altina yazma; orasi `architect` rolunun.'),
-    'a split docs owner must still be kept out of the other role\'s route'
+    splitWriter.includes(
+      '`docs/**` altina yazma (kendi yolun `docs/guides/**` haric); orasi `architect` rolunun.'
+    ),
+    'a blanket prohibition must carve out the sub-path the same agent owns'
   )
   const splitDev = renderDeveloperInstructions({ name: 'dev' }, splitManifest, 'demo')
   assert(
-    splitDev.includes('`docs/**` altina yazma') &&
-      splitDev.includes('`docs/guides/**` altina yazma'),
-    'a developer must be kept out of every docs route, not just the first'
+    splitDev.includes('`docs/**` altina yazma; orasi `architect` rolunun.') &&
+      splitDev.includes('`docs/guides/**` altina yazma; orasi `doc-writer` rolunun.'),
+    'a developer must be kept out of every owned route, not just the first'
+  )
+  assert(
+    !splitDev.includes('haric'),
+    'an agent that owns nothing must get no carve-out'
   )
 
-  // A sibling directory whose name merely starts with "docs" is not
-  // documentation, and a routing row without a role names nobody.
+  // Sibling owners: neither path contains the other, so neither prohibition
+  // may carry a carve-out. Without this the nesting test could return true
+  // unconditionally and every case above would still pass.
+  const siblingManifest = {
+    docLanguage: 'tr',
+    routing: [
+      { path: 'docs/arch/**', role: 'architect' },
+      { path: 'docs/guides/**', role: 'doc-writer' },
+    ],
+    agents: [
+      { name: 'architect', writesCode: false },
+      { name: 'doc-writer', writesCode: false },
+    ],
+  }
+  const siblingWriter = renderDeveloperInstructions(
+    { name: 'doc-writer', writesCode: false },
+    siblingManifest,
+    'demo'
+  )
+  assert(
+    siblingWriter.includes('\`docs/arch/**\` altina yazma; orasi \`architect\` rolunun.'),
+    "a sibling owner must still be barred from the other owner's path"
+  )
+  assert(
+    !siblingWriter.includes('haric'),
+    "a path that does not contain this agent's own route needs no carve-out"
+  )
+
+  // per-module layout (architecture-docs.md): the documentation tree lives
+  // under modules/<name>/docs, with no top-level docs/ route at all. Ownership
+  // must follow the routed role, not the spelling of the path.
+  const perModuleManifest = {
+    docLanguage: 'tr',
+    routing: [
+      { path: 'modules/pay/docs/**', role: 'architect' },
+      { path: 'modules/pay/**', role: 'dev' },
+    ],
+    agents: [{ name: 'architect', writesCode: false }, { name: 'dev' }],
+  }
+  const perModuleDev = renderDeveloperInstructions(
+    { name: 'dev' },
+    perModuleManifest,
+    'demo'
+  )
+  assert(
+    perModuleDev.includes(
+      '`modules/pay/docs/**` altina yazma; orasi `architect` rolunun.'
+    ),
+    'per-module documentation must be recognised even without a docs/ prefix'
+  )
+
+  // A code directory that merely reads like documentation belongs to the role
+  // that writes code there; a routing row without a role names nobody.
   const lookalikeManifest = {
     docLanguage: 'tr',
     routing: [{ path: 'docsite/**', role: 'web' }, { path: 'docs/**' }],
-    agents: [],
+    agents: [{ name: 'web' }, { name: 'dev' }],
   }
   const lookalike = renderDeveloperInstructions({ name: 'dev' }, lookalikeManifest, 'demo')
   assert(
     !lookalike.includes('docsite'),
-    'docsite/ must not be mistaken for the documentation directory'
+    'a directory owned by a code-writing role is not documentation'
   )
   assert(
     !lookalike.includes('undefined'),
@@ -922,7 +1000,46 @@ async function runSelftest() {
     ocAgent.includes('model: anthropic/claude-opus-4'),
     'opencode agent md should use opencode_model'
   )
-  assert(ocAgent.includes('edit: deny'), 'writesCode:false should map to permission edit: deny')
+  // Permissions follow sandbox_mode, not writesCode: this architect is
+  // doc-only (writesCode:false) yet owns docs/, so it must be able to edit.
+  assert(
+    ocAgent.includes('edit: allow'),
+    'a doc-only owner with workspace-write must be allowed to edit'
+  )
+  assert(
+    ocAgent.includes('bash: ask'),
+    'a role that writes no code must not be handed bash outright'
+  )
+  const ocSource = '---\nname: x\n---\n\nbody'
+  const ocReadOnly = renderOpencodeAgentMd(
+    { name: 'reviewer', writesCode: false, sandbox_mode: 'read-only' },
+    manifest,
+    ocSource
+  )
+  assert(
+    ocReadOnly.includes('edit: deny') && ocReadOnly.includes('bash: ask'),
+    'a read-only role must be denied edits'
+  )
+  const ocDev = renderOpencodeAgentMd(
+    { name: 'dev', sandbox_mode: 'workspace-write' },
+    manifest,
+    ocSource
+  )
+  assert(
+    ocDev.includes('edit: allow') && ocDev.includes('bash: allow'),
+    'a code-writing role keeps edit and bash'
+  )
+  // No declared sandbox: fall back to the conservative writesCode reading
+  // rather than widening permissions by omission.
+  const ocUndeclared = renderOpencodeAgentMd(
+    { name: 'ghost', writesCode: false },
+    manifest,
+    ocSource
+  )
+  assert(
+    ocUndeclared.includes('edit: deny'),
+    'a non-writer without a declared sandbox must not gain edit rights'
+  )
   assert(
     ocAgent.includes('.opencode/skills/demo-skill/SKILL.md'),
     'opencode body should rewrite skill paths to .opencode/skills'
