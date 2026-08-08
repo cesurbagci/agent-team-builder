@@ -318,19 +318,14 @@ function renderDeveloperInstructions(agent, manifest, projectName) {
   // `docs/guides/**` sits inside `docs/**`. Routing resolves most-specific
   // first, so barring this agent from the parent outright would contradict
   // the grant it was just given; name the exception instead.
-  // The directory a route governs: `docs/**` governs `docs`.
-  const scopeOf = p => p.replace(/\/+$/, '').replace(/\/\*+$/, '')
-  // The containing route is matched as a pattern built from the glob as
-  // written — `*` spans part of one segment, `**` spans any number of segments
-  // including none, and a wildcard-free route names a directory and governs
-  // what sits under it. Comparing stripped strings instead conflated `docs/**`
-  // (whole subtree), `docs/*` (one level) and `docs`, so `docs/*` "contained"
-  // `docs/a/b/**`, `**` contained nothing, and an inner `**` could not match
-  // zero segments.
+  // A route with no wildcard names a directory and governs what sits under it.
+  const asGlob = p => (/\*/.test(p) ? p : `${p.replace(/\/+$/, '')}/**`)
+  const segmentsOf = p => asGlob(p).split('/').filter(seg => seg !== '')
+  // The route as a pattern: `*` spans part of one segment, `**` spans any
+  // number of segments including none.
   const routeMatcher = glob => {
-    const g = /\*/.test(glob) ? glob : `${glob.replace(/\/+$/, '')}/**`
-    const segs = g.split('/').filter(seg => seg !== '')
     let source = '^'
+    const segs = segmentsOf(glob)
     segs.forEach((seg, i) => {
       const last = i === segs.length - 1
       if (seg === '**') {
@@ -343,10 +338,32 @@ function renderDeveloperInstructions(agent, manifest, projectName) {
     })
     return new RegExp(`${source}$`)
   }
+  // Paths the route matches, sampling `**` at zero, one and two segments
+  // because it spans any depth. The zero and two samples are deliberately
+  // redundant: no glob accepts a bounded depth range wider than one, so
+  // whichever of them a wrong answer would trip, the other trips too. Dropping
+  // either leaves every case here passing — keep both anyway, the cost is an
+  // array literal and the guarantee is that a route claiming to be nested
+  // really is nested at every depth.
+  const join = (a, b) => (a && b ? `${a}/${b}` : a || b)
+  const samplesOf = glob => {
+    let paths = ['']
+    for (const seg of segmentsOf(glob)) {
+      paths =
+        seg === '**'
+          ? paths.flatMap(p => ['', 'a', 'a/b'].map(fill => join(p, fill)))
+          : paths.map(p => join(p, seg.replace(/\*/g, 'x')))
+    }
+    return [...new Set(paths.filter(Boolean))]
+  }
+  // One route is inside another when every path it can produce is also matched
+  // by that other route. Reducing each route to a directory first was not
+  // enough: `docs/**` and `docs/*` reduce to the same `docs`, so the narrower
+  // one looked equal to the wider one and got no exception.
   const nestedIn = (inner, outer) => {
-    const innerScope = scopeOf(inner)
-    if (innerScope === scopeOf(outer)) return false
-    return routeMatcher(outer).test(innerScope)
+    if (inner === outer) return false
+    const samples = samplesOf(inner)
+    return samples.length > 0 && samples.every(p => routeMatcher(outer).test(p))
   }
   const prohibit = route => {
     const carved = ownRoutes.filter(o => nestedIn(o.path, route.path))
@@ -1094,8 +1111,26 @@ async function runSelftest() {
       false,
       'a single-star route must not be treated as covering a deeper path',
     ],
-    // …but it does reach one level.
-    [['docs/*', 'docs/a/**'], true, 'a single-star route still covers its own level'],
+    // …and `docs/a/**` is not inside it either: `docs/a/b` escapes `docs/*`.
+    [
+      ['docs/*', 'docs/a/**'],
+      false,
+      'a subtree route is not inside a route that reaches one level',
+    ],
+    // Same root, different terminal glob: `docs/*` IS inside `docs/**`.
+    // Reducing both to the directory `docs` made them look identical, and the
+    // identity check then suppressed the exception.
+    [
+      ['docs/**', 'docs/*'],
+      true,
+      'a narrower terminal glob under the same root must be carved out',
+    ],
+    // The reverse does not hold — the wider route is not inside the narrower.
+    [
+      ['docs/*', 'docs/**'],
+      false,
+      'a wider route is not inside a narrower one sharing its root',
+    ],
     // A route with no wildcard names a directory and governs what is under it.
     [['docs', 'docs/guides/**'], true, 'a wildcard-free route governs its subtree'],
     // Two roles on the same path: neither is inside the other, so the
