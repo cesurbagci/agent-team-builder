@@ -56,8 +56,14 @@ permission:
 | `description` | `agents[].description` | Agent'ın ne zaman/nasıl kullanılacağı. |
 | `mode` | `lead` | `name === lead` → `primary` (Tab ile geçilen ana ajan); diğerleri → `subagent` (`@mention` ile çağrılır). |
 | `model` | `agents[].opencode_model` ya da `model` fallback | `provider/model` formatı (`anthropic/claude-...`, `openai/gpt-...`). `opencode_model` yoksa opus/sonnet/haiku → Anthropic ID fallback haritası. |
-| `permission.edit` | `writesCode` / `sandbox_mode` | `writesCode:false` ya da `sandbox_mode:read-only` → `deny`; aksi `allow`. |
-| `permission.bash` | aynı | salt-okunur roller `ask`; yazan roller `allow`. |
+| `permission.edit` | `sandbox_mode`, yoksa `writesCode` | `sandbox_mode: read-only` → `deny`; `workspace-write` → `allow`. `sandbox_mode` verilmemişse `writesCode`'a düşülür (eksik alan izni genişletmesin diye). |
+| `permission.bash` | `permission.edit` + `writesCode` | Kod yazmayan roller `ask`; yazan roller `allow`. |
+
+> **`writesCode: false` tek başına `deny` demek değildir.** `writesCode` production
+> koduna yazma yasağıdır ve rol metninde taşınır; `sandbox_mode` dosya sistemi iznidir.
+> Doküman sahibi doc-only roller (architect, doc-writer) `writesCode: false` **ve**
+> `workspace-write`'tır: `edit: deny` verilirse routing'in kendilerine verdiği dizine
+> yazamazlar, yani o dizinin sahibi olamazlar. İkisini tek bayrağa indirgeme.
 
 > Claude'a özgü frontmatter alanları (`tools`, `color`, `memory`, Claude `model` etiketi)
 > OpenCode frontmatter'ına **yazılmaz**; OpenCode kendi şemasını kullanır. Rol talimatları
