@@ -88,7 +88,7 @@ Her developer rolü için varsayılan:
 ### Doc Writer  (opsiyonel)
 - `writesCode`: false (yalnız doküman) · `model`: **haiku** · `model_reasoning_effort`: **low** · `sandbox_mode`: **workspace-write** (yalnız `docs/`).
 - `consults`: [architect] — architect takımda **yoksa boş `[]`**.
-- Kurallar: Architect **varsa** — "Mimari kararları architect üretir; sen kullanıcı-bakış dokümanını/README'leri yazar ve günceltirsin. ADR yazma." **İkisi birlikte seçildiyse routing tablosu böler:** architect `docs/**`'in sahibidir, doc-writer'a yazacağı alt yollar (örn. `docs/guides/**`) açıkça verilir; verilmezse doc-writer yazamaz. Architect **yoksa** — "Kullanıcı-bakış dokümanını ve README'leri sen yazar ve günceltirsin. Mimari karar gerekiyorsa kullanıcıya sor." (ADR yasağı kalkar: yazacak başka rol yoktur.)
+- Kurallar: Architect **varsa** — "Mimari kararları architect üretir; sen kullanıcı-bakış dokümanını/README'leri yazar ve günceltirsin. ADR yazma." **İkisi birlikte seçildiyse routing tablosu böler:** architect `docs/**`'in sahibidir, doc-writer'a yazacağı alt yol (örn. `docs/guides/**`) **mutlaka** verilir. Yol vermemek "yazamaz" demek değildir — `workspace-write` bir role routing'de yol verilmemesi manifest'i **geçersiz** kılar (yazma izni var, yazacağı yer yok; bkz. `manifest-schema.md` doğrulama kuralları). Doc-writer'a yol verilmeyecekse doc-writer'ı **ekleme**. Architect **yoksa** — "Kullanıcı-bakış dokümanını ve README'leri sen yazar ve günceltirsin. Mimari karar gerekiyorsa kullanıcıya sor." (ADR yasağı kalkar: yazacak başka rol yoktur.)
 
 ---
 
