@@ -106,10 +106,11 @@ Plan kapısı değişmezlerini makine tarafına indirir. **Ayrıca bugün açık
   };
 
   // V1 — constitution.planGate must be boolean.
-  expectReject("V1 planGate string", {
-    ...gateBase(),
-    constitution: { planGate: "yes" },
-  });
+  expectReject(
+    "V1 planGate string",
+    { ...gateBase(), constitution: { planGate: "yes" } },
+    "constitution.planGate boolean olmalı"
+  );
 
   // V2 — gate on, root object missing.
   expectReject(
@@ -176,6 +177,23 @@ Plan kapısı değişmezlerini makine tarafına indirir. **Ayrıca bugün açık
     "kod yazmayan"
   );
 
+  // V7b — writesCode must be a real boolean. A falsy non-boolean must not
+  // sneak an agent past the "does not write code" requirement.
+  expectReject(
+    "V7b writesCode is not boolean",
+    {
+      targetsDefault: ["claude"],
+      constitution: { planGate: true },
+      planGate: { planReviewer: "architect", codeReviewer: null },
+      routing: [{ path: "src/**", role: "dev" }],
+      agents: [
+        { name: "dev", model: "sonnet" },
+        { name: "architect", model: "opus", writesCode: 0 },
+      ],
+    },
+    "writesCode boolean olmalı"
+  );
+
   // V8 — owner is not generated for every ecosystem its executors run in.
   expectReject(
     "V8 owner does not cover executor targets",
@@ -232,14 +250,24 @@ Plan kapısı değişmezlerini makine tarafına indirir. **Ayrıca bugün açık
     },
     "portatif slug"
   );
-  expectReject("V11 space in name", {
-    targetsDefault: ["claude"],
-    agents: [{ name: "back end dev", model: "sonnet" }],
-  });
-  expectReject("V11 backslash in name", {
-    targetsDefault: ["claude"],
-    agents: [{ name: "dev\\ops", model: "sonnet" }],
-  });
+  for (const bad of [
+    "dev/ops", // a bare slash — the traversal case above also fails on dots
+    "back end dev",
+    "dev\\ops",
+    "Dev", // uppercase alone
+    "dev\u0007ops", // control character
+    "dev--ops", // double separator
+    "-dev", // leading separator
+  ]) {
+    expectReject(
+      `V11 invalid name ${JSON.stringify(bad)}`,
+      {
+        targetsDefault: ["claude"],
+        agents: [{ name: bad, model: "sonnet" }],
+      },
+      "portatif slug"
+    );
+  }
 
   // V12 — names that differ only by case collide on case-insensitive volumes.
   expectReject(
@@ -265,7 +293,10 @@ Plan kapısı değişmezlerini makine tarafına indirir. **Ayrıca bugün açık
       routing: [],
       agents: [{ name: "architect", model: "opus", writesCode: false }],
     },
-    "uygun executor yok"
+    // Not "uygun executor yok": this fixture also trips the per-ecosystem
+    // check, whose message carries that same phrase. This fragment is unique
+    // to the global rule.
+    "en az bir agent gerekli"
   );
 
   // V13b — a targeted ecosystem with no eligible executor in it.
@@ -300,27 +331,33 @@ Plan kapısı değişmezlerini makine tarafına indirir. **Ayrıca bugün açık
     "planGate.planReviewer zorunlu"
   );
 
-  // V15 — root planGate is not a plain object.
-  expectReject(
-    "V15 planGate array",
-    {
-      ...gateBase(),
-      constitution: { planGate: true },
-      planGate: ["architect"],
-    },
-    "nesne olmalı"
-  );
+  // V15 — root planGate is not a plain object. The spec names both an array
+  // and a string, so test both.
+  for (const shape of [["architect"], "architect"]) {
+    expectReject(
+      `V15 planGate ${JSON.stringify(shape)}`,
+      {
+        ...gateBase(),
+        constitution: { planGate: true },
+        planGate: shape,
+      },
+      "planGate bir nesne olmalı"
+    );
+  }
 
-  // V16 — owner value is neither an agent name nor null.
-  expectReject(
-    "V16 numeric owner",
-    {
-      ...gateBase(),
-      constitution: { planGate: true },
-      planGate: { planReviewer: 42, codeReviewer: null },
-    },
-    "agent adı ya da null olmalı"
-  );
+  // V16 — owner value is neither an agent name nor null. The spec names both
+  // a number and an object.
+  for (const owner of [42, { name: "architect" }]) {
+    expectReject(
+      `V16 owner ${JSON.stringify(owner)}`,
+      {
+        ...gateBase(),
+        constitution: { planGate: true },
+        planGate: { planReviewer: owner, codeReviewer: null },
+      },
+      "agent adı ya da null olmalı"
+    );
+  }
 ```
 
 - [ ] **Step 2: Selftest'i çalıştır, kırmızı olduğunu gör**
@@ -382,6 +419,14 @@ Agent döngüsündeki name bloğunu şununla değiştir:
       agentNamesLower.add(lower);
       agentsByName.set(a.name, a);
     }
+
+    // writesCode decides who may own a gate, so a non-boolean must not slip
+    // through: `writesCode: 0` would otherwise read as "does not write code".
+    // This check is what makes the strict `!== false` comparisons below safe —
+    // do not drop it on the grounds that those comparisons are strict.
+    if (a && a.writesCode !== undefined && typeof a.writesCode !== "boolean") {
+      errors.push(`${label}: writesCode boolean olmalı`);
+    }
 ```
 
 `lead` ve `routing` kontrollerindeki `agentNames.has(...)` çağrılarını `agentsByName.has(...)` yap (iki yer: `doc.lead` kontrolü ve `routing[i].role` kontrolü).
@@ -409,7 +454,7 @@ function eligibleExecutors(doc) {
       .filter(Boolean)
   );
   return (Array.isArray(doc.agents) ? doc.agents : []).filter(
-    (a) => a && routed.has(a.name) && (a.writesCode ?? true)
+    (a) => a && routed.has(a.name) && a.writesCode !== false
   );
 }
 
@@ -479,7 +524,7 @@ function validatePlanGate(doc, errors, agentsByName) {
       errors.push(`planGate.${key} "${owner}" agents içinde bir name olmalı`);
       continue;
     }
-    if (agent.writesCode ?? true) {
+    if (agent.writesCode !== false) {
       errors.push(
         `planGate.${key} "${owner}" kod yazmayan bir agent olmalı (writesCode: false)`
       );
@@ -497,7 +542,8 @@ function validatePlanGate(doc, errors, agentsByName) {
 }
 ```
 
-`validate()` içinde, son `if (errors.length)` bloğundan **hemen önce** çağır:
+`validate()` içinde, son `if (errors.length) {` **satırını** şununla değiştir — bu bir
+**değiştirme**dir, araya ekleme değil; bloğu ikinci kez yazarsan sözdizimi bozulur:
 
 ```javascript
   validatePlanGate(doc, errors, agentsByName);
@@ -523,7 +569,19 @@ Beklenen: iki kez `SELFTEST PASS`. `sync` fixture'larındaki agent adları (`arc
 
 - [ ] **Step 7: Şemayı belgele**
 
-`team-builder-shared/manifest-schema.md` — kök alanlar tablosuna, `constitution` satırlarından sonra ekle:
+`team-builder-shared/manifest-schema.md` — önce **bayat ana satırı** düzelt. Şu satırı:
+
+```markdown
+| `constitution` | `object` | Hayır | 4 cross-cutting anayasa presetinin aç/kapat durumu. Tümü default `true`. Bkz. `constitution.md`. |
+```
+
+şununla değiştir:
+
+```markdown
+| `constitution` | `object` | Hayır | 5 cross-cutting anayasa presetinin aç/kapat durumu. İlk dördü default `true`, `planGate` default `false`. Bkz. `constitution.md`. |
+```
+
+Sonra kök alanlar tablosuna, `constitution` satırlarından sonra ekle:
 
 ```markdown
 | `constitution.planGate` | `boolean` | Hayır | Plan kapısı açık mı. **Default `false`** — diğer dört presetin aksine kapalı gelir, çünkü artefakt üretir (`.agent-work/`, `work-plan` skill'i). Açıksa kök `planGate` nesnesi zorunludur. Bkz. `plan-gate.md`. |
@@ -590,49 +648,98 @@ Generator'a **hiçbir yetenek eklenmez.** `.agent-source/skills/` altındaki her
   )
 ```
 
-`runSelftest()`'in **sonuna**, fixture temizliğinden (`await fs.rm(fixtureRoot, ...)`) **önce** ekle:
+**`expectedLedger`'i güncelle.** Ledger birebir (`JSON.stringify` eşitliği) karşılaştırılıyor;
+üç yeni mirror eklenmezse Task 2 **kendi selftest'ini ilk çalıştırmada patlatır.** Sıralı
+listeye üç satır ekle:
+
+```javascript
+  const expectedLedger = [
+    '.agents/skills/demo-skill/SKILL.md',
+    '.agents/skills/work-plan/SKILL.md',
+    '.claude/agents/architect.md',
+    '.claude/agents/developer.md',
+    '.claude/skills/demo-skill/SKILL.md',
+    '.claude/skills/work-plan/SKILL.md',
+    '.codex/agent-definitions/architect.md',
+    '.codex/agents/architect.toml',
+    '.codex/config.toml',
+    '.codex/team.md',
+    '.opencode/agents/architect.md',
+    '.opencode/skills/demo-skill/SKILL.md',
+    '.opencode/skills/work-plan/SKILL.md',
+    '.opencode/team.md',
+    'AGENTS.md',
+    'CLAUDE.md',
+    'opencode.json',
+  ]
+```
+
+**S1'i doğru yaşam evresine koy.** Selftest'in sonunda manifest kırpılıyor ve OpenCode
+artık hedeflenmiyor; sync hiçbir şeyi silmediği için `.opencode/skills/work-plan/SKILL.md`
+o noktada **bayat** olarak durur ve varlık kontrolü yanlış sebeple geçer. Var olan
+skill-mirror bloğu bu yüzden zaten kırpmadan önce duruyor (`sync-agent-config.mjs` içinde
+"before the manifest trim below, while opencode is still an active target" yorumlu blok).
+S1'i **o bloğun hemen yanına** ekle:
 
 ```javascript
   // S1 — the work-plan skill source mirrors into every ecosystem skill dir.
   // The mirror is name-agnostic; this case exists so a name-based exception
-  // cannot be added without turning the selftest red.
+  // cannot be added without turning the selftest red. Content is compared, not
+  // just existence: sync never deletes, so a stale file would pass a bare
+  // existence check.
+  const workPlanSource = await read('.agent-source/skills/work-plan/SKILL.md')
   for (const mirror of ['.claude/skills', '.agents/skills', '.opencode/skills']) {
-    const mirrored = path.join(fixtureRoot, mirror, 'work-plan', 'SKILL.md')
-    const exists = await fs
-      .access(mirrored)
-      .then(() => true)
-      .catch(() => false)
-    assert(exists, `S1: work-plan skill should mirror into ${mirror}`)
+    const rel = `${mirror}/work-plan/SKILL.md`
+    assert(await exists(rel), `S1: work-plan skill must mirror into ${mirror}`)
+    assert(
+      (await read(rel)) === workPlanSource,
+      `S1: ${rel} must match the canonical source byte for byte`
+    )
   }
+```
 
+**S2'yi selftest'in sonuna ekle** (fixture temizliğinden önce). Buradaki geç konum
+sorun değil: `.agent-work/` hiçbir evrede üretilmiyor, dolayısıyla bayatlayacak bir çıktı
+da yok.
+
+```javascript
   // S2 — .agent-work/ is the agents' workspace, not generated output. Sync
-  // must leave it alone: no production, no deletion, no ledger ownership,
-  // and no drift.
+  // must leave it alone: no production, no deletion, no rewriting, no ledger
+  // ownership, and no drift.
   const workDir = path.join(fixtureRoot, '.agent-work', 'draft')
   const workFile = path.join(workDir, '20260808-01-ornek.md')
+  const workBody = '---\nid: 20260808-01\n---\n\n<!-- s:progress -->\n'
   await fs.mkdir(workDir, { recursive: true })
-  await fs.writeFile(workFile, '---\nid: 20260808-01\n---\n')
+  await fs.writeFile(workFile, workBody)
 
   await silentGenerate({ root: fixtureRoot })
 
-  const workSurvived = await fs
-    .access(workFile)
-    .then(() => true)
-    .catch(() => false)
-  assert(workSurvived, 'S2: sync must not touch files under .agent-work/')
+  assert(
+    (await fs.readFile(workFile, 'utf8')) === workBody,
+    'S2: sync must leave files under .agent-work/ byte-identical'
+  )
 
+  // Reset first: the earlier drift tests already set exitCode to 1, so
+  // asserting it below without resetting would pass vacuously.
+  process.exitCode = 0
   const s2Check = await silentGenerate({ root: fixtureRoot, checkOnly: true })
   assert(s2Check.ok === true, 'S2: .agent-work/ content must not produce drift')
-
-  const s2Ledger = JSON.parse(
-    await fs.readFile(path.join(fixtureRoot, LEDGER_RELATIVE), 'utf8')
-  )
-  const ledgerPaths = JSON.stringify(s2Ledger)
   assert(
-    !ledgerPaths.includes('.agent-work'),
+    process.exitCode === 0,
+    'S2: a clean --check must not set a failure exit code'
+  )
+
+  const s2Ledger = await read(LEDGER_RELATIVE)
+  assert(
+    !s2Ledger.includes('.agent-work'),
     'S2: the ledger must not claim ownership of .agent-work/'
   )
 ```
+
+> **`read` ve `exists` yardımcıları** selftest'in kendi kapsamında tanımlı ve fixture
+> köküne göre göreli yol alıyor; S1 onları kullanır. S2 fixture kökünün dışındaki
+> `LEDGER_RELATIVE` sabitini kullandığı için `read` ile birlikte çalışır — ikisi de aynı
+> köke göredir.
 
 - [ ] **Step 2: Selftest'i çalıştır**
 
@@ -796,7 +903,8 @@ projeye kurulan `work-plan` skill'indedir.
 
 - [ ] **Step 5: Sihirbaz durumuna `planGate` ekle**
 
-`team-builder-shared/wizard-state.md`, şema örneğindeki `"constitution"` satırından sonra ekle:
+`team-builder-shared/wizard-state.md`, şema örneğindeki `"constitution"` **satırını** şu iki
+satırla **değiştir** — araya ekleme, yoksa `constitution` anahtarı iki kez yazılır:
 
 ```jsonc
     "constitution": { "noWorkaround": true, "codeDocSync": true, "perAgentMemory": true, "languageStandard": true, "planGate": false },
@@ -956,9 +1064,21 @@ manifest'i geçersiz kılar.
 | 7 | Kalite odakları (checkbox) + Anayasa presetleri + Plan kapısı (ayrı soru) | `quality-dimensions.md`, `constitution.md`, `plan-gate.md` |
 ```
 
-- [ ] **Step 8: Referans listesine `plan-gate.md`'yi ekle**
+- [ ] **Step 8: Bayat "4 preset" ifadelerini düzelt ve referansları ekle**
 
-`team-builder-setup/SKILL.md`'nin başındaki paylaşılan referans listesine (`constitution.md` satırının yanına) ekle:
+`team-builder-setup/SKILL.md`, soru-sorma tekniğini anlatan şu satırı:
+
+```markdown
+- **Anayasa presetleri tam 4 kural** → tek `multiSelect` soru (4 seçenek) uygundur; ya da tek tek aç/kapa sor.
+```
+
+şununla değiştir:
+
+```markdown
+- **Anayasa presetleri 5 kural, ama tek soruda sorulmaz.** İlk dördü (hepsi default açık) tek `multiSelect` soruya sığar (4 seçenek); **plan kapısı ayrı sorulur** — default kapalıdır ve açılırsa iki alt soru daha getirir.
+```
+
+Aynı dosyanın başındaki paylaşılan referans listesinde `constitution.md` satırının açıklamasını `4 cross-cutting anayasa preseti` yerine `5 cross-cutting anayasa preseti (ilk dördü default açık, plan kapısı default kapalı)` yap ve altına ekle:
 
 ```markdown
 - `~/.claude/skills/team-builder-shared/plan-gate.md` — plan kapısı kurulum sözleşmesi (KARAR 5 açıksa).
@@ -988,6 +1108,13 @@ Spec'in en dağınık gereksinimi: `docs/` yasağı **üç prose kaynağında** 
 **Interfaces:**
 - Consumes: Task 4'ün Adım 6/7C metni
 - Produces: koşullu prose kuralları — Task 6'daki README bunlara atıf yapmaz, bağımsızdır
+
+> **Task 4'ten SONRA çalıştır.** İkisi de `team-builder-setup/SKILL.md`'nin Adım 6'sına
+> dokunuyor: Task 4 routing temel kuralı alıntısının **arkasına** yeni bir alıntı ekler,
+> Task 5 o alıntının **kendisini** değiştirir. Task 4 önce giderse Task 5'in anchor'ı
+> yerinde durur. Ters sırada Adım 6'nın sonunda iki alıntı olur ve hangisinin
+> değiştirileceği belirsizleşir — bu durumda **`Routing temel kuralı:` ile başlayan**
+> olanı değiştir, `Kod review kapısını kim tanımlar` ile başlayana dokunma.
 
 - [ ] **Step 1: `routing.md`'yi koşullandır**
 
@@ -1034,6 +1161,46 @@ Ve tablodaki iki satırı şununla değiştir:
 | Kod değişikliği tamamlandı, review gerekiyor | (yol değil, kapı) | `reviewer` ya da `planGate.codeReviewer`; kapı sahibi yoksa satır yazılmaz |
 ```
 
+**"Her zaman korunur" iddialarını da düzelt** — bu satırlar `codeReviewer: null` ve
+architect'siz takımla çelişiyor. Tablodan sonraki cümleyi:
+
+```markdown
+Son iki satır **yola değil iş türüne** bağlıdır; bunlar generic danışma/gate
+kurallarıdır ve her projede korunur (aşağıya bakın).
+```
+
+şununla değiştir:
+
+```markdown
+Son iki satır **yola değil iş türüne** bağlıdır. İkisi de **koşulludur**: danışma satırı
+architect yoksa kullanıcıya döner, gate satırı kapı sahibi yoksa hiç yazılmaz (aşağıya
+bakın).
+```
+
+Ve "Routing satırları PROJEYE ÖZELDİR" bölümünün giriş cümlesini:
+
+```markdown
+Yol→rol tablosunun **yanında**, projeden bağımsız sabit kurallar her zaman korunur:
+```
+
+şununla değiştir:
+
+```markdown
+Yol→rol tablosunun **yanında** projeden bağımsız kurallar durur. Bunlar sabit değil
+**koşulludur**: hedefi olmayan bir kural (architect'siz danışma, sahipsiz kod review
+kapısı) yazılmaz — var olmayan bir role işaret eden bir kural, kuralsızlıktan kötüdür.
+```
+
+Ayrıca `.agent-work/` sahipliğini belgele. `routing.md`'ye yol→rol tablosunun altına ekle:
+
+```markdown
+- **`.agent-work/**` → `work-plan` akışı.** Plan kapısı açıksa bu dizin agent'ların çalışma
+  alanıdır: planlar, ham kayıtlar, ilerleme notları. Buraya **yalnız `work-plan` skill'ini
+  çalıştıran agent** yazar — denetleyiciler dahil kimse doğrudan dosya değiştirmez, sonuç
+  döndürür. Routing tablosunun geri kalanı kod yollarını yönetir; bu satır iş akışı
+  durumunu. Plan kapısı kapalıysa dizin yoktur ve satır yazılmaz.
+```
+
 - [ ] **Step 2: `governance-defaults.md`'yi koşullandır**
 
 `team-builder-shared/governance-defaults.md`, developer bölümündeki üç satırı şununla değiştir:
@@ -1062,10 +1229,24 @@ Aynı dosyada reviewer bölümüne, `consults` satırından sonra ekle:
   `reviewer` gate'i aynen korunur.
 ```
 
+**Koşulsuz kalan gate cümlesini de değiştir** — yoksa W4 sağlanmaz. Reviewer kurallarındaki
+şu satırı:
+
+```markdown
+  - "Her çıktı review gate'inden geçer. Bulguları **Kritik / Uyarı / Öneri** olarak grupla; önce gerçek riskleri yaz."
+```
+
+şununla değiştir:
+
+```markdown
+  - Kod review kapısı **varsa** (plan kapısı kapalı, ya da `planGate.codeReviewer` bir ad taşıyor): "Her çıktı review gate'inden geçer." `planGate.codeReviewer: null` ise bu cümle **yazılmaz** — projede kod review kapısı yoktur.
+  - "Bulguları **Kritik / Uyarı / Öneri** olarak grupla; önce gerçek riskleri yaz."
+```
+
 Aynı dosyada, çekirdek roster'ı tanımlayan satırı şununla değiştir:
 
 ```markdown
-Çekirdek roster her zaman: **architect (lead, doc-only)** + **developer(lar, domain-split)** + **reviewer**. Kullanıcı architect'i **eklemeyebilir**; o durumda `docs/` sahipliği, danışma hedefi ve developer yasakları koşullu olarak değişir (bu dosyada ve `routing.md` / `agent-md-rich.md`'de işaretli).
+Önerilen çekirdek roster: **architect (lead, doc-only)** + **developer(lar, domain-split)** + **reviewer**. "Her zaman" değil **varsayılan**: kullanıcı architect'i eklemeyebilir. Eklemezse `docs/` sahipliği, danışma hedefi, developer yasakları ve `lead` seçimi koşullu olarak değişir (bu dosyada ve `routing.md` / `agent-md-rich.md`'de işaretli).
 ```
 
 **Opsiyonel rollerde aynı hatanın üç kopyası var.** QA, Security Reviewer ve Doc Writer
@@ -1121,15 +1302,24 @@ Ayrıca `agent-md-rich.md`'nin sonuna, bölüm listesinin sonuna ekle:
 ```markdown
 ## Plan Kapısı (yalnız `constitution.planGate: true` ise)
 
-Kapı açıksa **her** agent md'sine kısa bir bölüm eklenir — rolüne göre üç varyant:
+Kapı açıksa **her** agent md'sine kısa bir bölüm eklenir. Önce **her role yazılan temel
+cümle**, sonra varsa role özel ek:
 
-- **Kod yazan roller:** "Bu projede plan kapısı açık. Onaylanmamış bir planın işini yapma;
-  ne yapacağın `.agent-work/` altındaki plan dosyasında yazar. Prosedürün tamamı `work-plan`
-  skill'indedir."
-- **`planReviewer` rolü:** "Plan denetimi sende. Planı denetler, sonucunu döndürürsün —
-  plan dosyasını **sen değiştirmezsin**, kaydı `work-plan` akışı yazar."
-- **`codeReviewer` rolü:** "Biten işin kod denetimi sende. Sonucunu döndürürsün; kaydı
-  `work-plan` akışı plan dosyasına yazar."
+**Temel (istisnasız her agent):** "Bu projede plan kapısı açık: işler `.agent-work/`
+altındaki plan dosyalarıyla yürür ve prosedürün tek otoritesi `work-plan` skill'idir.
+`.agent-work/` altına doğrudan yazma — o akış senin adına kaydı tutar."
+
+Üstüne, role göre **ek cümle**:
+
+- **Kod yazan roller:** "Onaylanmamış bir planın işini yapma; ne yapacağın plan dosyasında
+  yazar."
+- **`planReviewer` ise:** "Plan denetimi sende. Planı denetler, sonucunu döndürürsün."
+- **`codeReviewer` ise:** "Biten işin kod denetimi sende. Sonucunu döndürürsün."
+- **Hiçbiri değilse** (kapı sahibi olmayan, kod da yazmayan bir rol — örn. doc-writer):
+  ek cümle **yok**, yalnız temel cümle yazılır.
+
+Bir agent **iki kapıya birden** sahipse (aynı ad hem `planReviewer` hem `codeReviewer`)
+**iki ek cümle de** yazılır; biri diğerini elemez.
 
 Bölüm **kısa tutulur ve prosedür tekrar edilmez** — tek otorite `work-plan` skill'idir;
 aynı kuralı agent md'sinde de anlatmak drift üretir.
@@ -1141,6 +1331,16 @@ Adım 5'teki developer rol önerisi satırını şununla değiştir:
 
 ```markdown
    - **developer(lar)** (öneri: EKLE) — analizden önerdiğin her domain için ayrı developer (architect de önerildiyse `consults: [architect]`, önerilmediyse `consults: []`).
+```
+
+Adım 5'in sonundaki `lead` varsayılanı satırını şununla değiştir. **Bugünkü hâli
+architect'siz takımda geçersiz manifest üretiyor:** doğrulayıcı `agents[]` içinde
+bulunmayan bir `lead`'i reddeder, yani architect eklenmemişse üretim doğrulamada patlar.
+
+```markdown
+   `lead` varsayılanı `architect`'tir. **Architect eklenmediyse** `lead` olarak eklenen
+   rollerden birini seçtir (öneri: en geniş domain'e sahip developer) ya da alanı hiç
+   yazma — `lead` opsiyoneldir. Var olmayan bir adı `lead` yapma; doğrulayıcı reddeder.
 ```
 
 Adım 5'teki `(e)` maddesini şununla değiştir:
@@ -1169,9 +1369,37 @@ Adım 7B'deki 1 numaralı sade açıklamayı şununla değiştir:
 
 - [ ] **Step 5: Koşullandırmanın tam olduğunu doğrula**
 
-Geniş bir `grep architect` işe yaramaz: architect'in **kendi rol tanımını** anlatan satırları
-da yakalar, oysa o rol yoksa bölüm zaten üretilmez. Onun yerine koşullandırılması gereken
-**üç kalıbı** ara:
+**Grep tek başına yetmez** ve buna güvenme: koşul çoğu yerde bir sonraki satırda duruyor,
+satır bazlı ters-grep onu göremez. Önce şu listeyi **elle** doğrula — her madde için
+dosyayı aç, koşulun yazıldığını gözünle gör:
+
+| # | Dosya | Koşullanması gereken |
+|---|---|---|
+| 1 | `routing.md` | `docs/** → architect` satırının üretim koşulu |
+| 2 | `routing.md` | "Şüphede kalınırsa architect'e danışılır" → architect yoksa kullanıcı |
+| 3 | `routing.md` | "Architect'e danış" genel maddesi (mimari karar / breaking change) |
+| 4 | `routing.md` | "No-workaround → architect" |
+| 5 | `routing.md` | Tablodaki iki iş-türü satırı |
+| 6 | `routing.md` | "her projede korunur" / "her zaman korunur" iddiaları |
+| 7 | `governance-defaults.md` | Çekirdek roster cümlesindeki "her zaman" |
+| 8 | `governance-defaults.md` | developer `consults` + iki kural cümlesi |
+| 9 | `governance-defaults.md` | reviewer `consults` (eskalasyon hedefi) |
+| 10 | `governance-defaults.md` | reviewer'ın koşulsuz "Her çıktı review gate'inden geçer" cümlesi |
+| 11 | `governance-defaults.md` | QA / security-reviewer / doc-writer `consults` (üç satır) |
+| 12 | `governance-defaults.md` | doc-writer'ın "Mimari kararları architect üretir" kuralı |
+| 13 | `agent-md-rich.md` | `writesCode=true` cümlesindeki `docs/` yasağı |
+| 14 | `agent-md-rich.md` | "Yasak" maddesindeki `docs/` ve `<arch-root>/` |
+| 15 | `agent-md-rich.md` | Kod-doc bölümündeki iki architect cümlesi |
+| 16 | `agent-md-rich.md` | Eşleme tablosunun `writesCode: true` ve `consults` satırları |
+| 17 | `team-builder-setup/SKILL.md` | developer rol önerisindeki `consults` |
+| 18 | `team-builder-setup/SKILL.md` | `lead` varsayılanı |
+| 19 | `team-builder-setup/SKILL.md` | `(e)` maddesindeki danışma varsayılanı |
+| 20 | `team-builder-setup/SKILL.md` | Adım 6 taslak önerisindeki architect satırı |
+| 21 | `team-builder-setup/SKILL.md` | Adım 6 routing temel kuralı alıntısı |
+| 22 | `team-builder-setup/SKILL.md` | Adım 7B workaround açıklaması |
+
+Listeyi bitirdikten **sonra** grep'i bir güvenlik ağı olarak çalıştır — kalan satırlar
+listede olmayan bir yeri işaret ediyorsa gerçek bir kaçaktır:
 
 ```bash
 grep -n "consults.*architect\|architect'e danış\|orası architect'in\|architect'e sevk\|architect'e gidilir\|architect'e işaret\|architect'e eskale\|Mimari kararları architect\|docs/\*\* → architect" team-builder-shared/routing.md team-builder-shared/governance-defaults.md team-builder-shared/agent-md-rich.md team-builder-setup/SKILL.md | grep -iv "varsa\|yoksa\|önerildiyse\|önerilmediyse\|eklendiyse\|eklenmediyse\|technical-architect"
@@ -1180,9 +1408,10 @@ grep -n "consults.*architect\|architect'e danış\|orası architect'in\|architec
 (`technical-architect` dışlanıyor çünkü o, örnek manifest JSON'undaki bir agent adıdır —
 koşullandırılacak bir kural değil.)
 
-Beklenen: **hiçbir satır kalmamalı.** Kalan her satır, architect yokken de koşulsuz
-üretilecek bir danışma/yasak atfıdır. Spec'in `Architect'siz takımda docs/ sahipliği`
-tablosuyla karşılaştır ve koşullandır.
+Beklenen: kalan satırların **hepsi yukarıdaki 22 maddede** olmalı ve her biri için koşul
+bir sonraki satırda yazılı olmalı (grep bunu göremez, sen görürsün). Listede olmayan bir
+satır kalırsa gerçek kaçaktır — spec'in `Architect'siz takımda docs/ sahipliği` tablosuyla
+karşılaştır ve koşullandır.
 
 Bu üç kalıbın gerekçesi: (1) `consults` — danışma zincirinin ucu, (2) "architect'e
 danış/gidilir/sevk et" — belirsizlik hedefi, (3) "orası architect'in" — `docs/` yasağı.
@@ -1213,28 +1442,41 @@ README bugün "4 anayasa preseti" diyor ve hepsinin default açık olduğunu ima
 
 `README.md`, `/team-builder-setup` satırındaki `constitution presets` ifadesini `constitution presets (including the optional plan gate)` yap.
 
-Anayasa presetlerini sayan yere (satır ~33 civarı, "the rules the team must follow" paragrafı) ekle:
+**Asıl düzeltme bir ekleme değil, bir değiştirmedir** — mevcut cümle "hepsi açık" diyor ve
+bu yanlış olacak. Şu satırı:
 
 ```markdown
-Five constitution presets are available. Four are on by default — no-workaround discipline,
-code/doc sync, per-agent memory, and the language standard. The fifth, the **plan gate**, is
-**off by default**: it makes the team write a plan, have it reviewed, and get your approval
-before any code is written, and unlike the other four it creates files in your project
-(`.agent-work/` and a `work-plan` skill).
+- **Constitution:** no-workaround discipline, code–doc sync, per-agent memory, language/comment
+  standard — all on by default, each toggleable in the wizard.
+```
+
+şununla değiştir:
+
+```markdown
+- **Constitution:** no-workaround discipline, code–doc sync, per-agent memory, language/comment
+  standard — all four on by default, each toggleable in the wizard. A fifth preset, the
+  **plan gate**, is **off by default**: it makes the team write a plan, have it reviewed and
+  get your approval before any code is written. Unlike the other four it creates files in
+  your project (`.agent-work/` and a `work-plan` skill), which is why you opt into it.
 ```
 
 - [ ] **Step 2: Türkçe bölümü güncelle**
 
 `README.md` Türkçe bölümünde, `/team-builder-setup` satırındaki `anayasa presetleri` ifadesini `anayasa presetleri (isteğe bağlı plan kapısı dahil)` yap.
 
-Anayasa presetlerini anlatan paragrafa (satır ~239 civarı) ekle:
+Aynı şekilde, "hepsi varsayılan açık" diyen satırı:
 
 ```markdown
-Beş anayasa preseti var. Dördü **default açık**: workaround yasağı, kod-doküman
-senkronizasyonu, her agent'ın kendi notu ve dil standardı. Beşincisi — **plan kapısı** —
-**default kapalı**: kod yazılmadan önce plan yazılmasını, denetlenmesini ve **senin
-onaylamanı** şart koşar; diğer dördünün aksine projede dosya üretir (`.agent-work/` ve bir
-`work-plan` skill'i).
+  standardı — hepsi varsayılan açık, sihirbazda kapatılabilir.
+```
+
+şununla değiştir:
+
+```markdown
+  standardı — dördü de varsayılan açık, sihirbazda kapatılabilir. Beşinci bir preset,
+  **plan kapısı**, **varsayılan kapalıdır**: kod yazılmadan önce plan yazılmasını,
+  denetlenmesini ve **senin onaylamanı** şart koşar. Diğer dördünün aksine projede dosya
+  üretir (`.agent-work/` ve bir `work-plan` skill'i) — o yüzden açmak bilinçli bir tercihtir.
 ```
 
 - [ ] **Step 3: Commit**
@@ -1280,14 +1522,35 @@ git diff --stat HEAD~6 -- team-builder-shared/plan-gate.md team-builder-shared/t
 
 Beklenen: boş çıktı.
 
-- [ ] **V/S/W senaryolarının tamamı kapsandı (elle okuma)**
+- [ ] **V ve S senaryoları kodda karşılık buluyor**
 
-Spec'teki `## Doğrulama` bölümünün üç tablosunu (V1–V16, S1–S2, W1–W6) tek tek geç:
-V ve S satırları için selftest kodunda karşılığı olan vakayı göster; W satırları için
-sihirbaz metninde davranışı tarif eden cümleyi göster. W1/W2 (üretim/üretmeme) Task 4
-Adım 4'te, W3/W4 (`codeReviewer` adı / `null`) Task 5 Adım 1–2'de, W5 (architect'siz)
-Task 5'in tamamında, W6 (resume) Task 3 Adım 5'te. Karşılığı olmayan satır kalırsa
-**plan eksiktir** — o satır için görev ekle.
+Spec'in `## Doğrulama` bölümündeki V1–V16 ve S1–S2 satırlarını tek tek geç; her biri için
+selftest kodunda karşılığı olan vakayı göster. Karşılığı olmayan satır kalırsa **plan
+eksiktir** — o satır için görev ekle.
+
+- [ ] **W1–W6 gerçekten çalıştırıldı (elle kabul)**
+
+Bunlar **metin okuyarak kapatılamaz** — spec onları elle yürütülen kabul senaryoları
+olarak tanımlıyor ve sihirbaz metnini yeniden okumak davranışı kanıtlamaz. Her biri için
+tek kullanımlık bir proje dizininde sihirbazı çalıştır:
+
+| # | Kurulum | Doğrulanan |
+|---|---|---|
+| W1 | Plan kapısı **açık**, iki kapı sahibi de verilmiş | `.agent-work/` + beş alt dizin, `README.md`, `TEMPLATE.md`, `.agent-source/skills/work-plan/SKILL.md` oluştu; metinler `docLanguage` dilinde; makine işaretleri birebir korunmuş |
+| W2 | Plan kapısı **kapalı** | `.agent-work/` **yok**, `work-plan` kaynağı yok, mirror yok, manifest'te kök `planGate` yok |
+| W3 | Kapı açık, `codeReviewer` bir ad | Routing ve governance metni **o adla** yazılmış |
+| W4 | Kapı açık, `codeReviewer: null` | Evrensel code-review kuralı **hiçbir dosyada** yok — `grep -ri "review gate\|review kapı" .agent-source/` boş dönmeli |
+| W5 | Architect **eklenmemiş** takım | `docs/** → architect` satırı yok; developer talimatında `docs/` yasağı ve architect atıfları yok; `consults` boş; `lead` geçerli bir agent (ya da hiç yok) |
+| W6 | Kapı açık, iki kapı sahibi sorusunun **ortasında** oturumu kes, yeni oturumda devam et | `answers.planGate.planReviewer` korunmuş, o soru **yeniden sorulmamış**, yalnız `codeReviewer` sorulmuş |
+
+Her koşumdan sonra üretilen manifest'i doğrula — W5 özellikle önemli, çünkü geçersiz bir
+`lead` orada ortaya çıkar:
+
+```bash
+node -e "import('./team-builder-shared/validate-manifest.mjs').then(m=>m.validate(JSON.parse(require('fs').readFileSync('<proje>/.agent-source/agents/manifest.json','utf8'))))"
+```
+
+Beklenen: hata yok. W1 ve W3–W6 için ayrıca `sync --check` temiz olmalı.
 
 - [ ] **Sihirbaz metninde jargon sızıntısı yok**
 
