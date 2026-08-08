@@ -99,7 +99,7 @@ Her ADR `docs/<arch-root>/<domain>/adr/NNNN-baslik.md` (domain'e
 - Tek ekran ideal, iki ekran tavan.
 - Başlık emir kipinde ve kısa.
 - Dosya adı İngilizce kebab-case: `0003-extension-permission-model.md` (Türkçe karakter yok, içerik `docLanguage` dilinde).
-- Yeni ADR `Durum: Önerilen` ile başlar; architect onayından sonra `Kabul Edildi`.
+- Yeni ADR `Durum: Önerilen` ile başlar; onaydan sonra `Kabul Edildi` — onayı architect verir, architect yoksa kullanıcı.
 - ADR yerini alındığında eski dosya silinmez; `Durum: Yerini Aldı (ADR-XXX'e)` olur.
 
 ---
@@ -111,7 +111,7 @@ Sihirbaz, onaylanan domain'lere göre üretir:
 2. Her domain için `<domain>/{README.md, adr/}` (registry dosyaları boş başlık + "kodla senkron" notu ile).
 3. `cross-cutting/{README.md, adr/}` + seçilen standart dosyaları (anayasa presetlerinden türetilir).
 4. `templates/adr-sablonu.md` (yukarıdaki MADR) + `templates/<module-docs-sablonu>/` (per-module ise).
-5. layout=per-module ise her modülün ilk dokümanı şablondan organik kopyalanır (architect ADR yazdıkça).
+5. layout=per-module ise her modülün ilk dokümanı şablondan organik kopyalanır (ADR yazıldıkça).
 
-Bu kuralların tamamı (sadece architect yazar; ADR konum kuralı; registry kod-doc senkron disiplini)
+Bu kuralların tamamı (architect varsa yalnız o yazar; ADR konum kuralı; registry kod-doc senkron disiplini)
 architect agent md'sine ve CLAUDE.md'ye işlenir.

@@ -1,7 +1,7 @@
 # Mimari Dokümanlar
 
 Bu dizin projenin mimari kararlarını, kısıtlarını ve tasarım notlarını barındırır.
-Yazım/okuma standardı: `templates/doc-standard.md`. Buraya **sadece architect** yazar.
+Yazım/okuma standardı: `templates/doc-standard.md`. Buraya, takımda bir mimarlık rolü varsa **yalnız o** yazar; yoksa değişikliği yapan rol yazar ve mimari kararı kullanıcı verir.
 
 ## İçindekiler
 - `ilkeler.md` — cross-cutting prensipler.

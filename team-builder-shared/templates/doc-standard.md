@@ -34,6 +34,6 @@ Bir agent (architect/developer/reviewer) bir konuda karar/standart ararken:
 2. İlgili domain klasörü: `docs/<arch-root>/<domain>/` (README + `*-registry.md`).
 3. İlgili `adr/` ve `constraints/` dosyaları — **dosya adından** konuyu, **Status**'tan geçerliliği, **Karar** + **Sonuçlar** bölümlerinden bağlayıcı kuralı oku.
 4. per-module konularda `modules/<name>/docs/`.
-5. Çelişki/boşluk varsa uydurma → architect'e danış (no-workaround).
+5. Çelişki/boşluk varsa uydurma → mimarlık rolü varsa ona, yoksa kullanıcıya danış (no-workaround).
 
 > Bu okuma sırası agent md'lerin "Sorumluluk Alanı" / "Routing & Danışma" bölümlerine yansır.

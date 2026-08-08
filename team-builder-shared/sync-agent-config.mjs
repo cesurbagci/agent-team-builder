@@ -261,7 +261,6 @@ function renderOpencodeAgentMd(agent, manifest, source) {
 
 function renderDeveloperInstructions(agent, manifest, projectName) {
   const docLanguage = manifest.docLanguage ?? 'tr'
-  const archRoot = manifest.architectureDocs?.root ?? 'docs/mimari'
   const constitution = manifest.constitution ?? {}
   const perAgentMemory = constitution.perAgentMemory !== false
   const languageStandard = constitution.languageStandard !== false
@@ -280,10 +279,27 @@ function renderDeveloperInstructions(agent, manifest, projectName) {
   lines.push('(`tools`, `model`, `memory`, `color`) Codex konfigurasyonu olarak yorumlama.')
   lines.push('')
 
+  // Documentation ownership comes from routing, not from a role name. A team
+  // without a documentation owner must not tell developers to stay out of a
+  // directory nobody owns, and must not hand every non-writing role a write
+  // area it was never given.
+  const docsOwner = (manifest.routing ?? []).find(
+    r => r && typeof r.path === 'string' && r.path.startsWith('docs')
+  )
   if (writesCode) {
-    lines.push(`- Sadece kendi domain'inde kod yaz; \`${archRoot}/\` altina yazma.`)
+    lines.push("- Sadece kendi domain'inde kod yaz.")
+    if (docsOwner && docsOwner.role !== agent.name) {
+      lines.push(
+        `- \`${docsOwner.path}\` altina yazma; orasi \`${docsOwner.role}\` rolunun.`
+      )
+    }
   } else {
-    lines.push(`- Production kod yazma. Yazma alani prensip olarak \`${archRoot}/\` altidir.`)
+    lines.push('- Production kod yazma.')
+    if (docsOwner && docsOwner.role === agent.name) {
+      lines.push(`- Yazma alanin \`${docsOwner.path}\` altidir.`)
+    } else {
+      lines.push('- Dosya degistirme; yalniz okur ve rapor uretirsin.')
+    }
   }
   lines.push(
     '- Kod tabanini birincil kaynak olarak oku; dokumanlari kod kontratlarinin tamamlayicisi olarak guncelle.'
@@ -782,6 +798,45 @@ async function runSelftest() {
     'developer_instructions should include per-agent memory line'
   )
 
+  // Documentation ownership is derived from routing, not from a role name.
+  // Without a docs owner nobody may be told to stay out of docs/, and no
+  // read-only role may be handed a write area it was never granted.
+  const ownedManifest = {
+    docLanguage: 'tr',
+    routing: [{ path: 'docs/**', role: 'architect' }],
+    agents: [],
+  }
+  const ownerText = renderDeveloperInstructions(
+    { name: 'architect', writesCode: false },
+    ownedManifest,
+    'demo'
+  )
+  assert(
+    ownerText.includes('Yazma alanin `docs/**` altidir.'),
+    'the docs owner must be granted its routed path'
+  )
+  const devText = renderDeveloperInstructions({ name: 'dev' }, ownedManifest, 'demo')
+  assert(
+    devText.includes('`docs/**` altina yazma; orasi `architect` rolunun.'),
+    'a developer must be kept out of the routed docs path'
+  )
+
+  const ownerlessManifest = { docLanguage: 'tr', routing: [], agents: [] }
+  const soloDev = renderDeveloperInstructions({ name: 'dev' }, ownerlessManifest, 'demo')
+  assert(
+    !/altina yazma; orasi/.test(soloDev),
+    'without a docs owner a developer must not be barred from an unowned directory'
+  )
+  const soloReviewer = renderDeveloperInstructions(
+    { name: 'reviewer', writesCode: false },
+    ownerlessManifest,
+    'demo'
+  )
+  assert(
+    !soloReviewer.includes('Yazma alanin'),
+    'without a docs owner a read-only role must not be granted a write area'
+  )
+
   // OpenCode agent md — only architect targets opencode (developer is claude-only).
   assert(
     await exists('.opencode/agents/architect.md'),
@@ -993,7 +1048,12 @@ async function runSelftest() {
   // above gets to exercise it.
   const trimmedManifest = {
     ...manifest,
-    agents: manifest.agents.filter(a => a.name !== 'architect'),
+    // Dropping architect also drops every reference to it: a consults entry
+    // naming a removed agent is rejected, which is the same rule the wizard
+    // follows when a team has no architect.
+    agents: manifest.agents
+      .filter(a => a.name !== 'architect')
+      .map(a => ({ ...a, consults: (a.consults ?? []).filter(c => c !== 'architect') })),
     lead: 'developer',
   }
   await fs.writeFile(
@@ -1334,6 +1394,7 @@ if (isMain) {
 export {
   generate,
   renderCodexAgentToml,
+  renderDeveloperInstructions,
   codexAgentDefinition,
   renderOpencodeAgentMd,
   opencodeModel,

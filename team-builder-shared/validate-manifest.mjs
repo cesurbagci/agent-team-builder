@@ -234,14 +234,53 @@ export function validate(doc) {
       );
     }
 
-    // skills[].enforcement: verildiyse {mandatory,when-needed}
+    // skills[]: name zorunlu, enforcement {mandatory,when-needed}
     for (const s of (a && a.skills) ?? []) {
       const sName = s && s.name ? s.name : "(skill)";
+      if (!s || typeof s.name !== "string" || s.name === "") {
+        errors.push(`${label}: skills[].name zorunlu`);
+      }
       if (!s || !ENFORCEMENTS.includes(s.enforcement)) {
         errors.push(
           `${label}/${sName}: enforcement mandatory|when-needed olmalı`
         );
       }
+    }
+  }
+
+  // consults[]: verildiyse her değer tanımlı bir agent adı olmalı. Generator
+  // bu adı doğrudan talimata gömüyor (sync-agent-config.mjs), yani tanımsız bir
+  // ad var olmayan bir role sevk talimatı üretir.
+  for (const a of Array.isArray(agents) ? agents : []) {
+    const label = a && a.name ? a.name : "(adsız)";
+    if (a && a.consults !== undefined) {
+      if (!Array.isArray(a.consults)) {
+        errors.push(`${label}: consults bir dizi olmalı`);
+      } else {
+        for (const c of a.consults) {
+          if (!agentsByName.has(c)) {
+            errors.push(
+              `${label}: consults "${c}" agents içinde bir name olmalı`
+            );
+          }
+        }
+      }
+    }
+  }
+
+  // codeDocSync[]: her satırda code ve doc dolu olmalı
+  if (doc.codeDocSync !== undefined) {
+    if (!Array.isArray(doc.codeDocSync)) {
+      errors.push("codeDocSync bir dizi olmalı");
+    } else {
+      doc.codeDocSync.forEach((row, i) => {
+        if (!row || typeof row !== "object") {
+          errors.push(`codeDocSync[${i}]: nesne olmalı`);
+          return;
+        }
+        if (!row.code) errors.push(`codeDocSync[${i}]: code dolu olmalı`);
+        if (!row.doc) errors.push(`codeDocSync[${i}]: doc dolu olmalı`);
+      });
     }
   }
 
@@ -746,6 +785,40 @@ if (process.argv.includes("--selftest")) {
       },
     ],
   });
+
+  // V17 — consults naming a nonexistent agent generates a referral to a role
+  // that does not exist. The generator embeds the name verbatim.
+  expectReject(
+    "V17 unknown consults role",
+    {
+      targetsDefault: ["claude"],
+      agents: [{ name: "dev", model: "sonnet", consults: ["ghost"] }],
+    },
+    "consults \"ghost\" agents içinde bir name olmalı"
+  );
+
+  // V18 — a skill entry without a name.
+  expectReject(
+    "V18 skill without name",
+    {
+      targetsDefault: ["claude"],
+      agents: [
+        { name: "dev", model: "sonnet", skills: [{ enforcement: "mandatory" }] },
+      ],
+    },
+    "skills[].name zorunlu"
+  );
+
+  // V19 — a codeDocSync row missing either side of the mapping.
+  expectReject(
+    "V19 codeDocSync row without doc",
+    {
+      targetsDefault: ["claude"],
+      codeDocSync: [{ code: "src/api/**" }],
+      agents: [{ name: "dev", model: "sonnet" }],
+    },
+    "doc dolu olmalı"
+  );
 
   // V14 — planReviewer key missing.
   expectReject(
