@@ -281,7 +281,14 @@ Tüm cevaplar toplandı; şimdi kaynağı yaz, doğrula ve generate et. Sırayla
 **8b. Manifest'i doğrula:**
 
 - Önce aracın çalıştığını teyit et: `node ~/.claude/skills/team-builder-shared/validate-manifest.mjs --selftest` → `SELFTEST PASS` görmelisin.
-- Sonra yazdığın `manifest.json`'u doğrula: ya küçük bir Node tek-satırıyla dosyayı parse edip `validate()` fonksiyonunu o obje ile çağır, ya da `~/.claude/skills/team-builder-shared/manifest-schema.md`'deki doğrulama kurallarına göre alan alan elle denetle (agents boş değil; her agent'ta name; targets ⊆ {claude,codex,opencode}; model ∈ {opus,sonnet,haiku}; opencode hedefli agent'ta opencode_model (provider/model) veya model var; effort ∈ {low,medium,high}; enforcement ∈ {mandatory,when-needed}; lead ve routing.role birer agent name; constitution alanları boolean; agent adları portatif slug ve büyük/küçük harf duyarsız benzersiz; `writesCode` boolean; `constitution.planGate: true` ise kök `planGate` nesnesi var ve `planReviewer`/`codeReviewer` anahtarlarının ikisi de bulunuyor, değerleri kod yazmayan bir agent adı ya da `null`; kapalıysa kök `planGate` yok).
+- Sonra yazdığın `manifest.json`'u doğrula. **Tercih edilen yol:** küçük bir Node
+  tek-satırıyla dosyayı parse edip `validate()` fonksiyonunu o obje ile çağır — kural
+  listesinin tamamını uygulayan tek şey odur.
+- Çalıştıramıyorsan `~/.claude/skills/team-builder-shared/manifest-schema.md`'deki
+  **"Doğrulama kuralları"** bölümünü aç ve maddelerin **hepsini** tek tek denetle. Listeyi
+  buraya kopyalama ve akıldan sayma: kurallar bu dosyadan bağımsız değişiyor, buradaki her
+  kopya eskiyor. (Bu madde bir zamanlar kuralları satır içinde sayıyordu ve sekiz kural
+  geride kalmıştı — sihirbaz doğrulayıcının reddedeceği manifest'i geçerli sanardı.)
 - Hata varsa düzelt ve yeniden doğrula. Manifest geçerli olmadan **8c'ye GEÇME**.
 
 **8c. Generate (sync):**

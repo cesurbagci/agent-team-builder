@@ -69,7 +69,14 @@ Generated dosyalar **elle değiştirilmez**; kaynak burasıdır.
 ### Doğrulama kuralları (validate-manifest.mjs ile birebir)
 
 - `agents` boş olamaz; her agent'ta `name` zorunlu.
+- Her agent'ın bir hedefi olmalı: kendi `targets`'ı ya da kök `targetsDefault`. İkisi de
+  yoksa manifest geçersizdir — varsayılan hedef yoktur.
 - `targets` verildiyse `{claude, codex, opencode}` alt kümesi olmalı ve boş olmamalı.
+- `topology` (verildiyse) `{subagent, native}` içinde olmalı.
+- `focus` (verildiyse) dizi olmalı ve değerleri bilinen kalite odakları olmalı
+  (`performance`, `code-design`, `ui-ux`, `accessibility`, `security`, `testing`).
+- Kap tipleri doğru olmalı: `constitution` ve `planGate` nesne, `routing` ve `codeDocSync`
+  dizi, `routing[]`/`codeDocSync[]` öğeleri nesne.
 - `model` (verildiyse, claude hedefli agent'ta) `{opus, sonnet, haiku}` içinde olmalı.
 - `opencode_model` (verildiyse) `provider/model` formatında string olmalı. `opencode` hedefli bir agent'ta ne `opencode_model` ne `model` yoksa hata verilir (fallback haritası da çalışamaz).
 - `model_reasoning_effort` (verildiyse) `{low, medium, high}` içinde olmalı.
