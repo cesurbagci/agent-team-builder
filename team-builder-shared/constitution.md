@@ -45,7 +45,7 @@ CLAUDE.md/AGENTS.md'ye gömülür. İlk dördünün `default` değeri `true`, KA
    | Kod–doküman birlikte | "Bir kod yeri değişince ilgili doküman aynı işte güncellenir (eşleşmeyi ayrıca soracağım)." |
    | Her agent kendi notu | "Her rol kendi `.agent-memory/<rol>/` klasörüne not tutar; başkasınınkine karışmaz." |
    | Dil standardı | "Kod İngilizce; doküman/yorum/cevap senin seçtiğin dilde." |
-   | Plan kapısı | "Kod yazılmadan önce plan yazılır, denetlenir ve **sen onaylarsın**. Onaylı işler bir havuzda birikir, sırasını sen seçersin. (Varsayılan: kapalı.)" |
+   | Plan kapısı | "Kod yazılmadan önce plan yazılır ve **sen onaylarsın** (istersen önce bir rol gözden geçirir). Onaylı işler bir havuzda birikir, sırasını sen seçersin. (Varsayılan: kapalı.)" |
 
 4. **İlk dördü default açık, KARAR 5 default kapalı**; kullanıcı her birini değiştirebilir.
    Açık kalanlar için projeye özel satırları sor (sadece açık olanlar için; aşağıya bak).
@@ -57,14 +57,14 @@ CLAUDE.md/AGENTS.md'ye gömülür. İlk dördünün `default` değeri `true`, KA
 ## KARAR 1 — No-workaround disiplini  (`noWorkaround`)
 
 **Ne:** "Çalışıyor olması yetmez." Mimari kararı bypass eden hack/workaround kabul
-edilmez; belirsizlikte architect'e gidilir.
+edilmez; belirsizlikte architect'e gidilir — **architect takımda yoksa kullanıcıya sorulur.**
 
 **Agent'lara yansıması:**
 - **reviewer:** workaround pattern listesindeki bir desen görürse **otomatik Kritik**
   bulgu üretir (review'da geri çıkarılır).
-- **architect:** workaround'u aktif reddeder; doğru yolu söyler veya ADR açtırır.
-- **developer'lar:** belirsizlikte kestirme yol aramaz, architect'e danışır
-  (routing.md'deki "architect'e danış" kuralıyla birleşir).
+- **architect** *(varsa)*: workaround'u aktif reddeder; doğru yolu söyler veya ADR açtırır.
+- **developer'lar:** belirsizlikte kestirme yol aramaz; architect **varsa** ona danışır
+  (routing.md'deki "architect'e danış" kuralıyla birleşir), **yoksa** kullanıcıya sorar.
 
 **PROJEYE ÖZEL → kullanıcıya sorulur:** workaround pattern listesi. Referanstan bir
 çekirdek liste uyarlanır (deprecate API kullanımı, sözleşme/kanal bypass'ı, modül-sınırı

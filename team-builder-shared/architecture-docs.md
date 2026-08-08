@@ -2,7 +2,7 @@
 
 > v1'in basit `docs/architecture/{adr,constraints,design}` yapısını,
 > **domain-bazlı zengin ağaca** genişletir.
-> **Sadece architect yazar.** Dosya konumu kuralı architect agent md'sine + CLAUDE.md'ye işlenir.
+> **Architect varsa yalnız o yazar** ve dosya konumu kuralı architect agent md'sine + CLAUDE.md'ye işlenir. **Architect yoksa** ağaç yine üretilir ama özel sahibi olmaz: mimari kararı kullanıcı verir, dokümanı değişikliği yapan rol yazar.
 
 ## arch-root Seçimi
 

@@ -119,8 +119,8 @@ Role özel sıkı kurallar (madde listesi):
 
 | manifest | gövdeye yansıma |
 |---|---|
-| `writesCode: false` | Rol & Sınırlar + Kısıtlar'da **"Kod yazma"** net; Çalışma klasörü dar (architect: `<arch-root>/`; reviewer: yok). |
-| `writesCode: true` | Çalışma klasörü = kendi domain kod yolları; Yasak = diğer domain — architect **varsa** ayrıca `<arch-root>/`, **yoksa** yalnız diğer domainler. |
+| `writesCode: false` | Rol & Sınırlar + Kısıtlar'da **"Kod yazma"** net; Çalışma klasörü dar (architect: **tüm `docs/`**; reviewer: yok). |
+| `writesCode: true` | Çalışma klasörü = kendi domain kod yolları; Yasak = diğer domain — architect **varsa** ayrıca **tüm `docs/`** (yalnız `<arch-root>/` değil), **yoksa** yalnız diğer domainler. |
 | `skills[].enforcement: mandatory` | `## Zorunlu Skill'ler` altında **MUTLAKA** emir kipi. |
 | `skills[].enforcement: when-needed` | `## Gerektiğinde Skill'ler` altında öneri dili. |
 | `consults: [architect]` | `## Routing & Danışma`'da "mimari belirsizlikte architect'e sevk". Liste **boşsa** (architect yoksa) "mimari belirsizlikte **kullanıcıya sor**". |

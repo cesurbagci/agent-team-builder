@@ -109,7 +109,7 @@ Adımları **bu sırayla** uygula. Her adımda kullanıcıya sor, cevabı al, so
 `~/.claude/skills/team-builder-shared/architecture-docs.md` kurallarını kullan.
 
 **Önce kavramı SADE anlat** (kullanıcı ADR'i bilmeyebilir):
-> "Mimar (architect) kod yazmaz; bunun yerine takımın **mimari kararlarını** bir klasöre yazar. İçinde:
+> "Takımın **mimari kararları** bir klasöre yazılır (architect eklediyseniz onun işi; eklemediyseniz bu kararları siz verirsiniz ve klasör yine kullanışlıdır). İçinde:
 > - **ADR** = *Mimari Karar Kaydı*: 'şu kararı şu gerekçeyle aldık' diye kısa notlar (örn. 'state için Redux yerine Zustand seçtik, çünkü…').
 > - **Kısıtlar**: 'şu katman şunu yapamaz' gibi kurallar.
 > - **Tasarım notları / diyagramlar.**
@@ -202,7 +202,8 @@ Sade açıklama kalıbı (jargon yok):
 
 Bu preset dördüyle birlikte gösterilmez: kendi sorusu vardır ve **kapalı** gelir.
 
-> "Kod yazılmadan önce iş için plan yazılsın, denetlensin ve **sen onaylayasın** mı?
+> "Kod yazılmadan önce iş için plan yazılsın ve **sen onaylayasın** mı? (İstersen planı
+> sana gelmeden önce gözden geçirecek bir rol de belirleyebilirsin.)
 > Onaylanan işler bir havuzda birikir; sırasını sen seçersin. Bu, projede bir çalışma
 > alanı dizini (`.agent-work/`) ve bir skill üretir. **Varsayılan: kapalı.**"
 
@@ -210,8 +211,12 @@ Bu preset dördüyle birlikte gösterilmez: kendi sorusu vardır ve **kapalı** 
 **yazma**, başka soru sorma. Adım 8a'da plan kapısı çıktılarının hiçbiri üretilmez.
 
 **Açarsa** iki kapı sahibini sor. Her soruda **yalnız kod yazmayan rolleri** (Adım 5'te
-`writesCode: false` seçilenler) ve "kimse" seçeneğini sun. Kod yazmayan hiç rol yoksa
-ikisini de "kimse" olarak geç ve kullanıcıya söyle.
+`writesCode: false` seçilenler) ve "kimse" seçeneğini sun.
+
+**İki soru da atlanamaz** — kök `planGate` nesnesinin iki anahtarı da zorunludur. Kod
+yazmayan hiç rol yoksa soruları yine sor; tek seçenek "kimse" olur ama kullanıcı sonucu
+görerek karar verir ve isterse geri dönüp bir denetleyici rol ekler. Sessizce `null`
+atama.
 
 1. > "Planı senden önce kim gözden geçirsin? (Kimse dersen plan doğrudan sana gelir.)"
    → `manifest.planGate.planReviewer` (ad ya da `null`)

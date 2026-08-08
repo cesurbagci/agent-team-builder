@@ -15,7 +15,7 @@ v2 governance modelinin çekirdeği **kod-yolu → zorunlu rol** tablosudur. Gen
 İkisi `sync-agent-config.mjs` ile aynı kaynaktan (`.agent-source/`) üretilir, böylece
 drift olmaz: `project/CLAUDE.md`'deki tablo ile `manifest.routing` elle ayrı tutulmaz.
 
-## Standart satır (her zaman ekle)
+## Standart satır (koşullu)
 
 - **`docs/**` → architect — yalnız takımda architect varsa.** Architect varsa tüm `docs/`
   dizininin sahibidir; dokümantasyon (ADR, kısıt, tasarım, README) yalnız onun tarafından

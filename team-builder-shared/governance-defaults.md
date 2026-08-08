@@ -52,7 +52,7 @@ Her developer rolü için varsayılan:
   (Karmaşık projelerde effort=high tercih edilebilir; sihirbaz proje karmaşıklığına göre yükseltebilir.)
 - `consults`: **[architect]** — architect takımda **yoksa boş `[]`**.
 - Kurallar (her developer'a, kendi domain'i doldurularak):
-  - Architect **varsa**: "Sadece kendi domain'inde (`<paths>`) kod yaz. `docs/<arch-root>/` altına yazma; gerekiyorsa architect'e işaret et." Architect **yoksa** bu cümle **yazılmaz** — `docs/` özel sahipliği olmayan sıradan bir dizindir.
+  - Architect **varsa**: "Sadece kendi domain'inde (`<paths>`) kod yaz. `docs/` altına yazma — orası architect'in; gerekiyorsa ona işaret et." (Yasak **tüm `docs/`**'tur, yalnız mimari kök değil: architect tüm dokümantasyonun sahibidir.) Architect **yoksa** bu cümle **yazılmaz** — `docs/` özel sahipliği olmayan sıradan bir dizindir.
   - "Mimari etkili kararda (yeni bağımlılık, modül sınırı, yeni IPC/public API yüzeyi, şema/breaking change, güvenlik etkisi) implementasyonu durdurup **architect'e danış**." Architect **yoksa** danışma hedefi **kullanıcıdır**: "…implementasyonu durdurup kullanıcıya sor."
   - "Diğer domain'lerin kodunu okuyabilirsin ama yazamazsın."
 
@@ -86,7 +86,7 @@ Her developer rolü için varsayılan:
 ### Doc Writer  (opsiyonel)
 - `writesCode`: false (yalnız doküman) · `model`: **haiku** · `model_reasoning_effort`: **low** · `sandbox_mode`: **workspace-write** (yalnız `docs/`).
 - `consults`: [architect] — architect takımda **yoksa boş `[]`**.
-- Kurallar: Architect **varsa** — "Mimari kararları architect üretir; sen kullanıcı-bakış dokümanını/README'leri yazar ve günceltirsin. ADR yazma." Architect **yoksa** — "Kullanıcı-bakış dokümanını ve README'leri sen yazar ve günceltirsin. Mimari karar gerekiyorsa kullanıcıya sor." (ADR yasağı kalkar: yazacak başka rol yoktur.)
+- Kurallar: Architect **varsa** — "Mimari kararları architect üretir; sen kullanıcı-bakış dokümanını/README'leri yazar ve günceltirsin. ADR yazma." **İkisi birlikte seçildiyse routing tablosu böler:** architect `docs/**`'in sahibidir, doc-writer'a yazacağı alt yollar (örn. `docs/guides/**`) açıkça verilir; verilmezse doc-writer yazamaz. Architect **yoksa** — "Kullanıcı-bakış dokümanını ve README'leri sen yazar ve günceltirsin. Mimari karar gerekiyorsa kullanıcıya sor." (ADR yasağı kalkar: yazacak başka rol yoktur.)
 
 ---
 

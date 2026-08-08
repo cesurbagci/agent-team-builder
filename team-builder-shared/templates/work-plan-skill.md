@@ -1,12 +1,13 @@
 ---
 name: work-plan
-description: Bu projede plan kapısı açık. Bir iş için plan yazar, denetletir, kullanıcıya onaylatır; onaylanan işlerin havuzunu yönetir ve seçilenleri işletir. Tetikleyiciler — "bunun planını çıkar", "onaylı işleri göster", "şu işi yapalım", "havuzda ne var", "şunu not et".
+description: Bu projede plan kapısı açık. Bir iş için plan yazar, denetleyici tanımlıysa denetletir, kullanıcıya onaylatır; onaylanan işlerin havuzunu yönetir ve seçilenleri işletir. Tetikleyiciler — "bunun planını çıkar", "onaylı işleri göster", "şu işi yapalım", "havuzda ne var", "şunu not et".
 ---
 
 # work-plan
 
-Bu projede **plan kapısı** açıktır: kod yazılmadan önce plan yazılır, denetlenir ve
-**kullanıcı onaylar**. Onaysız kod yazılmaz.
+Bu projede **plan kapısı** açıktır: kod yazılmadan önce plan yazılır, (denetleyici
+tanımlıysa) denetlenir ve **kullanıcı onaylar**. Kullanıcı onayı atlanamaz; onaysız kod
+yazılmaz.
 
 Bu dosya plan kapısının **tek otoritesidir**: kapının bütün kuralları burada yazılıdır ve
 kural için başka bir belgeye bakman gerekmez. Projenin kendi dosyalarını (manifest,
