@@ -3,8 +3,9 @@
 //
 // Generalized from a production agent-team generator:
 //   - root comes from `--root <dir>` (default cwd) instead of `__dirname/..`;
-//   - developer_instructions are manifest-driven (writesCode, arch-root, consults,
+//   - developer_instructions are manifest-driven (writesCode, routing, consults,
 //     docLanguage, constitution presets) instead of project-hardcoded text;
+//     directory ownership comes from routing alone — no path is special-cased;
 //   - AGENTS.md and codex-* project files are written only when the source exists.
 //
 // Behavior contract: team-builder-shared/sync-pipeline.md + canonical-source.md +
