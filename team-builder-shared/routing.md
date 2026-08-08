@@ -71,7 +71,7 @@ uğruna kuralı anlamsızlaştırır.
 Tablo satırı: `<glob/yol> → <rol>`. Eşleşme **en özgül (most-specific) yol önce**
 değerlendirilir; bir dosya birden fazla satıra uyarsa en dar glob kazanır.
 
-**Yol dilbilgisi (dar tutulur).** Segment ya düz metin, ya `*` (tek segment), ya `**` (sıfır ya da daha çok segment) olur. Segment içi kısmi joker (`src/*.ts`, `docs/a*`) ve `.`/`..` **kabul edilmez** — routing dizin sahipliği atar, dosya filtresi değil.
+**Yol dilbilgisi (dar tutulur).** Segment ya düz metin, ya `*` (tek segment), ya `**` (sıfır ya da daha çok segment) olur. Segment içi kısmi joker (`src/*.ts`, `docs/a*`) ve `.`/`..` **kabul edilmez** — routing dizin sahipliği atar, dosya filtresi değil. Ardışık `**` yazılmaz (`docs/**/**`), ve joker içermeyen bir yol (`docs`) o dizinin **alt ağacı** demektir — `docs/**` ile aynıdır.
 İki yol **kısmen** çakışıyorsa (biri ötekini kapsamıyorsa, örn. `a/*/c` ile `a/b/*`)
 en özgül eşleşme kesişimde bir sahip seçemez; doğrulayıcı böyle bir tabloyu reddeder.
 Yollardan birini ötekinin altına al ya da tamamen ayır.

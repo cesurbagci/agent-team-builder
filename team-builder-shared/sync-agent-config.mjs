@@ -497,29 +497,6 @@ async function syncAgents(ctx, manifest, projectName) {
     }
     const targets = agentTargets(agent, manifest)
 
-    // The Claude and OpenCode bodies come from this file verbatim, so its own
-    // frontmatter is never covered by the manifest checks. Claude will not
-    // load an agent without a description, and a name that disagrees with the
-    // manifest silently detaches the file from its routing and gate rules.
-    const sourceFrontmatter = frontmatterOf(await fs.readFile(source, 'utf8'))
-    if (sourceFrontmatter === null) {
-      ctx.mismatches.push(
-        `.agent-source/agents/${agent.name}.md must start with YAML frontmatter`
-      )
-    } else {
-      if (!/^description:\s*\S/m.test(sourceFrontmatter)) {
-        ctx.mismatches.push(
-          `.agent-source/agents/${agent.name}.md frontmatter needs a description`
-        )
-      }
-      const declared = /^name:\s*(\S+)\s*$/m.exec(sourceFrontmatter)
-      if (!declared || declared[1] !== agent.name) {
-        ctx.mismatches.push(
-          `.agent-source/agents/${agent.name}.md frontmatter name must be "${agent.name}"`
-        )
-      }
-    }
-
     if (targets.has('claude')) {
       const fileName = `${agent.name}.md`
       await ctx.copyExpected(source, ctx.resolveRoot('.claude', 'agents', fileName))
@@ -637,6 +614,58 @@ async function reportStaleGenerated(ctx, ledgerPath) {
 // generate — main pipeline
 // ---------------------------------------------------------------------------
 
+// The value of a top-level frontmatter key, or null when the key is absent or
+// carries nothing. Deliberately not a regex over the whole block: `\s*` spans
+// newlines, so `description:` followed by `name: architect` read as a filled
+// description, and a quoted value read as part of the name.
+function frontmatterValue(block, key) {
+  for (const line of block.split('\n')) {
+    const match = new RegExp(`^${key}:(.*)$`).exec(line)
+    if (!match) continue
+    let value = match[1]
+    // A `#` that starts a token begins a comment; one inside a word does not.
+    value = value.replace(/(^|\s)#.*$/, '$1').trim()
+    if (
+      value.length >= 2 &&
+      ((value.startsWith('"') && value.endsWith('"')) ||
+        (value.startsWith("'") && value.endsWith("'")))
+    ) {
+      value = value.slice(1, -1).trim()
+    }
+    return value === '' || value === '~' || value === 'null' ? null : value
+  }
+  return null
+}
+
+// The Claude body is this source file verbatim, so its own frontmatter is
+// never covered by the manifest checks: Claude will not load an agent without
+// a description, and a name disagreeing with the manifest detaches the file
+// from its routing and gate rules. This runs before anything is written —
+// reporting it as a mismatch would let a broken agent reach disk first.
+async function checkAgentSources(ctx, manifest) {
+  const problems = []
+  for (const agent of manifest.agents) {
+    const source = ctx.resolveSource('agents', `${agent.name}.md`)
+    if (!(await pathExists(source))) continue // reported per-agent during sync
+    const block = frontmatterOf(await fs.readFile(source, 'utf8'))
+    const where = `.agent-source/agents/${agent.name}.md`
+    if (block === null) {
+      problems.push(`${where} must start with YAML frontmatter`)
+      continue
+    }
+    if (frontmatterValue(block, 'description') === null) {
+      problems.push(`${where} frontmatter needs a non-empty description`)
+    }
+    const declared = frontmatterValue(block, 'name')
+    if (declared !== agent.name) {
+      problems.push(`${where} frontmatter name must be "${agent.name}"`)
+    }
+  }
+  if (problems.length > 0) {
+    throw new Error(`Agent source invalid:\n- ${problems.join('\n- ')}`)
+  }
+}
+
 async function generate({ root, checkOnly, quiet = false }) {
   const log = quiet ? () => {} : (...a) => console.log(...a)
   const warn = quiet ? () => {} : (...a) => console.warn(...a)
@@ -650,6 +679,7 @@ async function generate({ root, checkOnly, quiet = false }) {
   const manifest = JSON.parse(await readText(manifestPath))
   const validate = await loadValidate()
   validate(manifest)
+  await checkAgentSources(ctx, manifest)
 
   const projectName = path.basename(ctx.resolvedRoot)
 
@@ -795,7 +825,7 @@ async function runSelftest() {
       [
         'a source md with no description',
         good.replace('description: Mimari kararlar icin.\n', ''),
-        'needs a description',
+        'needs a non-empty description',
       ],
       [
         'a source md whose name disagrees with the manifest',
@@ -803,14 +833,41 @@ async function runSelftest() {
         'frontmatter name must be "architect"',
       ],
       ['a source md with no frontmatter', '# Architect\n', 'must start with YAML frontmatter'],
+      // `\s*` used to span the newline, so an empty description followed by
+      // another key read as filled.
+      [
+        'an empty description followed by another key',
+        good.replace('description: Mimari kararlar icin.', 'description:'),
+        'needs a non-empty description',
+      ],
+      [
+        'a quoted-empty description',
+        good.replace('description: Mimari kararlar icin.', 'description: ""'),
+        'needs a non-empty description',
+      ],
+      [
+        'a description that is only a comment',
+        good.replace('description: Mimari kararlar icin.', 'description: # yok'),
+        'needs a non-empty description',
+      ],
     ]) {
       await fs.writeFile(sourcePath, broken)
-      const result = await silentGenerate({ root: fixtureRoot, checkOnly: true })
+      // Generation must refuse before writing: reporting it as a mismatch
+      // would let an unloadable Claude agent reach disk with exit 0.
+      let thrown = null
+      try {
+        await silentGenerate({ root: fixtureRoot, checkOnly: false })
+      } catch (e) {
+        thrown = e
+      }
       assert(
-        result.mismatches.some(m => m.includes(expected)),
-        `${label} must be reported (expected "${expected}", got ${JSON.stringify(result.mismatches)})`
+        thrown !== null && thrown.message.includes(expected),
+        `${label} must abort generation (expected "${expected}", got ${thrown ? thrown.message : 'no error'})`
       )
     }
+    // …and a quoted name that agrees with the manifest is fine.
+    await fs.writeFile(sourcePath, good.replace('name: architect', 'name: "architect"'))
+    await silentGenerate({ root: fixtureRoot, checkOnly: false })
     await fs.writeFile(sourcePath, good)
   }
 
@@ -1227,6 +1284,15 @@ async function runSelftest() {
       ['modules/*/docs/**', 'modules/pay/docs'],
       true,
       'a wildcard-free route is inside the subtree that contains it',
+    ],
+    // `*` matches every one-segment path, so it is not inside any literal one
+    // — whatever that literal is spelled. The comparison represents "some
+    // other segment" internally, and if that representative were a string, a
+    // route literal equal to it would be indistinguishable from it.
+    [
+      ['any-other-segment', '*'],
+      false,
+      'a route literal must not collide with the internal any-other-segment representative',
     ],
     // `a/*` also matches `a/somethingelse`, so it is not inside `a/a`. Deciding
     // this needs a segment that is none of the literals in either route — with

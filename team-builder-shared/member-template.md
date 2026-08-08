@@ -36,7 +36,7 @@ Bir rol için "ekleyelim mi?" → EVET ise sırayla:
    `routing.md`'ye göre bu role atanan kod yolları var mı? Proje analizinden taslak öner
    (örn. developer → `apps/**/main/src/**`); kullanıcı onaylar/düzenler. **Yol dilbilgisi
    dardır** (`routing.md` → Tablo Mantığı): segment ya düz metin, ya `*`, ya `**`; segment
-   içi kısmi joker (`src/*.ts`) ve `.`/`..` kabul edilmez. Kullanıcının verdiği böyle bir
+   içi kısmi joker (`src/*.ts`) ve `.`/`..` kabul edilmez; ardışık `**` de yazılmaz ve joker içermeyen bir yol o dizinin alt ağacı sayılır. Kullanıcının verdiği böyle bir
    yolu **dizine çevir** (`src/**`) ve nedenini söyle — sohbette kabul edip sonda
    doğrulamada patlatma. Onaylanan satırlar
    manifest **kök** `routing[]`'ine `{ path, role: <name> }` olarak eklenir (agent objesine
