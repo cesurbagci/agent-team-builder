@@ -108,6 +108,15 @@ Kaynak değişmeden sync tekrar çalıştırılırsa:
 - `--check` modunda bu dosyayı drift olarak saymaz.
 - Geliştiriciye özel/lokal ayar dosyası olarak generator'ın tamamen dışında kalır.
 
+## 7b. `.agent-work/` Muafiyeti
+
+Plan kapısı açık projelerdeki `.agent-work/` dizini pipeline'ın **tamamen dışındadır**.
+Kaynak ağacında (`.agent-source/`) karşılığı yoktur, bu yüzden hiçbir aşamada okunmaz ya
+da yazılmaz: üretilmez, silinmez, drift sayılmaz, ledger'da görünmez.
+
+Selftest S2 bunu kanıtlar: dizine konan bir dosya generate sonrası **bayt bayt aynı**
+kalır, `--check` temiz döner (exit 0) ve ledger'da `.agent-work` geçmez.
+
 ## 8. Bayat Generated Dosya Raporu
 
 **Generator hiçbir dosya silmez.** Bir dosyanın artık üretilmiyor olması, onu silmenin

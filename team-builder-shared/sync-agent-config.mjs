@@ -625,6 +625,7 @@ async function runSelftest() {
   await fs.mkdir(path.join(sourceRoot, 'agents'), { recursive: true })
   await fs.mkdir(path.join(sourceRoot, 'project'), { recursive: true })
   await fs.mkdir(path.join(sourceRoot, 'skills', 'demo-skill'), { recursive: true })
+  await fs.mkdir(path.join(sourceRoot, 'skills', 'work-plan'), { recursive: true })
 
   // Manifest: 2 agents — one claude+codex, one claude-only.
   const manifest = {
@@ -698,6 +699,12 @@ async function runSelftest() {
   await fs.writeFile(
     path.join(sourceRoot, 'skills', 'demo-skill', 'SKILL.md'),
     skillMd
+  )
+  const workPlanSkillMd =
+    '---\nname: work-plan\ndescription: Plan kapisi proseduru.\n---\n\n# work-plan\n'
+  await fs.writeFile(
+    path.join(sourceRoot, 'skills', 'work-plan', 'SKILL.md'),
+    workPlanSkillMd
   )
 
   // --- Generate ---
@@ -878,15 +885,18 @@ async function runSelftest() {
   const ledger = JSON.parse(await read('.agent-source/generated-files.json'))
   const expectedLedger = [
     '.agents/skills/demo-skill/SKILL.md',
+    '.agents/skills/work-plan/SKILL.md',
     '.claude/agents/architect.md',
     '.claude/agents/developer.md',
     '.claude/skills/demo-skill/SKILL.md',
+    '.claude/skills/work-plan/SKILL.md',
     '.codex/agent-definitions/architect.md',
     '.codex/agents/architect.toml',
     '.codex/config.toml',
     '.codex/team.md',
     '.opencode/agents/architect.md',
     '.opencode/skills/demo-skill/SKILL.md',
+    '.opencode/skills/work-plan/SKILL.md',
     '.opencode/team.md',
     'AGENTS.md',
     'CLAUDE.md',
@@ -916,6 +926,21 @@ async function runSelftest() {
     checkDrift.mismatches.some(m => m.includes('.claude/agents/architect.md')),
     '--check should report the corrupted file as drift'
   )
+
+  // S1 — the work-plan skill source mirrors into every ecosystem skill dir.
+  // The mirror is name-agnostic; this case exists so a name-based exception
+  // cannot be added without turning the selftest red. Content is compared, not
+  // just existence: sync never deletes, so a stale file would pass a bare
+  // existence check. Asserted here, while all three ecosystems are still
+  // targeted and nothing has gone stale yet.
+  for (const mirror of ['.claude/skills', '.agents/skills', '.opencode/skills']) {
+    const rel = `${mirror}/work-plan/SKILL.md`
+    assert(await exists(rel), `S1: work-plan skill must mirror into ${mirror}`)
+    assert(
+      (await read(rel)) === workPlanSkillMd,
+      `S1: ${rel} must match the canonical source byte for byte`
+    )
+  }
 
   // Skill mirrors go stale too, same contract as agent files: removing a
   // skill's SOURCE must be reported for every ecosystem mirror it fed. Run
@@ -1145,6 +1170,38 @@ async function runSelftest() {
   assert(
     (secondRun.writes ?? []).length === 0,
     `a second consecutive sync must write nothing, wrote: ${JSON.stringify(secondRun.writes)}`
+  )
+
+  // S2 — .agent-work/ is the agents' workspace, not generated output. Sync
+  // must leave it alone: no production, no deletion, no rewriting, no ledger
+  // ownership, and no drift.
+  const workDir = path.join(fixtureRoot, '.agent-work', 'draft')
+  const workFile = path.join(workDir, '20260808-01-ornek.md')
+  const workBody = '---\nid: 20260808-01\n---\n\n<!-- s:progress -->\n'
+  await fs.mkdir(workDir, { recursive: true })
+  await fs.writeFile(workFile, workBody)
+
+  await silentGenerate({ root: fixtureRoot })
+
+  assert(
+    (await fs.readFile(workFile, 'utf8')) === workBody,
+    'S2: sync must leave files under .agent-work/ byte-identical'
+  )
+
+  // Reset first: the earlier drift tests already set exitCode to 1, so
+  // asserting it below without resetting would pass vacuously.
+  process.exitCode = 0
+  const s2Check = await silentGenerate({ root: fixtureRoot, checkOnly: true })
+  assert(s2Check.ok === true, 'S2: .agent-work/ content must not produce drift')
+  assert(
+    process.exitCode === 0,
+    'S2: a clean --check must not set a failure exit code'
+  )
+
+  const s2Ledger = await read(LEDGER_RELATIVE)
+  assert(
+    !s2Ledger.includes('.agent-work'),
+    'S2: the ledger must not claim ownership of .agent-work/'
   )
 
   // Cleanup.

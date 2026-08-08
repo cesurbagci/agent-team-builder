@@ -97,6 +97,18 @@ runtime state kabul edilir.
 - `.claude/agent-memory/**` ve `.codex/agent-memory/**` generated hedef **değildir**;
   oluşturulmaz ve yeni bilgi için kullanılmaz.
 
+## `.agent-work/` de canonical DEĞİLDİR
+
+Plan kapısı açık projelerde `.agent-work/` agent'ların çalışma alanıdır: planlar, ham
+kayıtlar, ilerleme notları. `.agent-memory/` ile aynı statüdedir.
+
+- Setup boş iskeleti (`inbox/ draft/ approved/ in-progress/ done/` + `TEMPLATE.md` +
+  `README.md`) **bir kez** kurar; ondan sonrasını `work-plan` skill'i yönetir.
+- `sync` onu **üretmez, silmez, drift kontrolüne sokmaz** ve generated-file ledger'ı
+  sahiplenmez. Kaynak ağacında karşılığı olmadığı için hiçbir aşamada okunmaz.
+- Buraya yalnız `work-plan` akışını çalıştıran agent yazar; denetleyiciler dahil kimse
+  doğrudan dosya değiştirmez, sonuç döndürür.
+
 ## Canonical olmayan diğer dosyalar
 
 - `.claude/settings.local.json` canonical kaynak değildir. Sync bu dosyayı kopyalamaz,
