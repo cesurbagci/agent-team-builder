@@ -55,7 +55,7 @@ Generated dosyalar **elle değiştirilmez**; kaynak burasıdır.
 | `model` | `string` | Hayır | `claude` hedefli agent'larda model: `opus`, `sonnet`, `haiku`. Codex agent'larında Codex modeli (örn. `gpt-5.5`) da olabilir. |
 | `opencode_model` | `string` | Hayır | `opencode` hedefli agent'ın modeli, **`provider/model` formatında** (örn. `anthropic/claude-sonnet-4-5`, `openai/gpt-5`). Verilmezse `model` (opus/sonnet/haiku) Anthropic ID'lerine fallback haritasıyla map'lenir. |
 | `model_reasoning_effort` | `string` | Hayır | Reasoning effort: `low`, `medium`, `high`. Codex TOML'una ve (Claude için) effort bilgisine yansır. |
-| `sandbox_mode` | `string` | Hayır | Codex sandbox modu: `read-only`, `workspace-write`, `danger-full-access`. Reviewer gibi salt-okunur roller `read-only`. |
+| `sandbox_mode` | `string` | Hayır | Sandbox modu: **yalnız `read-only` ya da `workspace-write`**. Reviewer gibi salt-okunur roller `read-only`; sahiplendiği dizine yazan doc-only roller (architect, doc-writer) `workspace-write`. Codex'in `danger-full-access` değeri **kabul edilmez** — bu alan OpenCode'un `permission.edit` iznini de belirler ve `read-only` dışındaki her değer "yazabilir" demektir; sandbox disiplinini bütünüyle kaldıran bir mod bu araçta üretilmez. |
 | `writesCode` | `boolean` | Hayır | Agent kod yazar mı. `false` → agent md'de "Kod yazma" net kuralı (architect, reviewer). Default: `true`. |
 | `color` | `string` | Hayır | Claude frontmatter rengi (örn. `purple`, `blue`). |
 | `nickname_candidates` | `string[]` | Hayır | Kullanıcı dostu takma ad önerileri (örn. `["Architect","ADR Lead"]`). |
@@ -79,6 +79,8 @@ Generated dosyalar **elle değiştirilmez**; kaynak burasıdır.
 - `constitution` alanları (verildiyse) boolean olmalı.
 - `writesCode` (verildiyse) boolean olmalı — kapı sahipliği bu alana bakar, falsy bir
   sayı/metin "kod yazmıyor" sayılamaz.
+- `sandbox_mode` (verildiyse) `read-only` ya da `workspace-write` olmalı — OpenCode
+  `permission.edit` iznini belirlediği için tanınmayan bir değer sessizce yazma izni verir.
 - `agents[].name` portatif slug olmalı ve büyük/küçük harf duyarsız biçimde benzersiz olmalı.
 - `constitution.planGate: true` ise kök `planGate` nesnesi zorunlu, `planReviewer` ve
   `codeReviewer` anahtarlarının ikisi de bulunmalı, değerleri agent adı ya da `null` olmalı.

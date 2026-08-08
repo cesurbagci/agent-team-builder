@@ -38,7 +38,7 @@ Her codex hedefli agent için bir TOML üretilir. Üst satıra "bu dosya `.agent
 | `name` | `agents[].name` | Agent adı. |
 | `description` | `agents[].description` | Ne zaman kullanılacağı. |
 | `model_reasoning_effort` | `agents[].model_reasoning_effort` | `low\|medium\|high`. |
-| `sandbox_mode` | `agents[].sandbox_mode` | `read-only\|workspace-write\|danger-full-access`. Reviewer gibi salt-okunur roller `read-only`. |
+| `sandbox_mode` | `agents[].sandbox_mode` | Yalnız `read-only\|workspace-write` (`danger-full-access` kabul edilmez — bkz. `manifest-schema.md`). Reviewer gibi salt-okunur roller `read-only`; sahiplendiği dizine yazan doc-only roller `workspace-write`. |
 | `nickname_candidates` | `agents[].nickname_candidates` | Kullanıcı dostu takma adlar. |
 | `developer_instructions` | manifest + project'ten **derlenir** | Çok satırlı `"""..."""` blok. Aşağıdaki template. |
 
