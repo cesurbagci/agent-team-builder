@@ -33,7 +33,10 @@ Akışa başlamadan önce şu dosyaların var olduğunu doğrula. Yoksa kullanı
 - `~/.claude/skills/team-builder-shared/agent-md-rich.md` — zengin agent md gövde kalıbı.
 - `~/.claude/skills/team-builder-shared/skill-recommend.md` — proje-farkında skill önerisi.
 - `~/.claude/skills/team-builder-shared/routing.md` — path-based zorunlu routing tablosu.
-- `~/.claude/skills/team-builder-shared/constitution.md` — 4 cross-cutting anayasa preseti.
+- `~/.claude/skills/team-builder-shared/constitution.md` — 5 cross-cutting anayasa preseti (ilk dördü default açık, plan kapısı default kapalı).
+- `~/.claude/skills/team-builder-shared/plan-gate.md` — plan kapısı kurulum sözleşmesi (KARAR 5 açıksa).
+- `~/.claude/skills/team-builder-shared/templates/plan.md` — plan dosyası şablonu.
+- `~/.claude/skills/team-builder-shared/templates/work-plan-skill.md` — projeye kurulacak `work-plan` skill'inin şablonu.
 - `~/.claude/skills/team-builder-shared/quality-dimensions.md` — kalite odakları (checkbox) → kısıt + reviewer eksenleri.
 - `~/.claude/skills/team-builder-shared/templates/` — mimari doküman standardı + ADR/kısıt/tasarım şablonları (`doc-standard.md`).
 - `~/.claude/skills/team-builder-shared/architecture-docs.md` — mimari doküman ağacı (arch-root + layout) + MADR.
@@ -54,7 +57,7 @@ Sihirbaz çok sorulu; soruları **güvenle** sor:
   - Her seçenekte hem **kısa etiket** hem **açıklama** olmalı.
   - Birden çok seçilebiliyorsa `multiSelect` kullan; tek seçimse normal.
 - **Rolleri CHECKBOX ile seçtir (tercih edilen), düz metin değil.** Aday rol sayısı 4'ü geçtiği için **çoklu-seçim (multiSelect) sorusunu ≤4'lük gruplara böl** (örn. Grup 1: architect, ios/web/backend-developer'lar; Grup 2: reviewer, qa, security, doc-writer). Önerilen rolleri **önceden işaretli** sun. En sonda "başka özel rol?" için tek bir serbest-metin sorusu sor. **Tabloyu/listeyi düz metin soruya çevirme** — kullanıcı kutucukları tıklayarak seçsin. (Tek tek Evet/Hayır da kabul ama checkbox tercih edilir; asla tek soruda 4+ seçenek koyma.)
-- **Anayasa presetleri tam 4 kural** → tek `multiSelect` soru (4 seçenek) uygundur; ya da tek tek aç/kapa sor.
+- **Anayasa presetleri 5 kural, ama tek soruda sorulmaz.** İlk dördü (hepsi default açık) tek `multiSelect` soruya sığar (4 seçenek); **plan kapısı ayrı sorulur** — default kapalıdır ve açılırsa iki alt soru daha getirir.
 - Emin değilsen **düz metin** sor. UX'i şık yapmaya çalışırken aracı geçersiz parametreyle çağırma.
 - **JARGON YASAĞI + önce açıkla:** Kullanıcıya **alan adı / teknik terim gösterme** (`codeDocSync`, `enforcement`, `glob`, `targets`, `layout` vb.). Her kavramı **önce bir cümle + somut örnekle** anlat, **sonra** sor. Kullanıcı terimi bilmiyor olabilir; "ADR nedir", "kod-doküman senkronu nedir" gibi şeyleri kısaca açıkla. Seçenekleri günlük dille ("şimdilik boş bırak", "sana taslak önereyim") yaz, kod/JSON ile değil.
 - **DAHİLİ REFERANSLARI GİZLE:** Kullanıcıya **asla** "referans proje", "altın standart", dosya adı (`governance-defaults.md`, "KARAR 4") gibi iç kaynakları söyleme. Bunlar senin rehberin; kullanıcı için yalnızca **sade öneri** sun ("önerilen model: opus" yeter, gerekçe olarak iç kaynak gösterme).
@@ -165,6 +168,13 @@ Adımları **bu sırayla** uygula. Her adımda kullanıcıya sor, cevabı al, so
 
 > Routing temel kuralı: **ajansız doğrudan kod yazma yasaktır; tabloyu bypass = mimari ihlal; şüphede architect'e danışılır.** (Generic danışma/gate kuralları her zaman korunur.)
 
+> **Kod review kapısını kim tanımlar.** Plan kapısı **kapalıysa** bugünkü davranış aynen
+> korunur: sabit `reviewer` adıyla evrensel bir review gate kuralı yazılır. Plan kapısı
+> **açıksa** tek otorite `planGate.codeReviewer`'dır: bir ad verildiyse kural o adla
+> yazılır, `null` ise **evrensel kod review kuralı hiç yazılmaz** (projede kod review
+> kapısı yoktur). Bu kural hem routing metnine hem governance metnine aynı kaynaktan
+> uygulanır; ikisinin farklı ad kullanması drift'tir.
+
 ### Adım 7 — Kalite Odakları + Anayasa
 
 **7A) Kalite odakları (checkbox)** — `~/.claude/skills/team-builder-shared/quality-dimensions.md`.
@@ -177,7 +187,7 @@ Seçilenler somut çıktıya döner (`quality-dimensions.md`):
 - **Rol/skill iması:** `security`→ security rolü + `security-review`; `ui-ux`→ UI developer + `frontend-design`/`swift-architecture-performance`; `testing`→ qa + `tdd-workflow`. Seçilen boyut için ilgili rol Adım 5'te eklenmediyse kullanıcıya hatırlat ("güvenliği seçtin ama security rolü yok — eklemek ister misin? `/team-builder-add`").
 - `manifest.focus[]`'a yaz (örn. `["performance","code-design","security"]`).
 
-**7B) Anayasa presetleri (sade dille sor)** — `~/.claude/skills/team-builder-shared/constitution.md` kurallarını kullan. Dört kuralı **default AÇIK** olarak, **sade ve günlük dille** sun; kullanıcı kapatmak istediğini seçer. **Henüz var olmayan role atıf yapma** — açıklamayı Adım 5'te seçilen takıma göre uyarla (örn. reviewer eklenmediyse "otomatik denetleyen reviewer yok, kural yine de agent talimatlarına yazılır" de).
+**7B) Anayasa presetleri (sade dille sor)** — `~/.claude/skills/team-builder-shared/constitution.md` kurallarını kullan. **İlk dört kuralı** default AÇIK olarak, **sade ve günlük dille** sun; kullanıcı kapatmak istediğini seçer. **Henüz var olmayan role atıf yapma** — açıklamayı Adım 5'te seçilen takıma göre uyarla (örn. reviewer eklenmediyse "otomatik denetleyen reviewer yok, kural yine de agent talimatlarına yazılır" de).
 
 Sade açıklama kalıbı (jargon yok):
 
@@ -186,13 +196,45 @@ Sade açıklama kalıbı (jargon yok):
 3. **Her agent kendi notunu tutar** (`perAgentMemory`) — "Her rol kendi `.agent-memory/<rol>/` klasörüne not/karar yazar; birbirinin notuna karışmaz."
 4. **Dil standardı** (`languageStandard`) — "Kod İngilizce; doküman, yorum ve cevap senin seçtiğin dilde (`docLanguage`)."
 
+**7C) Plan kapısı (ayrı soru, default KAPALI)** — `constitution.md` KARAR 5.
+
+Bu preset dördüyle birlikte gösterilmez: kendi sorusu vardır ve **kapalı** gelir.
+
+> "Kod yazılmadan önce iş için plan yazılsın, denetlensin ve **sen onaylayasın** mı?
+> Onaylanan işler bir havuzda birikir; sırasını sen seçersin. Bu, projede bir çalışma
+> alanı dizini (`.agent-work/`) ve bir skill üretir. **Varsayılan: kapalı.**"
+
+**Kapalı bırakırsa:** `manifest.constitution.planGate: false` yaz, kök `planGate` nesnesini
+**yazma**, başka soru sorma. Adım 8a'da plan kapısı çıktılarının hiçbiri üretilmez.
+
+**Açarsa** iki kapı sahibini sor. Her soruda **yalnız kod yazmayan rolleri** (Adım 5'te
+`writesCode: false` seçilenler) ve "kimse" seçeneğini sun. Kod yazmayan hiç rol yoksa
+ikisini de "kimse" olarak geç ve kullanıcıya söyle.
+
+1. > "Planı senden önce kim gözden geçirsin? (Kimse dersen plan doğrudan sana gelir.)"
+   → `manifest.planGate.planReviewer` (ad ya da `null`)
+2. > "İş bitince kodu kim denetlesin? (Kimse dersen kod review kapısı olmaz.)"
+   → `manifest.planGate.codeReviewer` (ad ya da `null`)
+
+**Her cevaptan sonra state'i yaz** (`answers.planGate` altına tek tek) — kullanıcı iki
+sorunun ortasında çıkarsa resume'da cevapladığı soru yeniden sorulmaz.
+
+**Erişilebilirlik kontrolü.** Seçilen kapı sahibi, kod yazan ve routing'de geçen tüm
+rollerin hedeflediği **her** ekosistemde üretiliyor olmalı. Değilse kullanıcıya sade dille
+söyle ("Bu rol yalnız Claude'da üretiliyor ama işleri yapacak roller Codex'te de var —
+denetleyiciyi oraya da eklememiz gerekiyor") ve ya rolün hedeflerini genişlet ya da başka
+bir sahip seçtir. Bu kural Adım 8b'de `validate()` tarafından da denetlenir; **kullanıcıyı
+doğrulama hatasıyla karşılaştırmadan burada çöz.**
+
 Açık kalan her kural için **projeye özel satırları** sor (sadece açık olanlar için):
 - Workaround yasağı açıksa → varsa projeye özel yasak desenleri eklet (çekirdek liste hazır).
 - Kod–doküman açıksa → **sade dille** sor (jargon/`codeDocSync`/"glob" gösterme): önce bir örnekle anlat ("`src/api/` değişince `docs/api.md` güncellenir; reviewer unutursan uyarır"), sonra "1) boş bırak (önerilen) / 2) sana taslak önereyim / 3) sen yaz" seçtir. `constitution.md`'deki soru kalıbını birebir kullan. Sonucu `manifest.codeDocSync[]`'e yaz (boş `[]` da geçerli).
 - Dil standardı → `docLanguage`'den otomatik türer; ekstra üslup tercihi varsa sor.
 - Her agent notu → ek satır yok (sadece aç/kapa).
 
-Sonuçları `manifest.constitution` (+ varsa `codeDocSync[]`) alanlarına yaz.
+Sonuçları `manifest.constitution` (+ varsa `codeDocSync[]`, + plan kapısı açıksa kök
+`planGate` nesnesi) alanlarına yaz. Kapı kapalıysa kök `planGate` **yazılmaz** — varlığı
+manifest'i geçersiz kılar.
 
 ### Adım 8 — Üretim
 
@@ -209,12 +251,30 @@ Tüm cevaplar toplandı; şimdi kaynağı yaz, doğrula ve generate et. Sırayla
 - OpenCode hedefi seçildiyse ayrıca: `.agent-source/project/opencode.json` (**yalnız geçerli şema anahtarları**: `$schema` + `instructions` [AGENTS.md + mimari docs] + `permission` default'ları — **`"//"` gibi not anahtarı EKLEME**, OpenCode şemayı katı doğrular ve `Unrecognized key` ile başlamaz) ve `.agent-source/project/opencode-team.md` (`~/.claude/skills/team-builder-shared/opencode-target.md`).
 - `.agent-source/skills/<skill>/SKILL.md` — repo skill kaynakları (varsa).
 - `.agent-source/README.md` — "generated'ı elleme; burayı güncelle + sync çalıştır" notu.
+- **Plan kapısı açıksa** (`constitution.planGate: true`) şunları da üret — hepsi
+  `docLanguage` dilinde, `~/.claude/skills/team-builder-shared/plan-gate.md` sözleşmesine
+  göre:
+  - `.agent-work/` iskeleti: `inbox/ draft/ approved/ in-progress/ done/` boş dizinleri.
+    **Bu dizin generated değildir** — bir kez kurulur, sonra `work-plan` skill'i yönetir;
+    `sync` ona dokunmaz.
+  - `.agent-work/TEMPLATE.md` ← `~/.claude/skills/team-builder-shared/templates/plan.md`.
+    Şablon Türkçe referanstır; **verbatim kopyalama**, `docLanguage` dilinde yeniden yaz.
+    Beş `<!-- s:* -->` işareti ve `<!-- progress:not-started -->` sentinel'i **birebir
+    korunur** (çeviriden bağımsızdırlar).
+  - `.agent-work/README.md`: dizinin ne olduğunu ve beş klasörün ne anlama geldiğini
+    anlatan kısa metin.
+  - `.agent-source/skills/work-plan/SKILL.md` ←
+    `~/.claude/skills/team-builder-shared/templates/work-plan-skill.md`. Aynı kural:
+    `docLanguage` dilinde yeniden yaz, makine işaretlerini birebir koru. Bu dosya
+    `sync` tarafından ekosistem skill dizinlerine mirror'lanır.
+- **Plan kapısı kapalıysa** yukarıdakilerin **hiçbiri** üretilmez: `.agent-work/` yoktur,
+  `work-plan` skill kaynağı yazılmaz, dolayısıyla mirror da oluşmaz.
 - Ayrıca `~/.claude/skills/team-builder-shared/architecture-docs.md`'deki "İskelet üretimi" kuralına göre `docs/<arch-root>/` iskeletini üret: `adr/` `constraints/` `design/` dizinleri + `ilkeler.md`. **README ve standart şablonları `~/.claude/skills/team-builder-shared/templates/` standardından kopyala:** `templates/architecture-readme.md` → `docs/<arch-root>/README.md`; `templates/{doc-standard.md, adr.md, constraint.md, design.md}` → `docs/<arch-root>/templates/`. Böylece dokümanlar **tek standartta** yazılır ve agent'lar bu standarda göre okur (`doc-standard.md`). per-module ise modül-docs şablonu da eklenir.
 
 **8b. Manifest'i doğrula:**
 
 - Önce aracın çalıştığını teyit et: `node ~/.claude/skills/team-builder-shared/validate-manifest.mjs --selftest` → `SELFTEST PASS` görmelisin.
-- Sonra yazdığın `manifest.json`'u doğrula: ya küçük bir Node tek-satırıyla dosyayı parse edip `validate()` fonksiyonunu o obje ile çağır, ya da `~/.claude/skills/team-builder-shared/manifest-schema.md`'deki doğrulama kurallarına göre alan alan elle denetle (agents boş değil; her agent'ta name; targets ⊆ {claude,codex,opencode}; model ∈ {opus,sonnet,haiku}; opencode hedefli agent'ta opencode_model (provider/model) veya model var; effort ∈ {low,medium,high}; enforcement ∈ {mandatory,when-needed}; lead ve routing.role birer agent name; constitution alanları boolean).
+- Sonra yazdığın `manifest.json`'u doğrula: ya küçük bir Node tek-satırıyla dosyayı parse edip `validate()` fonksiyonunu o obje ile çağır, ya da `~/.claude/skills/team-builder-shared/manifest-schema.md`'deki doğrulama kurallarına göre alan alan elle denetle (agents boş değil; her agent'ta name; targets ⊆ {claude,codex,opencode}; model ∈ {opus,sonnet,haiku}; opencode hedefli agent'ta opencode_model (provider/model) veya model var; effort ∈ {low,medium,high}; enforcement ∈ {mandatory,when-needed}; lead ve routing.role birer agent name; constitution alanları boolean; agent adları portatif slug ve büyük/küçük harf duyarsız benzersiz; `writesCode` boolean; `constitution.planGate: true` ise kök `planGate` nesnesi var ve `planReviewer`/`codeReviewer` anahtarlarının ikisi de bulunuyor, değerleri kod yazmayan bir agent adı ya da `null`; kapalıysa kök `planGate` yok).
 - Hata varsa düzelt ve yeniden doğrula. Manifest geçerli olmadan **8c'ye GEÇME**.
 
 **8c. Generate (sync):**
@@ -245,6 +305,10 @@ Tüm cevaplar toplandı; şimdi kaynağı yaz, doğrula ve generate et. Sırayla
 - **Ne üretildi:** seçilen hedefler (Adım 2'de ne seçildiyse — yalnız onları yaz), docLanguage, arch-root + layout, açık anayasa presetleri, routing satır sayısı, üye sayısı/rolleri, `lead`.
 - **Üretilen yollar:** canonical kaynak `.agent-source/` (manifest.json + agents/*.md + project/* + skills); generated hedefler **yalnız seçilenler için** — (Claude ise) `CLAUDE.md` + `.claude/agents/*.md`, (Codex ise) `AGENTS.md` + `.codex/*`, (OpenCode ise) `AGENTS.md` + `opencode.json` + `.opencode/*`; mimari iskelet `docs/<arch-root>/...`.
 - **Doğrulama sonucu:** manifest geçerli; sync drift temiz.
+- **Plan kapısı açıksa** özete bir satır ekle ve **sade dille** anlat: "Bundan sonra bir iş
+  yaptırmadan önce plan yazılacak, [denetleyici varsa: <ad> gözden geçirecek,] sen
+  onaylayacaksın. Onaylı işler `.agent-work/approved/` altında birikir; 'havuzda ne var'
+  diye sorabilirsin." Kapalıysa bu satırı **hiç yazma** — var olmayan bir akışa atıf yapma.
 - **Sıradaki adımlar:** üye eklemek için `/team-builder-add`, takımı düzenlemek için `/team-builder-edit`, yeniden generate + drift kontrol için `/team-builder-sync`. **Hatırlat:** generated dosyalar elle değiştirilmez; her değişiklik `.agent-source/` üzerinde yapılır, sonra sync.
 
 ### Adım 10 — Mimari dokümanları birlikte doldurmayı TEKLİF ET
@@ -266,7 +330,7 @@ Tüm cevaplar toplandı; şimdi kaynağı yaz, doğrula ve generate et. Sırayla
 | 4 | arch-root + layout | `architecture-docs.md` |
 | 5 | Roller (üye-üye, ÖNCE) | `governance-defaults.md`, `member-template.md`, `skill-recommend.md`, `agent-md-rich.md`, `manifest-schema.md` |
 | 6 | Routing tablosu (kod yolu → rol) | `routing.md` |
-| 7 | Kalite odakları (checkbox) + Anayasa presetleri | `quality-dimensions.md`, `constitution.md` |
+| 7 | Kalite odakları (checkbox) + Anayasa presetleri + Plan kapısı (ayrı soru) | `quality-dimensions.md`, `constitution.md`, `plan-gate.md` |
 | 8a | `.agent-source/` yaz | `canonical-source.md`, `manifest-schema.md`, `agent-md-rich.md`, `architecture-docs.md`, `codex-target.md` |
 | 8b | manifest doğrula | `validate-manifest.mjs`, `manifest-schema.md` |
 | 8c–8d | generate + drift | `sync-agent-config.mjs`, `sync-pipeline.md` |
