@@ -291,18 +291,20 @@ function renderDeveloperInstructions(agent, manifest, projectName) {
   // per-module `modules/<m>/docs/**`, anywhere. Matching on the literal string
   // "docs" instead would miss the per-module layout and would mistake a
   // code directory that merely reads like one (`docsite/`) for documentation.
-  const docOwners = new Set(
+  // Named for what they are, not for `docs/`: reintroducing a path test here
+  // is what produced both earlier bugs.
+  const nonWritingOwners = new Set(
     (manifest.agents ?? [])
       .filter(a => a && a.name && a.writesCode === false)
       .map(a => a.name)
   )
   // Several roles may share the documentation, so every owned route counts,
   // not just the first — taking one would hand this agent another's directory.
-  const docsRoutes = (manifest.routing ?? []).filter(
-    r => r && typeof r.path === 'string' && docOwners.has(r.role)
+  const ownedRoutes = (manifest.routing ?? []).filter(
+    r => r && typeof r.path === 'string' && nonWritingOwners.has(r.role)
   )
-  const ownRoutes = docsRoutes.filter(r => r.role === agent.name)
-  const otherRoutes = docsRoutes.filter(r => r.role !== agent.name)
+  const ownRoutes = ownedRoutes.filter(r => r.role === agent.name)
+  const otherRoutes = ownedRoutes.filter(r => r.role !== agent.name)
 
   // `docs/guides/**` sits inside `docs/**`. Routing resolves most-specific
   // first, so barring this agent from the parent outright would contradict
