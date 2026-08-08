@@ -17,7 +17,17 @@ drift olmaz: `project/CLAUDE.md`'deki tablo ile `manifest.routing` elle ayrı tu
 
 ## Standart satır (her zaman ekle)
 
-- **`docs/**` → architect.** Architect tüm `docs/` dizininin sahibidir; dokümantasyon (ADR, kısıt, tasarım, README) yalnız architect tarafından yazılır. Bu satır routing tablosuna her zaman eklenir (alt klasör — `docs/architecture/adr` vb. — tek tek yazılmaz; `docs/**` yeter).
+- **`docs/**` → architect — yalnız takımda architect varsa.** Architect varsa tüm `docs/`
+  dizininin sahibidir; dokümantasyon (ADR, kısıt, tasarım, README) yalnız onun tarafından
+  yazılır ve bu satır routing tablosuna eklenir (alt klasör — `docs/architecture/adr` vb. —
+  tek tek yazılmaz; `docs/**` yeter).
+  **Architect yoksa bu satır üretilmez.** O zaman `docs/` özel sahipliği olmayan sıradan
+  bir dizindir ve kod yolu sahipliği kuralları neyse o geçerlidir.
+- **`.agent-work/**` → `work-plan` akışı — yalnız plan kapısı açıksa.** Bu dizin
+  agent'ların çalışma alanıdır: planlar, ham kayıtlar, ilerleme notları. Buraya **yalnız
+  `work-plan` skill'ini çalıştıran agent** yazar; denetleyiciler dahil kimse doğrudan
+  dosya değiştirmez, sonuç döndürür. Tablonun geri kalanı kod yollarını yönetir, bu satır
+  iş akışı durumunu. Plan kapısı kapalıysa dizin yoktur ve satır yazılmaz.
 
 ## Temel Kural (DEĞİŞMEZ)
 
@@ -27,6 +37,8 @@ drift olmaz: `project/CLAUDE.md`'deki tablo ile `manifest.routing` elle ayrı tu
   main agent kodu kendisi yazmaz; ilgili role delege eder.
 - **Şüphede kalınırsa architect'e danışılır.** Yol bir role net eşleşmiyorsa, ya da
   mimari karar / breaking change / standart belirsizliği varsa önce architect.
+  **Architect yoksa danışma hedefi kullanıcıdır** — zincirin ucu boşta kalmaz, belirsizlik
+  kullanıcıya taşınır.
 
 Bu üç madde CLAUDE.md/AGENTS.md'nin routing bölümüne **birebir** (genelleştirilmiş
 proje adlarıyla) yazılır. "YASAK" ve "bypass = ihlal" ifadeleri yumuşatılmaz.
@@ -41,11 +53,12 @@ değerlendirilir; bir dosya birden fazla satıra uyarsa en dar glob kazanır.
 | Backend domain yolu | `apps/<app>/main/src/**`, preload | domain backend-developer |
 | Frontend domain yolu | `apps/<app>/renderer/src/**`, `packages/ui-kit/**` | domain frontend-developer |
 | Modül/eklenti yolu | `modules/<name>/**` (UI dahil) | extension-developer |
-| Mimari karar / ADR / breaking change / standart belirsizliği | (yol değil, iş türü) | architect |
-| Kod değişikliği tamamlandı, review gerekiyor | (yol değil, kapı) | reviewer |
+| Mimari karar / ADR / breaking change / standart belirsizliği | (yol değil, iş türü) | architect — yoksa kullanıcı |
+| Kod değişikliği tamamlandı, review gerekiyor | (yol değil, kapı) | `reviewer` ya da `planGate.codeReviewer`; kapı sahibi yoksa satır yazılmaz |
 
-Son iki satır **yola değil iş türüne** bağlıdır; bunlar generic danışma/gate
-kurallarıdır ve her projede korunur (aşağıya bakın).
+Son iki satır **yola değil iş türüne** bağlıdır. İkisi de **koşulludur**: danışma satırı
+architect yoksa kullanıcıya döner, gate satırı kapı sahibi yoksa hiç yazılmaz (aşağıya
+bakın).
 
 ## Routing satırları PROJEYE ÖZELDİR
 
@@ -67,14 +80,19 @@ geçersizdir.
 
 ## Korunan generic danışma kuralları
 
-Yol→rol tablosunun **yanında**, projeden bağımsız sabit kurallar her zaman korunur:
+Yol→rol tablosunun **yanında** projeden bağımsız kurallar durur. Bunlar sabit değil
+**koşulludur**: hedefi olmayan bir kural (architect'siz danışma, sahipsiz kod review
+kapısı) yazılmaz — var olmayan bir role işaret eden bir kural, kuralsızlıktan kötüdür.
 
 - **Architect'e danış:** mimari karar, ADR, kanal/standart belirsizliği, breaking
-  change durumunda kod yazmadan önce architect'e gidilir.
-- **Reviewer gate:** her kod değişikliği tamamlandıktan sonra reviewer çağrılır
-  (review olmadan iş "tamam" sayılmaz).
+  change durumunda kod yazmadan önce architect'e gidilir. **Architect yoksa bu madde
+  "kullanıcıya sorulur" olarak yazılır.**
+- **Kod review kapısı.** Plan kapısı kapalıysa: her kod değişikliği tamamlandıktan sonra
+  `reviewer` çağrılır (review olmadan iş "tamam" sayılmaz). Plan kapısı açıksa tek otorite
+  `planGate.codeReviewer`'dır — bir ad verildiyse kural o adla yazılır, `null` ise
+  **bu madde hiç yazılmaz** ve projede kod review kapısı yoktur.
 - **No-workaround → architect:** belirsizlikte kestirme yol aranmaz; architect'e
-  gidilir (bkz. `constitution.md` KARAR 1).
+  gidilir (bkz. `constitution.md` KARAR 1). **Architect yoksa kullanıcıya sorulur.**
 
 Bu kurallar projeye özel routing satırlarıyla **çelişmez, onları tamamlar**: tablo
 "kim yazar"ı, danışma kuralları "ne zaman dur ve sor"u belirler.

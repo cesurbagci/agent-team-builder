@@ -46,7 +46,8 @@ Projenin stack'ini ve agent'ın domain'ini özetleyen 2-4 cümle. writesCode=fal
 ### `## Rol & Sınırlar`
 - Ne yapar, ne yapmaz.
 - `writesCode=false` → **"Kod yazma"** net madde (architect: "**tüm `docs/` dizinine yetkiliyim**, tüm dokümantasyonun sahibiyim; production koduna yazmam, sadece okurum"; reviewer: "kod yazmam, dosya değiştirmem, yalnız rapor üretirim").
-- `writesCode=true` → "Sadece kendi domain'imde kod yazarım; `docs/` altına yazmam (orası architect'in)".
+- `writesCode=true` → "Sadece kendi domain'imde kod yazarım." Architect **varsa** cümleye
+  "`docs/` altına yazmam (orası architect'in)" eklenir; architect **yoksa** eklenmez.
 
 ### `## Memory` *(anayasa preset 3 açıksa)*
 > Canonical memory dizinin `.agent-memory/<name>/` altındadır. Göreve başlamadan önce varsa
@@ -64,14 +65,17 @@ koddur; doküman kodu açıklar, yerine geçmez."
 - **Çalışma:** yalnız yazabildiği yollar (writesCode=true → kendi domain kod yolları;
   **architect → tüm `docs/` dizini**; reviewer → hiçbiri).
 - **Yasak:** yalnız okuduğu yollar. architect için tüm production kod yolları "sadece
-  okurum". developer için diğer domainler + `docs/` (orası architect'in). reviewer için
+  okurum". developer için diğer domainler — architect **varsa** ayrıca `docs/` (orası
+  architect'in) ve `<arch-root>/`; architect **yoksa** ikisi de yasak listesinde
+  **yer almaz**. reviewer için
   "her şeyi okurum, hiçbir şeye yazmam".
 
 ### `## Kod-Doküman Senkronizasyonu` *(anayasa preset 2 açıksa)*
 manifest `codeDocSync[]` tablosu: `<kod yeri> → <beklenen doküman>`. Eksikse reviewer için
-**Kritik**. architect: doc tarafını ben güncellerim; bir karar kod + doc + (bağlayıcıysa)
+**Kritik**. Architect **varsa** — architect: doc tarafını ben güncellerim; bir karar kod + doc + (bağlayıcıysa)
 ADR üçü tamamlanmadan "bitti" sayılmaz. developer: kod kontratı değiştiyse ilgili dokümanın
-güncellenmesi için architect'e sevk eder.
+güncellenmesi için architect'e sevk eder. Architect **yoksa** bu iki cümle **yazılmaz**;
+doküman güncellemesi kod değişikliğini yapan rolün işidir.
 
 **Doküman standardı (her agent md'sine yazılır):** Mimari dokümanlar `docs/<arch-root>/templates/doc-standard.md` standardına göredir.
 - **architect:** ADR/kısıt/tasarım yazarken `templates/{adr,constraint,design}.md` şablonlarını kullanır; başka format uydurmaz.
@@ -116,10 +120,10 @@ Role özel sıkı kurallar (madde listesi):
 | manifest | gövdeye yansıma |
 |---|---|
 | `writesCode: false` | Rol & Sınırlar + Kısıtlar'da **"Kod yazma"** net; Çalışma klasörü dar (architect: `<arch-root>/`; reviewer: yok). |
-| `writesCode: true` | Çalışma klasörü = kendi domain kod yolları; Yasak = diğer domain + `<arch-root>/`. |
+| `writesCode: true` | Çalışma klasörü = kendi domain kod yolları; Yasak = diğer domain — architect **varsa** ayrıca `<arch-root>/`, **yoksa** yalnız diğer domainler. |
 | `skills[].enforcement: mandatory` | `## Zorunlu Skill'ler` altında **MUTLAKA** emir kipi. |
 | `skills[].enforcement: when-needed` | `## Gerektiğinde Skill'ler` altında öneri dili. |
-| `consults: [architect]` | `## Routing & Danışma`'da "mimari belirsizlikte architect'e sevk". |
+| `consults: [architect]` | `## Routing & Danışma`'da "mimari belirsizlikte architect'e sevk". Liste **boşsa** (architect yoksa) "mimari belirsizlikte **kullanıcıya sor**". |
 | `model` | frontmatter `model:` (tipik: architect/reviewer `opus`, developer `sonnet`). |
 
 ## Reviewer'a özel: `## Denetim Eksenleri`
@@ -132,6 +136,30 @@ Role özel sıkı kurallar (madde listesi):
 - **Kısıtlardan:** `docs/<arch-root>/constraints/*` (örn. file-size eşiği) → ihlal = bulgu.
 
 Her eksende bulgu seviyesi (Kritik/Uyarı/Öneri) belirtilir.
+
+## Plan Kapısı (yalnız `constitution.planGate: true` ise)
+
+Kapı açıksa **her** agent md'sine kısa bir bölüm eklenir. Önce **her role yazılan temel
+cümle**, sonra varsa role özel ek:
+
+**Temel (istisnasız her agent):** "Bu projede plan kapısı açık: işler `.agent-work/`
+altındaki plan dosyalarıyla yürür ve prosedürün tek otoritesi `work-plan` skill'idir.
+`.agent-work/` altına doğrudan yazma — o akış senin adına kaydı tutar."
+
+Üstüne, role göre **ek cümle**:
+
+- **Kod yazan roller:** "Onaylanmamış bir planın işini yapma; ne yapacağın plan dosyasında
+  yazar."
+- **`planReviewer` ise:** "Plan denetimi sende. Planı denetler, sonucunu döndürürsün."
+- **`codeReviewer` ise:** "Biten işin kod denetimi sende. Sonucunu döndürürsün."
+- **Hiçbiri değilse** (kapı sahibi olmayan, kod da yazmayan bir rol — örn. doc-writer):
+  ek cümle **yok**, yalnız temel cümle yazılır.
+
+Bir agent **iki kapıya birden** sahipse (aynı ad hem `planReviewer` hem `codeReviewer`)
+**iki ek cümle de** yazılır; biri diğerini elemez.
+
+Bölüm **kısa tutulur ve prosedür tekrar edilmez** — tek otorite `work-plan` skill'idir;
+aynı kuralı agent md'sinde de anlatmak drift üretir.
 
 ## Notlar
 

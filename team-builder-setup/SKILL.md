@@ -130,7 +130,7 @@ Adımları **bu sırayla** uygula. Her adımda kullanıcıya sor, cevabı al, so
 
 2. **Rolleri CHECKBOX (çoklu seçim) ile seçtir**, ≤4'lük gruplara bölerek; önerilen rolleri önceden işaretli sun (bkz. "Soru Sorma Biçimi"). Örn. **Grup 1:** architect, ios/web/backend-developer'lar (analizden çıkanlar); **Grup 2:** reviewer, qa, security, doc-writer. Önce kısa bir "şu rolleri öneriyorum" özeti verip sonra checkbox'ları sun; tabloyu serbest-metin soruya ÇEVİRME. Aday/öneri sırası: 
    - **architect** (öneri: EKLE) — takım lideri (`lead`), kod yazmaz; **tüm `docs/` dizinine yetkilidir** (tüm dokümantasyonun sahibi). Mimari kararlar/ADR'ler `docs/<arch-root>/` altında toplanır ama yetkisini "docs/ dizini" diye sun, alt klasörleri tek tek sayma. Routing'de `docs/**` → architect.
-   - **developer(lar)** (öneri: EKLE) — analizden önerdiğin her domain için ayrı developer (`consults: [architect]`).
+   - **developer(lar)** (öneri: EKLE) — analizden önerdiğin her domain için ayrı developer (architect de önerildiyse `consults: [architect]`, önerilmediyse `consults: []`).
    - **reviewer** (öneri: EKLE) — kod yazmaz, sadece inceler (gate).
    - **opsiyoneller:** `qa`, `security`, `doc-writer`, (UI ağırlıklıysa) `ui-developer` — her birini ayrı sor. Proje analizine göre öner: güvenlik kritikse (auth/ödeme/kişisel veri) `security`, UI ağırlıklıysa UI developer + `frontend-design` skill'i, test önemliyse `qa`. (Bu öneriler Adım 7'deki kalite odaklarıyla da örtüşür.)
    - **"Başka özel bir rol eklemek ister misin?"** — serbest rol; aynı rutin.
@@ -143,7 +143,7 @@ Adımları **bu sırayla** uygula. Her adımda kullanıcıya sor, cevabı al, so
       - Claude veya Codex hedefliyse: **opus / sonnet / haiku** (önerilen önceden işaretli) → manifest `model`. (Codex TOML aynı değeri kullanır.)
       - OpenCode hedefliyse: **`provider/model`** formatında OpenCode modeli sor ve **öner** — `model`'e göre `anthropic/claude-opus-4` / `…claude-sonnet-4-5` / `…claude-haiku-4-5` öner; kullanıcı başka provider'a (`openai/gpt-5`, `google/gemini-2.5-pro` vb.) değiştirebilir → manifest `opencode_model`.
    **(d) Effort** sor (tekli seçim): düşük / orta / yüksek — önerilen işaretli.
-   **(e) Kod yazsın mı + kime danışır** — varsayılanı söyle, onaylat/değiştir (developer → architect'e danışır; architect/reviewer kod yazmaz).
+   **(e) Kod yazsın mı + kime danışır** — varsayılanı söyle, onaylat/değiştir (architect eklendiyse developer → architect'e danışır; **architect eklenmediyse `consults` boş kalır ve belirsizlikte kullanıcıya sorulur**; architect/reviewer kod yazmaz).
    **(f) Skill'ler** — `skill-recommend.md` §4 **ZORUNLU FORMATINA birebir uy.** Bu role uygun **yüklü + public** skill'leri öner. **Hiçbir skill'i yalnız "isim — açıklama" ile gösterme**; her skill **iki satır** olmalı:
       ```
       • <skill-adı> — <bu projede ne işe yarar>
@@ -154,7 +154,9 @@ Adımları **bu sırayla** uygula. Her adımda kullanıcıya sor, cevabı al, so
       Seçilen **yüklü-olmayan** skill'i **otomatik kur** (`skill-recommend.md` §5: scope → `git clone` → kopyala → doğrula; kaynağı gösterip onay al; tekrar indirme).
    **(g)** Bu agent'ın özetini göster, "bu rol böyle tamam mı?" diye onaylat. Onaylanınca taslağını sakla (manifest `agents[]` girişi + `agent-md-rich.md` rol talimatı; diske Adım 8'de yazılır) ve **bir sonraki role geç**.
 
-   `lead` varsayılanı `architect`.
+   `lead` varsayılanı `architect`'tir. **Architect eklenmediyse** `lead` olarak eklenen
+   rollerden birini seçtir (öneri: en geniş domain'e sahip developer) ya da alanı hiç
+   yazma — `lead` opsiyoneldir. Var olmayan bir adı `lead` yapma; doğrulayıcı reddeder.
 
 **Bu adım bitince her agent tek tek yapılandırılmış ve NET bir rol listesi hazır olmalı.** Sonraki iki adım yalnızca bu listeye atıf yapar.
 
@@ -162,11 +164,11 @@ Adımları **bu sırayla** uygula. Her adımda kullanıcıya sor, cevabı al, so
 
 `~/.claude/skills/team-builder-shared/routing.md` kurallarını kullan. **Yalnız Adım 5'te eklenen roller** kullanılabilir.
 
-1. Proje analizine göre bir **path → rol** tablosu taslağı öner (örn. `apps/**/main/src/**` → `backend-developer`, `apps/**/renderer/src/**` → `frontend-developer`, `docs/<arch-root>/**` → `architect`).
+1. Proje analizine göre bir **path → rol** tablosu taslağı öner (örn. `apps/**/main/src/**` → `backend-developer`, `apps/**/renderer/src/**` → `frontend-developer`). **Architect eklendiyse** ayrıca `docs/<arch-root>/**` → `architect` satırını öner; **eklenmediyse bu satırı önerme** — `docs/` özel sahibi olmayan sıradan bir dizindir.
 2. Kullanıcı onaylar / düzeltir / satır ekler-siler. Onaysız satır kesinleşmez.
 3. Onaylanan satırları manifest kök `routing[]`'e (`{ path, role }`) yaz. `role` mutlaka eklenen bir rol olmalı.
 
-> Routing temel kuralı: **ajansız doğrudan kod yazma yasaktır; tabloyu bypass = mimari ihlal; şüphede architect'e danışılır.** (Generic danışma/gate kuralları her zaman korunur.)
+> Routing temel kuralı: **ajansız doğrudan kod yazma yasaktır; tabloyu bypass = mimari ihlal; şüphede architect'e danışılır — architect yoksa kullanıcıya sorulur.** (Generic danışma/gate kuralları her zaman korunur.)
 
 > **Kod review kapısını kim tanımlar.** Plan kapısı **kapalıysa** bugünkü davranış aynen
 > korunur: sabit `reviewer` adıyla evrensel bir review gate kuralı yazılır. Plan kapısı
@@ -191,7 +193,7 @@ Seçilenler somut çıktıya döner (`quality-dimensions.md`):
 
 Sade açıklama kalıbı (jargon yok):
 
-1. **Workaround yasağı** (`noWorkaround`) — "Geçici çözüm / kestirme yasak; belirsizlikte mimara gidilir.[Reviewer varsa: Riskli kestirme desenlerini otomatik 'düzeltilmeli' işaretler.]"
+1. **Workaround yasağı** (`noWorkaround`) — "Geçici çözüm / kestirme yasak; belirsizlikte [architect varsa: mimara] [architect yoksa: sana] sorulur.[Reviewer varsa: Riskli kestirme desenlerini otomatik 'düzeltilmeli' işaretler.]"
 2. **Kod–doküman birlikte güncellenir** (`codeDocSync`) — "Belirli kod yerleri değişince ilgili doküman aynı işte güncellenir. Hangi kod → hangi doküman eşleşmesini sana ayrıca soracağım."
 3. **Her agent kendi notunu tutar** (`perAgentMemory`) — "Her rol kendi `.agent-memory/<rol>/` klasörüne not/karar yazar; birbirinin notuna karışmaz."
 4. **Dil standardı** (`languageStandard`) — "Kod İngilizce; doküman, yorum ve cevap senin seçtiğin dilde (`docLanguage`)."

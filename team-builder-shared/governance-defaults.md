@@ -7,7 +7,7 @@
 
 ## Genel İlke
 
-Çekirdek roster her zaman: **architect (lead, doc-only)** + **developer(lar, domain-split)** + **reviewer**.
+Önerilen çekirdek roster: **architect (lead, doc-only)** + **developer(lar, domain-split)** + **reviewer**. "Her zaman" değil **varsayılan**: kullanıcı architect'i eklemeyebilir. Eklemezse `docs/` sahipliği, danışma hedefi, developer yasakları ve `lead` seçimi koşullu olarak değişir (bu dosyada ve `routing.md` / `agent-md-rich.md`'de işaretli).
 `qa` / `security` / `doc-writer` opsiyoneldir. Developer rolleri generic değildir; sihirbaz
 projeyi analiz eder ve gerçek domain'lere göre böler (aşağıya bakın).
 
@@ -50,20 +50,22 @@ Her developer rolü için varsayılan:
 - `writesCode`: **true**.
 - `model`: **sonnet** · `model_reasoning_effort`: **medium** · `sandbox_mode`: **workspace-write**.
   (Karmaşık projelerde effort=high tercih edilebilir; sihirbaz proje karmaşıklığına göre yükseltebilir.)
-- `consults`: **[architect]**.
+- `consults`: **[architect]** — architect takımda **yoksa boş `[]`**.
 - Kurallar (her developer'a, kendi domain'i doldurularak):
-  - "Sadece kendi domain'inde (`<paths>`) kod yaz. `docs/<arch-root>/` altına yazma; gerekiyorsa architect'e işaret et."
-  - "Mimari etkili kararda (yeni bağımlılık, modül sınırı, yeni IPC/public API yüzeyi, şema/breaking change, güvenlik etkisi) implementasyonu durdurup architect'e danış."
+  - Architect **varsa**: "Sadece kendi domain'inde (`<paths>`) kod yaz. `docs/<arch-root>/` altına yazma; gerekiyorsa architect'e işaret et." Architect **yoksa** bu cümle **yazılmaz** — `docs/` özel sahipliği olmayan sıradan bir dizindir.
+  - "Mimari etkili kararda (yeni bağımlılık, modül sınırı, yeni IPC/public API yüzeyi, şema/breaking change, güvenlik etkisi) implementasyonu durdurup **architect'e danış**." Architect **yoksa** danışma hedefi **kullanıcıdır**: "…implementasyonu durdurup kullanıcıya sor."
   - "Diğer domain'lerin kodunu okuyabilirsin ama yazamazsın."
 
 ## 3. Reviewer  (çekirdek, default: EKLE)
 
 - `writesCode`: **false** (read-only).
 - `model`: **opus** · `model_reasoning_effort`: **high** · `sandbox_mode`: **read-only**.
-- `consults`: [] (gate'tir; gerekirse architect'e eskale eder).
+- `consults`: [] (gate'tir; gerekirse architect'e eskale eder — architect **yoksa** eskalasyon hedefi **kullanıcıdır**).
+- **Plan kapısı açıksa:** evrensel kod review kuralının tek otoritesi `planGate.codeReviewer`'dır. O alan bir ad taşıyorsa kural o adla yazılır (bu rol o ad olmayabilir); `null` ise **evrensel kod review kuralı hiç yazılmaz**. Plan kapısı kapalıysa bugünkü sabit `reviewer` gate'i aynen korunur.
 - Kurallar:
   - "Kod yazma ve dosya değiştirme. `git diff`, `git status` ve ilgili mimari dokümanları okuyarak bulgu raporu üret."
-  - "Her çıktı review gate'inden geçer. Bulguları **Kritik / Uyarı / Öneri** olarak grupla; önce gerçek riskleri yaz."
+  - Kod review kapısı **varsa** (plan kapısı kapalı, ya da `planGate.codeReviewer` bir ad taşıyor): "Her çıktı review gate'inden geçer." `planGate.codeReviewer: null` ise bu cümle **yazılmaz** — projede kod review kapısı yoktur.
+  - "Bulguları **Kritik / Uyarı / Öneri** olarak grupla; önce gerçek riskleri yaz."
   - "**Workaround pattern'leri otomatik Kritik'tir** (anayasa no-workaround). Kod-doc senkronizasyon eksiği de Kritik."
   - "Kritik/Yüksek bulgular merge'i bloklar."
 
@@ -73,18 +75,18 @@ Her developer rolü için varsayılan:
 
 ### QA / Test Engineer  (opsiyonel)
 - `writesCode`: true (yalnız test) · `model`: **sonnet** · `model_reasoning_effort`: **medium** · `sandbox_mode`: **workspace-write**.
-- `consults`: [architect].
+- `consults`: [architect] — architect takımda **yoksa boş `[]`**.
 - Kurallar: "Test stratejisini sen belirlersin; coverage hedefini takip et; testleri kodun gerçek davranışına göre yaz."
 
 ### Security Reviewer  (opsiyonel)
 - `writesCode`: false · `model`: **opus** · `model_reasoning_effort`: **high** · `sandbox_mode`: **read-only**.
-- `consults`: [architect].
+- `consults`: [architect] — architect takımda **yoksa boş `[]`**.
 - Kurallar: "Auth, input validasyonu, secrets, dış çağrı içeren değişiklikleri sen incelersin; bulguları reviewer formatında raporla."
 
 ### Doc Writer  (opsiyonel)
 - `writesCode`: false (yalnız doküman) · `model`: **haiku** · `model_reasoning_effort`: **low** · `sandbox_mode`: **workspace-write** (yalnız `docs/`).
-- `consults`: [architect].
-- Kurallar: "Mimari kararları architect üretir; sen kullanıcı-bakış dokümanını/README'leri yazar ve günceltirsin. ADR yazma."
+- `consults`: [architect] — architect takımda **yoksa boş `[]`**.
+- Kurallar: Architect **varsa** — "Mimari kararları architect üretir; sen kullanıcı-bakış dokümanını/README'leri yazar ve günceltirsin. ADR yazma." Architect **yoksa** — "Kullanıcı-bakış dokümanını ve README'leri sen yazar ve günceltirsin. Mimari karar gerekiyorsa kullanıcıya sor." (ADR yasağı kalkar: yazacak başka rol yoktur.)
 
 ---
 
