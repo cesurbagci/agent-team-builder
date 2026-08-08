@@ -546,8 +546,14 @@ kaydı düşülür — ucuz bir işlem ve kural tek parça kalır.
 
 | `codeReviewer` | Koşul |
 |---|---|
-| Bir agent adı | O hareketten hemen önce çalıştırılan kod review'ın sonucu `approved` |
-| `null` | Her zaman yetkilidir (kapı yok) |
+| Bir agent adı | O hareketten hemen önce çalıştırılan kod review'ın sonucu `approved` **ve** kaydın `revision`'ı planın `revision`'ına eşit |
+| `null` | Kapı yoktur, ama hareket serbest değildir: `skipped` kaydı düşülür ve son kayıt `skipped`, `revision` eşit **ve** `codeReviewer` **hâlâ** `null` olmalıdır |
+
+> **Neden `null` de koşulludur.** "Her zaman yetkili" demek, kapı sonradan açıldığında
+> (`codeReviewer: null` → bir ad) eski `skipped` kaydının hâlâ `done/`'a taşıma yetkisi
+> vermesi olurdu. `planReviewPassed`'ın `null` dalı da aynı nedenle "denetleyici hâlâ
+> tanımsız" şartını taşır; iki kapı aynı ölçüyü kullanır. Revizyon karşılaştırması da
+> aynı yerden gelir: gözden geçirilen sürüm artık diskteki sürüm değilse kayıt bayattır.
 
 **`doneAuthorized` yalnız başarılı tamamlamayı korur.** İptal ayrı bir geçiştir ve ayrı bir
 koruması vardır:

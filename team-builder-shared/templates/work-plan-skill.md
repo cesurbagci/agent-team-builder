@@ -231,9 +231,15 @@ o iş için kural atlanır.
 2. Kalıcı bir mimari karar çıktıysa ADR yazılmalı: projede mimarlık rolü **varsa** ona
    yazdır, **yoksa** kullanıcıya sor. Sonucu `adr:` alanına bağla — bunu **taşımadan
    önce** yap; `done/` arşivdir, oraya girdikten sonra dosya değişmez.
-3. **`done/`'a taşıma yetkisi:** son `code-review` kaydı `approved` **ya da** denetleyici
-   tanımsız olduğu için `skipped` ise taşı. Denetleyici tanımsızken kullanıcıdan **ek onay
-   isteme** — kapı 3 yoktur, iş doğrudan biter.
+3. **`done/`'a taşıma yetkisi:** son `code-review` kaydı **ve** `kayıt.revision ===
+   plan.revision` şartı birlikte sağlanmalı — `planReviewPassed`'daki ile aynı ölçü:
+   - denetleyici bir ad taşıyorsa: son kayıt `approved` ve `kayıt.revision` planın
+     `revision`'ına eşit;
+   - denetleyici tanımsızsa: son kayıt `skipped`, `kayıt.revision` eşit **ve** denetleyici
+     **hâlâ** tanımsız. Sonradan bir kod denetleyicisi tanımlandıysa eski `skipped` kaydı
+     yetki vermez; kapı 3'ü çalıştır.
+   Denetleyici tanımsızken kullanıcıdan **ek onay isteme** — kapı 3 yoktur, iş doğrudan
+   biter.
 4. **Kod denetimi onayı tek seferliktir.** İş `done/`'a gitmeden kesilirse, devam
    edildiğinde denetimi **yeniden** çalıştır — eski kayıt geçmiştir, yetki vermez.
 
