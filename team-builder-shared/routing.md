@@ -17,12 +17,21 @@ drift olmaz: `project/CLAUDE.md`'deki tablo ile `manifest.routing` elle ayrı tu
 
 ## Standart satır (koşullu)
 
-- **`docs/**` → architect — yalnız takımda architect varsa.** Architect varsa tüm `docs/`
+- **`docs/**` → dokümantasyonu sahiplenen rol — takımda böyle bir rol varsa.** İlk aday
+  architect'tir; **architect yoksa doc-writer** bu satırın sahibidir. Sahip tüm `docs/`
   dizininin sahibidir; dokümantasyon (ADR, kısıt, tasarım, README) yalnız onun tarafından
   yazılır ve bu satır routing tablosuna eklenir (alt klasör — `docs/architecture/adr` vb. —
   tek tek yazılmaz; `docs/**` yeter).
-  **Architect yoksa bu satır üretilmez.** O zaman `docs/` özel sahipliği olmayan sıradan
-  bir dizindir ve kod yolu sahipliği kuralları neyse o geçerlidir.
+  **İkisi birlikte seçildiyse tablo bölünür:** `docs/**` architect'e kalır, doc-writer'a
+  yazacağı alt yol (örn. `docs/guides/**`) **ayrı satır** olarak verilir; verilmezse
+  doc-writer yazamaz.
+  **Kod yazmayan hiçbir doküman rolü yoksa bu satır üretilmez.** O zaman `docs/` özel
+  sahipliği olmayan sıradan bir dizindir ve kod yolu sahipliği kuralları neyse o geçerlidir.
+
+  > Bu satırı atlamak sahipliği sessizce yok eder: sahiplik generator'a **yalnız routing
+  > üzerinden** geçer. Tabloya yazılmayan bir sahiplik üretilen talimatlarda yoktur — o rol
+  > "dosya değiştirme, yalnız oku" talimatı alır. Doküman yazan bir rolü tabloya yazmadan
+  > takıma eklemek, onu yazamaz hâlde kurmaktır.
 
 > **`.agent-work/` — routing tablosuna GİRMEZ.** Plan kapısı açıksa bu dizin agent'ların
 > çalışma alanıdır (planlar, ham kayıtlar, ilerleme notları) ve buraya **yalnız `work-plan`
