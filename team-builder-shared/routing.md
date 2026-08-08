@@ -71,6 +71,11 @@ uğruna kuralı anlamsızlaştırır.
 Tablo satırı: `<glob/yol> → <rol>`. Eşleşme **en özgül (most-specific) yol önce**
 değerlendirilir; bir dosya birden fazla satıra uyarsa en dar glob kazanır.
 
+> **Bu cümle tablonun yanına, CLAUDE.md/AGENTS.md'ye de yazılır.** Tablo çakışan satırlar
+> taşır (`docs/**` ve `docs/guides/**` gibi) ve çözüm kuralı olmadan hangi rolün sahip
+> olduğu okunamaz. Kural burada kalırsa projeye gitmez: bu dosya sihirbazın rehberidir,
+> projeye kurulmaz. Tabloyu yazarken çözüm kuralını da yaz.
+
 | Satır türü | Örnek (genel) | Hedef rol |
 |---|---|---|
 | Backend domain yolu | `apps/<app>/main/src/**`, preload | domain backend-developer |
