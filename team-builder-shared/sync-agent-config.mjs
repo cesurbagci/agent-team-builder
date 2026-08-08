@@ -287,7 +287,12 @@ function renderDeveloperInstructions(agent, manifest, projectName) {
   // `docs/guides/**` to another — so every docs route counts, not just the
   // first. Taking one would hand this agent someone else's directory.
   const docsRoutes = (manifest.routing ?? []).filter(
-    r => r && typeof r.path === 'string' && r.path.startsWith('docs')
+    r =>
+      r &&
+      r.role &&
+      typeof r.path === 'string' &&
+      // "docs" or "docs/..." only — a sibling like "docsite/" is not documentation.
+      (r.path === 'docs' || r.path.startsWith('docs/'))
   )
   const ownRoutes = docsRoutes.filter(r => r.role === agent.name)
   const otherRoutes = docsRoutes.filter(r => r.role !== agent.name)
@@ -864,6 +869,23 @@ async function runSelftest() {
     'a developer must be kept out of every docs route, not just the first'
   )
 
+  // A sibling directory whose name merely starts with "docs" is not
+  // documentation, and a routing row without a role names nobody.
+  const lookalikeManifest = {
+    docLanguage: 'tr',
+    routing: [{ path: 'docsite/**', role: 'web' }, { path: 'docs/**' }],
+    agents: [],
+  }
+  const lookalike = renderDeveloperInstructions({ name: 'dev' }, lookalikeManifest, 'demo')
+  assert(
+    !lookalike.includes('docsite'),
+    'docsite/ must not be mistaken for the documentation directory'
+  )
+  assert(
+    !lookalike.includes('undefined'),
+    'a routing row without a role must not reach the instructions'
+  )
+
   const ownerlessManifest = { docLanguage: 'tr', routing: [], agents: [] }
   const soloDev = renderDeveloperInstructions({ name: 'dev' }, ownerlessManifest, 'demo')
   assert(
@@ -878,6 +900,10 @@ async function runSelftest() {
   assert(
     !soloReviewer.includes('Yazma alanin'),
     'without a docs owner a read-only role must not be granted a write area'
+  )
+  assert(
+    soloReviewer.includes('Dosya degistirme; yalniz okur'),
+    'a non-writing role with no owned route must be told it writes nothing'
   )
 
   // OpenCode agent md — only architect targets opencode (developer is claude-only).
