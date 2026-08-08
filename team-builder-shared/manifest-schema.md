@@ -24,11 +24,15 @@ Generated dosyalar **elle değiştirilmez**; kaynak burasıdır.
 | `architectureDocs` | `object` | Hayır | Mimari doküman ağacının kökü ve düzeni. Bkz. `architecture-docs.md`. |
 | `architectureDocs.root` | `string` | Hayır | Mimari doküman kök dizini. `docs/mimari` veya `docs/architecture`. |
 | `architectureDocs.layout` | `string` | Hayır | `central` (tüm kararlar `architectureDocs.root` altında) veya `per-module` (modül başına `modules/<name>/docs/`). |
-| `constitution` | `object` | Hayır | 4 cross-cutting anayasa presetinin aç/kapat durumu. Tümü default `true`. Bkz. `constitution.md`. |
+| `constitution` | `object` | Hayır | 5 cross-cutting anayasa presetinin aç/kapat durumu. İlk dördü default `true`, `planGate` default `false`. Bkz. `constitution.md`. |
 | `constitution.noWorkaround` | `boolean` | Hayır | No-workaround disiplini açık mı. Workaround pattern'leri reviewer'da otomatik Kritik. |
 | `constitution.codeDocSync` | `boolean` | Hayır | Kod-doküman senkronizasyonu açık mı. `codeDocSync[]` tablosu zorunlu kılınır. |
 | `constitution.perAgentMemory` | `boolean` | Hayır | Per-agent memory disiplini açık mı (`.agent-memory/<agent>/MEMORY.md`). |
 | `constitution.languageStandard` | `boolean` | Hayır | Dil & yorum standardı açık mı (kod İngilizce / doküman `docLanguage`). |
+| `constitution.planGate` | `boolean` | Hayır | Plan kapısı açık mı. **Default `false`** — diğer dört presetin aksine kapalı gelir, çünkü artefakt üretir (`.agent-work/`, `work-plan` skill'i). Açıksa kök `planGate` nesnesi zorunludur. Bkz. `plan-gate.md`. |
+| `planGate` | `object` | Koşullu | Kapı sahipleri. **Yalnız `constitution.planGate: true` iken bulunur**; kapalıyken varlığı manifest'i geçersiz kılar. |
+| `planGate.planReviewer` | `string \| null` | Evet (nesne varsa) | Planı denetleyen agent'ın adı, ya da `null` (kapı 1 atlanır). Kod yazmayan bir agent olmalı. |
+| `planGate.codeReviewer` | `string \| null` | Evet (nesne varsa) | Biten işin kodunu denetleyen agent'ın adı, ya da `null` (kapı 3 yoktur). Kod yazmayan bir agent olmalı. |
 | `focus` | `string[]` | Hayır | Projenin kalite odakları (checkbox ile seçilir). Değerler: `performance`, `code-design`, `ui-ux`, `accessibility`, `security`, `testing`. Reviewer denetim eksenlerini + kısıtları besler. Bkz. `quality-dimensions.md`. |
 | `routing` | `object[]` | Hayır | Path-based zorunlu routing tablosu. Her satır bir kod yolunu bir role bağlar. Bkz. `routing.md`. |
 | `routing[].path` | `string` | Evet (satır içinde) | Glob yolu (örn. `apps/**/main/src/**`). |
@@ -45,7 +49,7 @@ Generated dosyalar **elle değiştirilmez**; kaynak burasıdır.
 
 | Alan | Tip | Zorunlu | Açıklama |
 |---|---|---|---|
-| `name` | `string` | **Evet** | Agent adı. Generated dosya adlarının (`<name>.md`, `<name>.toml`) ve routing/lead referanslarının temeli. |
+| `name` | `string` | **Evet** | Agent adı. Generated dosya adlarının (`<name>.md`, `<name>.toml`) ve routing/lead referanslarının temeli. **Portatif slug olmalı:** `^[a-z0-9]+(?:-[a-z0-9]+)*$`. Adlar dosya yollarına doğrudan gömüldüğü için eğik çizgi, ters bölü, boşluk ve kontrol karakteri yasaktır. Tekillik **büyük/küçük harf duyarsız** karşılaştırılır (`Dev` ve `dev` çakışır). |
 | `description` | `string` | Hayır (önerilir) | Agent'ın ne zaman kullanılacağı. Claude frontmatter `description` + Codex TOML `description`'ına yansır. |
 | `targets` | `string[]` | Hayır | Hedef ekosistemler: `{claude, codex, opencode}` alt kümesi, boş olamaz. Verilmezse `targetsDefault` uygulanır. `claude` → `.claude/agents/<name>.md`; `codex` → `.codex/agent-definitions/<name>.md` + `.codex/agents/<name>.toml`; `opencode` → `.opencode/agents/<name>.md`. |
 | `model` | `string` | Hayır | `claude` hedefli agent'larda model: `opus`, `sonnet`, `haiku`. Codex agent'larında Codex modeli (örn. `gpt-5.5`) da olabilir. |
@@ -73,6 +77,16 @@ Generated dosyalar **elle değiştirilmez**; kaynak burasıdır.
 - `lead` verildiyse bir agent `name`'i olmalı.
 - `routing[].path` ve `routing[].role` dolu olmalı; `routing[].role` bir agent `name`'i olmalı.
 - `constitution` alanları (verildiyse) boolean olmalı.
+- `writesCode` (verildiyse) boolean olmalı — kapı sahipliği bu alana bakar, falsy bir
+  sayı/metin "kod yazmıyor" sayılamaz.
+- `agents[].name` portatif slug olmalı ve büyük/küçük harf duyarsız biçimde benzersiz olmalı.
+- `constitution.planGate: true` ise kök `planGate` nesnesi zorunlu, `planReviewer` ve
+  `codeReviewer` anahtarlarının ikisi de bulunmalı, değerleri agent adı ya da `null` olmalı.
+  `false` ya da yoksa kök `planGate` **bulunmamalı**.
+- Kapı sahipleri kod yazmayan agent olmalı (`writesCode: false`).
+- Kapı sahibinin etkin hedefleri, uygun executor'ların (routing'de geçen + kod yazan)
+  etkin hedeflerinin birleşimini kapsamalı.
+- `planGate` açıkken hedeflenen her ekosistemde en az bir uygun executor bulunmalı.
 
 ---
 
