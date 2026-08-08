@@ -145,12 +145,26 @@ export async function validatePlanGateArtifacts(rootDir) {
           errors.push(`templates/plan.md missing frontmatter field ${field}`)
         }
       }
-      // `reviews` is not a scalar: both gates append to their own array, and a
-      // template that declares only the parent key leaves each gate inventing
-      // where its record goes.
-      for (const gate of ['plan-review', 'code-review']) {
-        if (!new RegExp(`^\\s+${gate}:`, 'm').test(fm)) {
-          errors.push(`templates/plan.md reviews is missing the ${gate} array`)
+      // `reviews` is not a scalar: both gates append to their own array. The
+      // keys have to live under `reviews` and start as empty lists — an
+      // indented key elsewhere in the frontmatter is not the same thing, and
+      // `plan-review: nope` gives a gate nothing to append to.
+      const lines = fm.split('\n')
+      const reviewsAt = lines.findIndex(line => /^reviews:\s*$/.test(line))
+      if (reviewsAt === -1) {
+        errors.push('templates/plan.md reviews must be a block with the two gate arrays')
+      } else {
+        const block = []
+        for (let i = reviewsAt + 1; i < lines.length; i++) {
+          if (!/^\s+\S/.test(lines[i])) break
+          block.push(lines[i])
+        }
+        for (const gate of ['plan-review', 'code-review']) {
+          if (!block.some(line => new RegExp(`^\\s+${gate}:\\s*\\[\\s*\\]\\s*$`).test(line))) {
+            errors.push(
+              `templates/plan.md reviews.${gate} must start as an empty array`
+            )
+          }
         }
       }
     }
@@ -393,7 +407,7 @@ async function runSelftest() {
     // parent key leaves each gate to invent where its record goes.
     for (const gate of ['plan-review', 'code-review']) {
       await expectError(
-        `reviews is missing the ${gate} array`,
+        `reviews.${gate} must start as an empty array`,
         `a plan template whose reviews omits ${gate}`,
         () =>
           fs.writeFile(

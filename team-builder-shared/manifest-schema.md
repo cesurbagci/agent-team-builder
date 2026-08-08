@@ -50,7 +50,7 @@ Generated dosyalar **elle değiştirilmez**; kaynak burasıdır.
 | Alan | Tip | Zorunlu | Açıklama |
 |---|---|---|---|
 | `name` | `string` | **Evet** | Agent adı. Generated dosya adlarının (`<name>.md`, `<name>.toml`) ve routing/lead referanslarının temeli. **Portatif slug olmalı:** `^[a-z0-9]+(?:-[a-z0-9]+)*$`. Adlar dosya yollarına doğrudan gömüldüğü için eğik çizgi, ters bölü, boşluk ve kontrol karakteri yasaktır. Tekillik **büyük/küçük harf duyarsız** karşılaştırılır (`Dev` ve `dev` çakışır). |
-| `description` | `string` | Hayır (önerilir) | Agent'ın ne zaman kullanılacağı. Claude frontmatter `description` + Codex TOML `description`'ına yansır. |
+| `description` | `string` | **Evet** | Agent'ın ne zaman kullanılacağı. Claude frontmatter `description` + Codex TOML + OpenCode frontmatter `description`'ına yansır. **Zorunludur:** Codex açıklaması olmayan bir subagent'ı reddeder, OpenCode ise boş bir anahtar alır. |
 | `targets` | `string[]` | Hayır | Hedef ekosistemler: `{claude, codex, opencode}` alt kümesi, boş olamaz. Verilmezse `targetsDefault` uygulanır. `claude` → `.claude/agents/<name>.md`; `codex` → `.codex/agent-definitions/<name>.md` + `.codex/agents/<name>.toml`; `opencode` → `.opencode/agents/<name>.md`. |
 | `model` | `string` | Hayır | `claude` hedefli agent'larda model: `opus`, `sonnet`, `haiku`. Codex agent'larında Codex modeli (örn. `gpt-5.5`) da olabilir. |
 | `opencode_model` | `string` | Hayır | `opencode` hedefli agent'ın modeli, **`provider/model` formatında** (örn. `anthropic/claude-sonnet-4-5`, `openai/gpt-5`). Verilmezse `model` (opus/sonnet/haiku) Anthropic ID'lerine fallback haritasıyla map'lenir. |
@@ -68,7 +68,7 @@ Generated dosyalar **elle değiştirilmez**; kaynak burasıdır.
 
 ### Doğrulama kuralları (validate-manifest.mjs ile birebir)
 
-- `agents` boş olamaz; her agent'ta `name` zorunlu.
+- `agents` boş olamaz; her agent'ta `name` ve `description` zorunlu (`description` boş/boşluk olamaz — iki hedef şeması da ister).
 - Her agent'ın bir hedefi olmalı: kendi `targets`'ı ya da kök `targetsDefault`. İkisi de
   yoksa manifest geçersizdir — varsayılan hedef yoktur.
 - `targets` verildiyse `{claude, codex, opencode}` alt kümesi olmalı ve boş olmamalı.

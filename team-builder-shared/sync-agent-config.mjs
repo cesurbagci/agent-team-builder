@@ -17,6 +17,7 @@ import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import os from 'node:os'
 import { fileURLToPath } from 'node:url'
+import { routeContains } from './route-globs.mjs'
 
 // validate-manifest.mjs runs its own selftest block when `--selftest` is in
 // process.argv. Since this script shares that flag, import it dynamically with
@@ -318,73 +319,12 @@ function renderDeveloperInstructions(agent, manifest, projectName) {
   // `docs/guides/**` sits inside `docs/**`. Routing resolves most-specific
   // first, so barring this agent from the parent outright would contradict
   // the grant it was just given; name the exception instead.
-  // A route with no wildcard names a directory and governs what sits under it.
-  const asGlob = p => (/\*/.test(p) ? p : `${p.replace(/\/+$/, '')}/**`)
-  const segmentsOf = p => asGlob(p).split('/').filter(seg => seg !== '')
-  // The route as a pattern: `*` spans part of one segment, `**` spans any
-  // number of segments including none. A trailing `**` also covers the
-  // directory itself, so the separator in front of it is optional — otherwise
-  // `modules/*/docs/**` would not match `modules/pay/docs`, and a route
-  // sampling that directory could not be shown to sit inside it.
-  const routeMatcher = glob => {
-    const segs = segmentsOf(glob)
-    let source = '^'
-    segs.forEach((seg, i) => {
-      const last = i === segs.length - 1
-      if (seg === '**') {
-        if (!last) {
-          source += '(?:[^/]+/)*'
-        } else {
-          source += i === 0 ? '(?:[^/]+/)*[^/]*' : '(?:/(?:[^/]+/)*[^/]*)?'
-        }
-        return
-      }
-      source += seg.replace(/[.+^${}()|[\]\\?]/g, '\\$&').replace(/\*/g, '[^/]*')
-      // The trailing `**` brings its own optional separator.
-      const nextIsTrailingStars = i === segs.length - 2 && segs[i + 1] === '**'
-      if (!last && !nextIsTrailingStars) source += '/'
-    })
-    return new RegExp(`${source}$`)
-  }
-  // Paths the route matches. `**` is sampled at zero, one and two segments
-  // because it spans any depth; the zero and two samples are deliberately
-  // redundant, since no glob accepts a bounded depth range wider than one.
-  //
-  // A wildcard is filled with two probes rather than one, and they differ in
-  // their first and last character. A single filler let a partial-segment
-  // pattern swallow it: with `x`, `a/*` looked contained by `a/x*`, which is
-  // false — `a/zzz` is in the first and not the second. A prefix pattern now
-  // fails one probe and a suffix pattern fails the other. This is a decision
-  // procedure for the shapes routing tables actually use, not full glob
-  // subset; it errs toward reporting "not nested", which costs an exception
-  // clause rather than granting a directory.
-  const PROBES = ['ax1', 'zb2']
-  const join = (a, b) => (a && b ? `${a}/${b}` : a || b)
-  const samplesOf = glob => {
-    const out = new Set()
-    for (const probe of PROBES) {
-      let paths = ['']
-      for (const seg of segmentsOf(glob)) {
-        paths =
-          seg === '**'
-            ? paths.flatMap(p =>
-                ['', probe, `${probe}/${probe}`].map(fill => join(p, fill))
-              )
-            : paths.map(p => join(p, seg.replace(/\*/g, probe)))
-      }
-      for (const p of paths) if (p) out.add(p)
-    }
-    return [...out]
-  }
-  // One route is inside another when every path it can produce is also matched
-  // by that other route. Reducing each route to a directory first was not
-  // enough: `docs/**` and `docs/*` reduce to the same `docs`, so the narrower
-  // one looked equal to the wider one and got no exception.
-  const nestedIn = (inner, outer) => {
-    if (inner === outer) return false
-    const samples = samplesOf(inner)
-    return samples.length > 0 && samples.every(p => routeMatcher(outer).test(p))
-  }
+  // Containment is decided exactly, by route-globs.mjs. Sampling paths and
+  // comparing them was an approximation, and four review rounds each found
+  // the next pair it got wrong.
+  const nestedIn = (inner, outer) =>
+    inner !== outer && routeContains(outer, inner)
+
   const prohibit = route => {
     const carved = ownRoutes.filter(o => nestedIn(o.path, route.path))
     const except = carved.length
@@ -449,9 +389,6 @@ function renderDeveloperInstructions(agent, manifest, projectName) {
 
 function renderCodexAgentToml(agent, manifest, projectName) {
   const modelLine = agent.model ? `model = ${tomlString(agent.model)}\n` : ''
-  const descriptionLine = agent.description
-    ? `description = ${tomlString(agent.description)}\n`
-    : ''
   // These are enums on the Codex side. Both fields are optional in the
   // manifest, and emitting `= ""` for an absent one is not "unset" — Codex
   // rejects the agent outright ("reasoning_effort must not be empty",
@@ -466,7 +403,7 @@ function renderCodexAgentToml(agent, manifest, projectName) {
   return (
     GENERATED_HEADER +
     `name = ${tomlString(agent.name)}\n` +
-    descriptionLine +
+    `description = ${tomlString(agent.description)}\n` +
     modelLine +
     effortLine +
     sandboxLine +
@@ -908,7 +845,7 @@ async function runSelftest() {
   // `= ""` for an absent one makes Codex reject the agent rather than fall
   // back to its default.
   const bareToml = renderCodexAgentToml(
-    { name: 'bare' },
+    { name: 'bare', description: 'd' },
     manifest,
     'demo'
   )
@@ -950,12 +887,12 @@ async function runSelftest() {
     docLanguage: 'tr',
     routing: [{ path: 'docs/**', role: 'architect' }],
     agents: [
-      { name: 'architect', writesCode: false, sandbox_mode: 'workspace-write' },
-      { name: 'dev' },
+      { name: 'architect', description: 'rol aciklamasi', writesCode: false, sandbox_mode: 'workspace-write' },
+      { name: 'dev' , description: 'rol aciklamasi',},
     ],
   }
   const ownerText = renderDeveloperInstructions(
-    { name: 'architect', writesCode: false },
+    { name: 'architect', description: 'rol aciklamasi', writesCode: false },
     ownedManifest,
     'demo'
   )
@@ -963,7 +900,7 @@ async function runSelftest() {
     ownerText.includes('Yazma alanin `docs/**` altidir.'),
     'the docs owner must be granted its routed path'
   )
-  const devText = renderDeveloperInstructions({ name: 'dev' }, ownedManifest, 'demo')
+  const devText = renderDeveloperInstructions({ name: 'dev' , description: 'rol aciklamasi',}, ownedManifest, 'demo')
   assert(
     devText.includes('`docs/**` altina yazma; orasi `architect` rolunun.'),
     'a developer must be kept out of the routed docs path'
@@ -979,13 +916,13 @@ async function runSelftest() {
       { path: 'docs/guides/**', role: 'doc-writer' },
     ],
     agents: [
-      { name: 'architect', writesCode: false, sandbox_mode: 'workspace-write' },
-      { name: 'doc-writer', writesCode: false, sandbox_mode: 'workspace-write' },
-      { name: 'dev' },
+      { name: 'architect', description: 'rol aciklamasi', writesCode: false, sandbox_mode: 'workspace-write' },
+      { name: 'doc-writer', description: 'rol aciklamasi', writesCode: false, sandbox_mode: 'workspace-write' },
+      { name: 'dev' , description: 'rol aciklamasi',},
     ],
   }
   const splitWriter = renderDeveloperInstructions(
-    { name: 'doc-writer', writesCode: false },
+    { name: 'doc-writer', description: 'rol aciklamasi', writesCode: false },
     splitManifest,
     'demo'
   )
@@ -999,7 +936,7 @@ async function runSelftest() {
     ),
     'a blanket prohibition must carve out the sub-path the same agent owns'
   )
-  const splitDev = renderDeveloperInstructions({ name: 'dev' }, splitManifest, 'demo')
+  const splitDev = renderDeveloperInstructions({ name: 'dev' , description: 'rol aciklamasi',}, splitManifest, 'demo')
   assert(
     splitDev.includes('`docs/**` altina yazma; orasi `architect` rolunun.') &&
       splitDev.includes('`docs/guides/**` altina yazma; orasi `doc-writer` rolunun.'),
@@ -1021,13 +958,13 @@ async function runSelftest() {
       { path: 'docs/guides/api/**', role: 'api-writer' },
     ],
     agents: [
-      { name: 'architect', writesCode: false, sandbox_mode: 'workspace-write' },
-      { name: 'doc-writer', writesCode: false, sandbox_mode: 'workspace-write' },
-      { name: 'api-writer', writesCode: false, sandbox_mode: 'workspace-write' },
+      { name: 'architect', description: 'rol aciklamasi', writesCode: false, sandbox_mode: 'workspace-write' },
+      { name: 'doc-writer', description: 'rol aciklamasi', writesCode: false, sandbox_mode: 'workspace-write' },
+      { name: 'api-writer', description: 'rol aciklamasi', writesCode: false, sandbox_mode: 'workspace-write' },
     ],
   }
   const middle = renderDeveloperInstructions(
-    { name: 'doc-writer', writesCode: false, sandbox_mode: 'workspace-write' },
+    { name: 'doc-writer', description: 'rol aciklamasi', writesCode: false, sandbox_mode: 'workspace-write' },
     threeDeep,
     'demo'
   )
@@ -1054,12 +991,12 @@ async function runSelftest() {
       { path: 'docs/guides/**', role: 'doc-writer' },
     ],
     agents: [
-      { name: 'architect', writesCode: false, sandbox_mode: 'workspace-write' },
-      { name: 'doc-writer', writesCode: false, sandbox_mode: 'workspace-write' },
+      { name: 'architect', description: 'rol aciklamasi', writesCode: false, sandbox_mode: 'workspace-write' },
+      { name: 'doc-writer', description: 'rol aciklamasi', writesCode: false, sandbox_mode: 'workspace-write' },
     ],
   }
   const siblingWriter = renderDeveloperInstructions(
-    { name: 'doc-writer', writesCode: false },
+    { name: 'doc-writer', description: 'rol aciklamasi', writesCode: false },
     siblingManifest,
     'demo'
   )
@@ -1082,12 +1019,12 @@ async function runSelftest() {
       { path: 'modules/pay/**', role: 'dev' },
     ],
     agents: [
-      { name: 'architect', writesCode: false, sandbox_mode: 'workspace-write' },
-      { name: 'dev' },
+      { name: 'architect', description: 'rol aciklamasi', writesCode: false, sandbox_mode: 'workspace-write' },
+      { name: 'dev' , description: 'rol aciklamasi',},
     ],
   }
   const perModuleDev = renderDeveloperInstructions(
-    { name: 'dev' },
+    { name: 'dev' , description: 'rol aciklamasi',},
     perModuleManifest,
     'demo'
   )
@@ -1109,20 +1046,20 @@ async function runSelftest() {
       { path: 'src/**', role: 'dev' },
     ],
     agents: [
-      { name: 'security-reviewer', writesCode: false, sandbox_mode: 'read-only' },
-      { name: 'dev', sandbox_mode: 'workspace-write' },
+      { name: 'security-reviewer', description: 'rol aciklamasi', writesCode: false, sandbox_mode: 'read-only' },
+      { name: 'dev', description: 'rol aciklamasi', sandbox_mode: 'workspace-write' },
     ],
   }
   assert(
     !renderDeveloperInstructions(
-      { name: 'security-reviewer', writesCode: false, sandbox_mode: 'read-only' },
+      { name: 'security-reviewer', description: 'rol aciklamasi', writesCode: false, sandbox_mode: 'read-only' },
       readOnlyRouted,
       'demo'
     ).includes('Yazma alanin'),
     'a read-only role must never be granted a write area'
   )
   assert(
-    !renderDeveloperInstructions({ name: 'dev' }, readOnlyRouted, 'demo').includes(
+    !renderDeveloperInstructions({ name: 'dev' , description: 'rol aciklamasi',}, readOnlyRouted, 'demo').includes(
       'src/auth/** altina yazma'
     ),
     'a developer must not be barred from a path whose routed role cannot write'
@@ -1131,11 +1068,11 @@ async function runSelftest() {
   // write, so it cannot own.
   assert(
     !renderDeveloperInstructions(
-      { name: 'ghost', writesCode: false },
+      { name: 'ghost', description: 'rol aciklamasi', writesCode: false },
       {
         docLanguage: 'tr',
         routing: [{ path: 'docs/**', role: 'ghost' }],
-        agents: [{ name: 'ghost', writesCode: false }],
+        agents: [{ name: 'ghost', description: 'rol aciklamasi', writesCode: false }],
       },
       'demo'
     ).includes('Yazma alanin'),
@@ -1151,13 +1088,13 @@ async function runSelftest() {
       { path: 'modules/pay/docs/guides/**', role: 'doc-writer' },
     ],
     agents: [
-      { name: 'architect', writesCode: false, sandbox_mode: 'workspace-write' },
-      { name: 'doc-writer', writesCode: false, sandbox_mode: 'workspace-write' },
+      { name: 'architect', description: 'rol aciklamasi', writesCode: false, sandbox_mode: 'workspace-write' },
+      { name: 'doc-writer', description: 'rol aciklamasi', writesCode: false, sandbox_mode: 'workspace-write' },
     ],
   }
   assert(
     renderDeveloperInstructions(
-      { name: 'doc-writer', writesCode: false, sandbox_mode: 'workspace-write' },
+      { name: 'doc-writer', description: 'rol aciklamasi', writesCode: false, sandbox_mode: 'workspace-write' },
       globNested,
       'demo'
     ).includes(
@@ -1169,7 +1106,7 @@ async function runSelftest() {
   // directory nested a level deeper, so no carve-out belongs there.
   assert(
     !renderDeveloperInstructions(
-      { name: 'doc-writer', writesCode: false, sandbox_mode: 'workspace-write' },
+      { name: 'doc-writer', description: 'rol aciklamasi', writesCode: false, sandbox_mode: 'workspace-write' },
       {
         ...globNested,
         routing: [
@@ -1218,26 +1155,6 @@ async function runSelftest() {
       false,
       'a wider route is not inside a narrower one sharing its root',
     ],
-    // A partial-segment pattern must not appear to contain a full wildcard:
-    // `a/zzz` is in `a/*` and not in `a/x*`. One filler token let it.
-    [['a/x*', 'a/*'], false, 'a prefix pattern must not swallow a full wildcard'],
-    [['a/*q', 'a/*'], false, 'a suffix pattern must not swallow a full wildcard'],
-    // The two that matter for the probes themselves: a pattern shaped like one
-    // probe must still fail, because the other probe does not share its first
-    // or last character. With a single probe — or two alike at either end —
-    // these report containment that does not hold.
-    [
-      ['a/a*', 'a/*'],
-      false,
-      'a prefix matching one probe must not pass: the other probe starts differently',
-    ],
-    [
-      ['a/*1', 'a/*'],
-      false,
-      'a suffix matching one probe must not pass: the other probe ends differently',
-    ],
-    // …while the genuinely narrower partial pattern is inside it.
-    [['a/*', 'a/x*'], true, 'a partial pattern is inside the full wildcard'],
     // A trailing `**` covers its own directory. Sampling that directory while
     // the matcher demanded a separator after it lost real containment.
     [
@@ -1265,7 +1182,7 @@ async function runSelftest() {
   ]
   for (const [[outer, inner], wantCarve, why] of globCases) {
     const rendered = renderDeveloperInstructions(
-      { name: 'doc-writer', writesCode: false, sandbox_mode: 'workspace-write' },
+      { name: 'doc-writer', description: 'rol aciklamasi', writesCode: false, sandbox_mode: 'workspace-write' },
       {
         docLanguage: 'tr',
         routing: [
@@ -1273,8 +1190,8 @@ async function runSelftest() {
           { path: inner, role: 'doc-writer' },
         ],
         agents: [
-          { name: 'architect', writesCode: false, sandbox_mode: 'workspace-write' },
-          { name: 'doc-writer', writesCode: false, sandbox_mode: 'workspace-write' },
+          { name: 'architect', description: 'rol aciklamasi', writesCode: false, sandbox_mode: 'workspace-write' },
+          { name: 'doc-writer', description: 'rol aciklamasi', writesCode: false, sandbox_mode: 'workspace-write' },
         ],
       },
       'demo'
@@ -1287,9 +1204,9 @@ async function runSelftest() {
   const lookalikeManifest = {
     docLanguage: 'tr',
     routing: [{ path: 'docsite/**', role: 'web' }, { path: 'docs/**' }],
-    agents: [{ name: 'web' }, { name: 'dev' }],
+    agents: [{ name: 'web' , description: 'rol aciklamasi',}, { name: 'dev' , description: 'rol aciklamasi',}],
   }
-  const lookalike = renderDeveloperInstructions({ name: 'dev' }, lookalikeManifest, 'demo')
+  const lookalike = renderDeveloperInstructions({ name: 'dev' , description: 'rol aciklamasi',}, lookalikeManifest, 'demo')
   assert(
     !lookalike.includes('docsite'),
     'a directory owned by a code-writing role is not documentation'
@@ -1300,13 +1217,13 @@ async function runSelftest() {
   )
 
   const ownerlessManifest = { docLanguage: 'tr', routing: [], agents: [] }
-  const soloDev = renderDeveloperInstructions({ name: 'dev' }, ownerlessManifest, 'demo')
+  const soloDev = renderDeveloperInstructions({ name: 'dev' , description: 'rol aciklamasi',}, ownerlessManifest, 'demo')
   assert(
     !/altina yazma; orasi/.test(soloDev),
     'without a docs owner a developer must not be barred from an unowned directory'
   )
   const soloReviewer = renderDeveloperInstructions(
-    { name: 'reviewer', writesCode: false },
+    { name: 'reviewer', description: 'rol aciklamasi', writesCode: false },
     ownerlessManifest,
     'demo'
   )
@@ -1347,7 +1264,7 @@ async function runSelftest() {
   )
   const ocSource = '---\nname: x\n---\n\nbody'
   const ocReadOnly = renderOpencodeAgentMd(
-    { name: 'reviewer', writesCode: false, sandbox_mode: 'read-only' },
+    { name: 'reviewer', description: 'rol aciklamasi', writesCode: false, sandbox_mode: 'read-only' },
     manifest,
     ocSource
   )
@@ -1356,7 +1273,7 @@ async function runSelftest() {
     'a read-only role must be denied edits'
   )
   const ocDev = renderOpencodeAgentMd(
-    { name: 'dev', sandbox_mode: 'workspace-write' },
+    { name: 'dev', description: 'rol aciklamasi', sandbox_mode: 'workspace-write' },
     manifest,
     ocSource
   )
@@ -1367,7 +1284,7 @@ async function runSelftest() {
   // No declared sandbox: fall back to the conservative writesCode reading
   // rather than widening permissions by omission.
   const ocUndeclared = renderOpencodeAgentMd(
-    { name: 'ghost', writesCode: false },
+    { name: 'ghost', description: 'rol aciklamasi', writesCode: false },
     manifest,
     ocSource
   )

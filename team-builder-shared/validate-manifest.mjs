@@ -6,6 +6,12 @@
 // Agent names are embedded directly in generated file paths
 // (sync-agent-config.mjs:409,419,425). Anything outside this slug — a slash,
 // a backslash, a space, a control character — can escape the target directory.
+import {
+  routePathProblems,
+  routeContains,
+  routesOverlap,
+} from "./route-globs.mjs";
+
 const NAME_SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 const TARGETS = ["claude", "codex", "opencode"];
@@ -172,6 +178,13 @@ export function validate(doc) {
       errors.push(`${label}: writesCode boolean olmalı`);
     }
 
+    // Both target schemas require it: Codex rejects a subagent without a
+    // description, and OpenCode's agent frontmatter requires the key. Treating
+    // it as optional here produced configurations neither would load.
+    if (a && (typeof a.description !== "string" || a.description.trim() === "")) {
+      errors.push(`${label}: description dolu bir string olmalı`);
+    }
+
     // sandbox_mode drives the OpenCode edit permission, so an unrecognised
     // value must not reach the generator: anything that is not "read-only"
     // is treated there as permission to write.
@@ -335,32 +348,14 @@ export function validate(doc) {
         if (typeof r.path !== "string" || r.path === "") {
           errors.push(`routing[${i}]: path dolu bir string olmalı`);
         } else {
-          // Restrict paths to the vocabulary routing.md documents: literal
-          // segments, `*` for part of one segment, `**` for any number of
-          // segments. Forms outside it (`***`, `a*b*c`, `**/**`, a leading or
-          // doubled slash) have no defined meaning here, and the ownership
-          // comparison cannot answer containment for them — it reported
-          // carve-outs for routes that merely overlap. Reject them at the
-          // boundary instead of guessing downstream.
-          const segs = r.path.split("/");
-          const bad = [];
-          // A leading or trailing slash produces an empty segment too, so this
-          // one check covers `/docs/**`, `docs/` and `docs//x/**` alike.
-          if (segs.some((s) => s === "")) {
-            bad.push("boş segment — başta, sonda ya da arada fazladan `/`");
-          }
-          if (segs.some((s) => s !== "**" && !/^[^/*]*\*?[^/*]*$/.test(s))) {
-            bad.push("bir segmentte birden çok `*` ya da `***`");
-          }
-          for (let k = 0; k + 1 < segs.length; k++) {
-            if (segs[k] === "**" && segs[k + 1] === "**") {
-              bad.push("ardışık `**`");
-              break;
-            }
-          }
-          if (bad.length > 0) {
+          // Paths are restricted to the vocabulary routing.md documents, so
+          // that containment is decidable and two routes cannot overlap with
+          // neither containing the other — ownership would then have no
+          // most-specific winner. See route-globs.mjs.
+          const problems = routePathProblems(r.path);
+          if (problems.length > 0) {
             errors.push(
-              `routing[${i}]: path "${r.path}" desteklenmeyen glob biçimi (${bad.join(", ")}) — segmentler düz metin, tek bir \`*\` ya da \`**\` olabilir`
+              `routing[${i}]: path "${r.path}" desteklenmeyen glob biçimi (${problems.join(", ")})`
             );
           }
         }
@@ -396,6 +391,27 @@ export function validate(doc) {
         `routing: "${first}" ve "${r.path}" aynı kapsamı gösteriyor — aynı yolu iki satıra yazma, en özgül eşleşme aralarında seçim yapamaz`
       );
     });
+  }
+
+  // Two routes may share paths only when one of them is the more specific: the
+  // table resolves by most-specific match, so a partial overlap has no winner.
+  // `a/*/c` and `a/b/*` both claim `a/b/c` and neither contains the other —
+  // the generator would grant it to one role and forbid it to the other.
+  {
+    const rows = (Array.isArray(doc.routing) ? doc.routing : []).filter(
+      (r) => r && typeof r.path === "string" && routePathProblems(r.path).length === 0
+    );
+    for (let i = 0; i < rows.length; i++) {
+      for (let j = i + 1; j < rows.length; j++) {
+        const a = rows[i].path;
+        const b = rows[j].path;
+        if (!routesOverlap(a, b)) continue;
+        if (routeContains(a, b) || routeContains(b, a)) continue;
+        errors.push(
+          `routing: "${a}" ve "${b}" kesişiyor ama biri ötekini kapsamıyor — en özgül eşleşme kesişimde bir sahip seçemez; yollardan birini diğerinin altına al ya da ayır`
+        );
+      }
+    }
   }
 
   // The routing table assigns ownership, and routing.md makes that ownership
@@ -497,6 +513,7 @@ if (process.argv.includes("--selftest")) {
     agents: [
       {
         name: "architect",
+        description: "rol aciklamasi",
         targets: ["claude", "gpt"],
         model: "ultra",
         model_reasoning_effort: "extreme",
@@ -533,6 +550,7 @@ if (process.argv.includes("--selftest")) {
     agents: [
       {
         name: "architect",
+        description: "rol aciklamasi",
         targets: ["claude", "codex", "opencode"],
         model: "opus",
         opencode_model: "anthropic/claude-opus-4",
@@ -542,6 +560,7 @@ if (process.argv.includes("--selftest")) {
       },
       {
         name: "backend-developer",
+        description: "rol aciklamasi",
         targets: ["claude", "codex"],
         model: "sonnet",
         model_reasoning_effort: "high",
@@ -566,7 +585,7 @@ if (process.argv.includes("--selftest")) {
     targetsDefault: ["opencode"],
     lead: "architect",
     agents: [
-      { name: "architect", opencode_model: "openai/gpt-5", writesCode: false },
+      { name: "architect", description: 'rol aciklamasi', opencode_model: "openai/gpt-5", writesCode: false },
     ],
   };
   try {
@@ -586,7 +605,7 @@ if (process.argv.includes("--selftest")) {
     validate({
       targetsDefault: ["opencode"],
       lead: "architect",
-      agents: [{ name: "architect" }],
+      agents: [{ name: "architect" , description: 'rol aciklamasi',}],
     });
   } catch {
     missingModelRejected = true;
@@ -599,7 +618,7 @@ if (process.argv.includes("--selftest")) {
   // 5) hiçbir hedef yok (ne targets ne targetsDefault) → reddedilmeli.
   let noTargetRejected = false;
   try {
-    validate({ lead: "architect", agents: [{ name: "architect" }] });
+    validate({ lead: "architect", agents: [{ name: "architect" , description: 'rol aciklamasi',}] });
   } catch {
     noTargetRejected = true;
   }
@@ -617,8 +636,8 @@ if (process.argv.includes("--selftest")) {
     targetsDefault: ["claude"],
     routing: [{ path: "src/**", role: "dev" }],
     agents: [
-      { name: "dev", model: "sonnet" },
-      { name: "architect", model: "opus", writesCode: false },
+      { name: "dev", description: 'rol aciklamasi', model: "sonnet" },
+      { name: "architect", description: 'rol aciklamasi', model: "opus", writesCode: false },
     ],
   });
 
@@ -734,8 +753,8 @@ if (process.argv.includes("--selftest")) {
       planGate: { planReviewer: "architect", codeReviewer: null },
       routing: [{ path: "src/**", role: "dev" }],
       agents: [
-        { name: "dev", model: "sonnet" },
-        { name: "architect", model: "opus", writesCode: 0 },
+        { name: "dev", description: 'rol aciklamasi', model: "sonnet" },
+        { name: "architect", description: 'rol aciklamasi', model: "opus", writesCode: 0 },
       ],
     },
     "writesCode boolean olmalı"
@@ -752,9 +771,9 @@ if (process.argv.includes("--selftest")) {
       planGate: { planReviewer: "architect", codeReviewer: null },
       routing: [{ path: "src/**", role: "dev" }],
       agents: [
-        { name: "dev", model: "sonnet" },
+        { name: "dev", description: 'rol aciklamasi', model: "sonnet" },
         {
-          name: "architect",
+          name: "architect", description: 'rol aciklamasi',
           model: "opus",
           writesCode: false,
           sandbox_mode: "danger-full-access",
@@ -775,8 +794,8 @@ if (process.argv.includes("--selftest")) {
       planGate: { planReviewer: "architect", codeReviewer: null },
       routing: [{ path: "src/**", role: "dev" }],
       agents: [
-        { name: "dev", model: "sonnet", sandbox_mode: "read-only" },
-        { name: "architect", model: "opus", writesCode: false },
+        { name: "dev", description: 'rol aciklamasi', model: "sonnet", sandbox_mode: "read-only" },
+        { name: "architect", description: 'rol aciklamasi', model: "opus", writesCode: false },
       ],
     },
     "writesCode false olmalı"
@@ -790,9 +809,9 @@ if (process.argv.includes("--selftest")) {
       targetsDefault: ["claude"],
       routing: [{ path: "src/**", role: "dev" }],
       agents: [
-        { name: "dev", model: "sonnet" },
+        { name: "dev", description: 'rol aciklamasi', model: "sonnet" },
         {
-          name: "doc-writer",
+          name: "doc-writer", description: 'rol aciklamasi',
           model: "haiku",
           writesCode: false,
           sandbox_mode: "workspace-write",
@@ -814,9 +833,9 @@ if (process.argv.includes("--selftest")) {
         { path: "src/auth/**", role: "security-reviewer" },
       ],
       agents: [
-        { name: "dev", model: "sonnet" },
+        { name: "dev", description: 'rol aciklamasi', model: "sonnet" },
         {
-          name: "security-reviewer",
+          name: "security-reviewer", description: 'rol aciklamasi',
           model: "opus",
           writesCode: false,
           sandbox_mode: "read-only",
@@ -825,6 +844,20 @@ if (process.argv.includes("--selftest")) {
     },
     "dosya yazamıyor"
   );
+
+  // V7j — description is required by both target schemas. Without it Codex
+  // rejects the subagent and OpenCode gets an empty frontmatter key.
+  for (const description of [undefined, "", "   "]) {
+    expectReject(
+      `V7j description ${JSON.stringify(description)}`,
+      {
+        targetsDefault: ["claude"],
+        routing: [{ path: "src/**", role: "dev" }],
+        agents: [{ name: "dev", model: "sonnet", description }],
+      },
+      "description dolu bir string olmalı"
+    );
+  }
 
   // V7i — routing paths are restricted to the documented glob vocabulary.
   // Outside it the ownership comparison cannot decide containment, and it
@@ -836,9 +869,9 @@ if (process.argv.includes("--selftest")) {
       { path, role: "doc-writer" },
     ],
     agents: [
-      { name: "dev", model: "sonnet" },
+      { name: "dev", description: 'rol aciklamasi', model: "sonnet" },
       {
-        name: "doc-writer",
+        name: "doc-writer", description: 'rol aciklamasi',
         model: "haiku",
         writesCode: false,
         sandbox_mode: "workspace-write",
@@ -852,6 +885,16 @@ if (process.argv.includes("--selftest")) {
     "/docs/**",
     "docs//x/**",
     "docs/",
+    // Partial-segment wildcards: routing assigns directory ownership, and a
+    // file filter is not ownership. They also let two routes overlap with
+    // neither containing the other, leaving no most-specific winner.
+    "docs/**/*.md",
+    "docs/a*",
+    "docs/*a",
+    "docs/readme.*",
+    // Dot segments alias another path; routes are written from the project root.
+    "./docs/**",
+    "docs/../src/**",
   ]) {
     expectReject(
       `V7i unsupported glob ${path}`,
@@ -867,10 +910,53 @@ if (process.argv.includes("--selftest")) {
     "**",
     "apps/**/main/src/**",
     "modules/*/docs/**",
-    "docs/**/*.md",
   ]) {
     expectAccept(`V7i supported glob ${path}`, routePathCase(path));
   }
+
+  // V7k — routes that overlap without either containing the other. Both claim
+  // `a/b/c`, and most-specific matching has no answer for it.
+  expectReject(
+    "V7k partial overlap between routes",
+    {
+      targetsDefault: ["claude"],
+      routing: [
+        { path: "a/*/c", role: "dev" },
+        { path: "a/b/*", role: "other" },
+      ],
+      agents: [
+        { name: "dev", description: "rol aciklamasi", model: "sonnet" },
+        { name: "other", description: "rol aciklamasi", model: "sonnet" },
+      ],
+    },
+    "kesişiyor ama biri ötekini kapsamıyor"
+  );
+  // …while a nested pair is exactly what the table is for.
+  expectAccept("V7k nested routes stay valid", {
+    targetsDefault: ["claude"],
+    routing: [
+      { path: "docs/**", role: "architect" },
+      { path: "docs/guides/**", role: "doc-writer" },
+      { path: "src/**", role: "dev" },
+    ],
+    agents: [
+      { name: "dev", description: "rol aciklamasi", model: "sonnet" },
+      {
+        name: "architect",
+        description: "rol aciklamasi",
+        model: "opus",
+        writesCode: false,
+        sandbox_mode: "workspace-write",
+      },
+      {
+        name: "doc-writer",
+        description: "rol aciklamasi",
+        model: "haiku",
+        writesCode: false,
+        sandbox_mode: "workspace-write",
+      },
+    ],
+  });
 
   // V7h — two roles on the same scope. Most-specific routing cannot choose
   // between equals, and the generator grants the path to one while forbidding
@@ -889,15 +975,15 @@ if (process.argv.includes("--selftest")) {
           { path: b, role: "doc-writer" },
         ],
         agents: [
-          { name: "dev", model: "sonnet" },
+          { name: "dev", description: 'rol aciklamasi', model: "sonnet" },
           {
-            name: "architect",
+            name: "architect", description: 'rol aciklamasi',
             model: "opus",
             writesCode: false,
             sandbox_mode: "workspace-write",
           },
           {
-            name: "doc-writer",
+            name: "doc-writer", description: 'rol aciklamasi',
             model: "haiku",
             writesCode: false,
             sandbox_mode: "workspace-write",
@@ -917,7 +1003,7 @@ if (process.argv.includes("--selftest")) {
       routing: [{ path: 123, role: "doc-writer" }],
       agents: [
         {
-          name: "doc-writer",
+          name: "doc-writer", description: 'rol aciklamasi',
           model: "haiku",
           writesCode: false,
           sandbox_mode: "workspace-write",
@@ -935,9 +1021,9 @@ if (process.argv.includes("--selftest")) {
       { path: "docs/**", role: "doc-writer" },
     ],
     agents: [
-      { name: "dev", model: "sonnet" },
+      { name: "dev", description: 'rol aciklamasi', model: "sonnet" },
       {
-        name: "doc-writer",
+        name: "doc-writer", description: 'rol aciklamasi',
         model: "haiku",
         writesCode: false,
         sandbox_mode: "workspace-write",
@@ -954,9 +1040,9 @@ if (process.argv.includes("--selftest")) {
       planGate: { planReviewer: "architect", codeReviewer: null },
       routing: [{ path: "src/**", role: "dev" }],
       agents: [
-        { name: "dev", targets: ["claude", "codex"], model: "sonnet" },
+        { name: "dev", description: 'rol aciklamasi', targets: ["claude", "codex"], model: "sonnet" },
         {
-          name: "architect",
+          name: "architect", description: 'rol aciklamasi',
           targets: ["claude"],
           model: "opus",
           writesCode: false,
@@ -976,9 +1062,9 @@ if (process.argv.includes("--selftest")) {
     planGate: { planReviewer: "architect", codeReviewer: null },
     routing: [{ path: "src/**", role: "dev" }],
     agents: [
-      { name: "dev", model: "sonnet", sandbox_mode: "workspace-write" },
+      { name: "dev", description: 'rol aciklamasi', model: "sonnet", sandbox_mode: "workspace-write" },
       {
-        name: "architect",
+        name: "architect", description: 'rol aciklamasi',
         model: "opus",
         writesCode: false,
         sandbox_mode: "read-only",
@@ -993,8 +1079,8 @@ if (process.argv.includes("--selftest")) {
       targetsDefault: ["claude"],
       routing: [{ path: "src/**", role: "dev" }],
       agents: [
-        { name: "dev", model: "sonnet" },
-        { name: "dev", model: "opus" },
+        { name: "dev", description: 'rol aciklamasi', model: "sonnet" },
+        { name: "dev", description: 'rol aciklamasi', model: "opus" },
       ],
     },
     "benzersiz"
@@ -1005,7 +1091,7 @@ if (process.argv.includes("--selftest")) {
     "V11 path traversal in name",
     {
       targetsDefault: ["claude"],
-      agents: [{ name: "../../../escaped", model: "sonnet" }],
+      agents: [{ name: "../../../escaped", description: 'rol aciklamasi', model: "sonnet" }],
     },
     "portatif slug"
   );
@@ -1035,8 +1121,8 @@ if (process.argv.includes("--selftest")) {
       targetsDefault: ["claude"],
       routing: [{ path: "src/**", role: "dev" }],
       agents: [
-        { name: "dev", model: "sonnet" },
-        { name: "Dev", model: "opus" },
+        { name: "dev", description: 'rol aciklamasi', model: "sonnet" },
+        { name: "Dev", description: 'rol aciklamasi', model: "opus" },
       ],
     },
     "benzersiz"
@@ -1050,7 +1136,7 @@ if (process.argv.includes("--selftest")) {
       constitution: { planGate: true },
       planGate: { planReviewer: null, codeReviewer: null },
       routing: [],
-      agents: [{ name: "architect", model: "opus", writesCode: false }],
+      agents: [{ name: "architect", description: 'rol aciklamasi', model: "opus", writesCode: false }],
     },
     // Not "uygun executor yok": this fixture also trips the per-ecosystem
     // check, whose message carries that same phrase. This fragment is unique
@@ -1067,9 +1153,9 @@ if (process.argv.includes("--selftest")) {
       planGate: { planReviewer: "architect", codeReviewer: null },
       routing: [{ path: "src/**", role: "dev" }],
       agents: [
-        { name: "dev", targets: ["claude"], model: "sonnet" },
+        { name: "dev", description: 'rol aciklamasi', targets: ["claude"], model: "sonnet" },
         {
-          name: "architect",
+          name: "architect", description: 'rol aciklamasi',
           targets: ["claude", "codex"],
           model: "opus",
           writesCode: false,
@@ -1089,7 +1175,7 @@ if (process.argv.includes("--selftest")) {
       constitution: { planGate: true },
       planGate: { planReviewer: "architect", codeReviewer: null },
       routing: [{ path: "docs/**", role: "architect" }],
-      agents: [{ name: "architect", model: "opus", writesCode: false }],
+      agents: [{ name: "architect", description: 'rol aciklamasi', model: "opus", writesCode: false }],
     },
     "en az bir agent gerekli"
   );
@@ -1104,7 +1190,7 @@ if (process.argv.includes("--selftest")) {
       constitution: { planGate: true },
       planGate: { planReviewer: null, codeReviewer: null },
       routing: [],
-      agents: [{ name: "dev", model: "sonnet" }],
+      agents: [{ name: "dev", description: 'rol aciklamasi', model: "sonnet" }],
     },
     "en az bir agent gerekli"
   );
@@ -1118,9 +1204,9 @@ if (process.argv.includes("--selftest")) {
     planGate: { planReviewer: "architect", codeReviewer: null },
     routing: [{ path: "src/**", role: "dev" }],
     agents: [
-      { name: "dev", targets: ["claude"], model: "sonnet" },
+      { name: "dev", description: 'rol aciklamasi', targets: ["claude"], model: "sonnet" },
       {
-        name: "architect",
+        name: "architect", description: 'rol aciklamasi',
         targets: ["claude"],
         model: "opus",
         writesCode: false,
@@ -1134,7 +1220,7 @@ if (process.argv.includes("--selftest")) {
     "V17 unknown consults role",
     {
       targetsDefault: ["claude"],
-      agents: [{ name: "dev", model: "sonnet", consults: ["ghost"] }],
+      agents: [{ name: "dev", description: 'rol aciklamasi', model: "sonnet", consults: ["ghost"] }],
     },
     "consults \"ghost\" agents içinde bir name olmalı"
   );
@@ -1145,7 +1231,7 @@ if (process.argv.includes("--selftest")) {
     {
       targetsDefault: ["claude"],
       agents: [
-        { name: "dev", model: "sonnet", skills: [{ enforcement: "mandatory" }] },
+        { name: "dev", description: 'rol aciklamasi', model: "sonnet", skills: [{ enforcement: "mandatory" }] },
       ],
     },
     "skills[].name zorunlu"
@@ -1157,7 +1243,7 @@ if (process.argv.includes("--selftest")) {
     {
       targetsDefault: ["claude"],
       codeDocSync: [{ code: "src/api/**" }],
-      agents: [{ name: "dev", model: "sonnet" }],
+      agents: [{ name: "dev", description: 'rol aciklamasi', model: "sonnet" }],
     },
     "doc dolu bir string olmalı"
   );
@@ -1168,7 +1254,7 @@ if (process.argv.includes("--selftest")) {
     {
       targetsDefault: ["claude"],
       codeDocSync: [{ code: 42, doc: {} }],
-      agents: [{ name: "dev", model: "sonnet" }],
+      agents: [{ name: "dev", description: 'rol aciklamasi', model: "sonnet" }],
     },
     "code dolu bir string olmalı"
   );
@@ -1200,7 +1286,7 @@ if (process.argv.includes("--selftest")) {
 
   // V16 — owner value is neither an agent name nor null. The spec names both
   // a number and an object.
-  for (const owner of [42, { name: "architect" }]) {
+  for (const owner of [42, { name: "architect" , description: 'rol aciklamasi',}]) {
     expectReject(
       `V16 owner ${JSON.stringify(owner)}`,
       {
