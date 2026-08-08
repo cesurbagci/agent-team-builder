@@ -344,6 +344,31 @@ export function validate(doc) {
     }
   }
 
+  // Two rows covering the same scope cannot be resolved: routing picks the
+  // most specific match, and there is no most specific one between equals.
+  // The generator would grant the path to one role and forbid it to the other
+  // in the same breath. `docs` and `docs/**` name the same scope, so they
+  // collide too.
+  {
+    const canonicalRoute = (p) => {
+      const trimmed = String(p).replace(/\/+/g, "/").replace(/\/+$/, "");
+      return /\*/.test(trimmed) ? trimmed : `${trimmed}/**`;
+    };
+    const seen = new Map();
+    (Array.isArray(doc.routing) ? doc.routing : []).forEach((r) => {
+      if (!r || typeof r.path !== "string" || r.path === "") return;
+      const key = canonicalRoute(r.path);
+      const first = seen.get(key);
+      if (first === undefined) {
+        seen.set(key, r.path);
+        return;
+      }
+      errors.push(
+        `routing: "${first}" ve "${r.path}" aynı kapsamı gösteriyor — aynı yolu iki satıra yazma, en özgül eşleşme aralarında seçim yapamaz`
+      );
+    });
+  }
+
   // The routing table assigns ownership, and routing.md makes that ownership
   // binding ("bypass = mimari ihlal"). A role that cannot change files cannot
   // discharge it: Codex would tell it to write a directory OpenCode denies it,
@@ -771,6 +796,42 @@ if (process.argv.includes("--selftest")) {
     },
     "dosya yazamıyor"
   );
+
+  // V7h — two roles on the same scope. Most-specific routing cannot choose
+  // between equals, and the generator grants the path to one while forbidding
+  // it to the other. `docs` and `docs/**` are the same scope spelled twice.
+  for (const [a, b] of [
+    ["docs/**", "docs/**"],
+    ["docs", "docs/**"],
+  ]) {
+    expectReject(
+      `V7h duplicate scope ${a} vs ${b}`,
+      {
+        targetsDefault: ["claude"],
+        routing: [
+          { path: "src/**", role: "dev" },
+          { path: a, role: "architect" },
+          { path: b, role: "doc-writer" },
+        ],
+        agents: [
+          { name: "dev", model: "sonnet" },
+          {
+            name: "architect",
+            model: "opus",
+            writesCode: false,
+            sandbox_mode: "workspace-write",
+          },
+          {
+            name: "doc-writer",
+            model: "haiku",
+            writesCode: false,
+            sandbox_mode: "workspace-write",
+          },
+        ],
+      },
+      "aynı kapsamı gösteriyor"
+    );
+  }
 
   // V7g — a non-string path passes a truthiness check but the generator drops
   // it, leaving the owner with a write permission and no directory.

@@ -322,19 +322,27 @@ function renderDeveloperInstructions(agent, manifest, projectName) {
   const asGlob = p => (/\*/.test(p) ? p : `${p.replace(/\/+$/, '')}/**`)
   const segmentsOf = p => asGlob(p).split('/').filter(seg => seg !== '')
   // The route as a pattern: `*` spans part of one segment, `**` spans any
-  // number of segments including none.
+  // number of segments including none. A trailing `**` also covers the
+  // directory itself, so the separator in front of it is optional — otherwise
+  // `modules/*/docs/**` would not match `modules/pay/docs`, and a route
+  // sampling that directory could not be shown to sit inside it.
   const routeMatcher = glob => {
-    let source = '^'
     const segs = segmentsOf(glob)
+    let source = '^'
     segs.forEach((seg, i) => {
       const last = i === segs.length - 1
       if (seg === '**') {
-        source += last ? '(?:[^/]+/)*[^/]*' : '(?:[^/]+/)*'
-      } else {
-        source +=
-          seg.replace(/[.+^${}()|[\]\\?]/g, '\\$&').replace(/\*/g, '[^/]*') +
-          (last ? '' : '/')
+        if (!last) {
+          source += '(?:[^/]+/)*'
+        } else {
+          source += i === 0 ? '(?:[^/]+/)*[^/]*' : '(?:/(?:[^/]+/)*[^/]*)?'
+        }
+        return
       }
+      source += seg.replace(/[.+^${}()|[\]\\?]/g, '\\$&').replace(/\*/g, '[^/]*')
+      // The trailing `**` brings its own optional separator.
+      const nextIsTrailingStars = i === segs.length - 2 && segs[i + 1] === '**'
+      if (!last && !nextIsTrailingStars) source += '/'
     })
     return new RegExp(`${source}$`)
   }
@@ -1197,6 +1205,25 @@ async function runSelftest() {
     ],
     // …while the genuinely narrower partial pattern is inside it.
     [['a/*', 'a/x*'], true, 'a partial pattern is inside the full wildcard'],
+    // A trailing `**` covers its own directory. Sampling that directory while
+    // the matcher demanded a separator after it lost real containment.
+    [
+      ['modules/*/docs/**', 'modules/pay/docs/**'],
+      true,
+      'a concrete subtree is inside the same subtree under a wildcard segment',
+    ],
+    [
+      ['modules/*/docs/**', 'modules/pay/docs'],
+      true,
+      'a wildcard-free route is inside the subtree that contains it',
+    ],
+    // Overlapping without containment: `docs/y/z` is in `docs/*/*` and not in
+    // `docs/x/*`, so the narrower route must not be carved out of it.
+    [
+      ['docs/x/*', 'docs/*/*'],
+      false,
+      'routes that merely overlap must not produce a carve-out',
+    ],
     // A route with no wildcard names a directory and governs what is under it.
     [['docs', 'docs/guides/**'], true, 'a wildcard-free route governs its subtree'],
     // Two roles on the same path: neither is inside the other, so the
