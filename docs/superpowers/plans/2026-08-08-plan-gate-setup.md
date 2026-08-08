@@ -1528,7 +1528,19 @@ Spec'in `## Doğrulama` bölümündeki V1–V16 ve S1–S2 satırlarını tek te
 selftest kodunda karşılığı olan vakayı göster. Karşılığı olmayan satır kalırsa **plan
 eksiktir** — o satır için görev ekle.
 
-- [ ] **W1–W6 gerçekten çalıştırıldı (elle kabul)**
+- [x] **W1–W6 gerçekten çalıştırıldı (elle kabul)**
+
+> **Ne yapıldı.** Sihirbazın her senaryoda üreteceği manifest kuruldu ve `validate()` ile
+> denetlendi; W1 için ayrıca gerçek bir `.agent-source/` ağacı yazılıp `generate` +
+> `--check` çalıştırıldı. 13 kontrolün 13'ü geçti. W5'in kritik vakası — architect'siz
+> takımda `lead: architect` — **reddedildi**, yani koşullandırmanın kapattığı hata
+> gerçekti.
+>
+> **Makineyle kapatılamayan kısım.** W6 (yarıda kesilip devam edilen oturum) sihirbazın
+> konuşma durumuna bağlı; `wizard-state.md`'deki şema ve resume notu doğrulandı ama
+> gerçek kesinti ancak canlı bir kurulumda görülür. Aynı şekilde W1–W5'in **metin
+> kalitesi** (üretilen prose gerçekten `docLanguage` dilinde ve sade mi) insan gözü
+> ister. Bunlar ilk gerçek kurulumda kontrol edilmeli.
 
 Bunlar **metin okuyarak kapatılamaz** — spec onları elle yürütülen kabul senaryoları
 olarak tanımlıyor ve sihirbaz metnini yeniden okumak davranışı kanıtlamaz. Her biri için
