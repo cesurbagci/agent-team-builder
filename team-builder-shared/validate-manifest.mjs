@@ -172,6 +172,20 @@ export function validate(doc) {
       errors.push(`${label}: writesCode boolean olmalı`);
     }
 
+    // sandbox_mode drives the OpenCode edit permission, so an unrecognised
+    // value must not reach the generator: anything that is not "read-only"
+    // is treated there as permission to write.
+    if (
+      a &&
+      a.sandbox_mode !== undefined &&
+      a.sandbox_mode !== "read-only" &&
+      a.sandbox_mode !== "workspace-write"
+    ) {
+      errors.push(
+        `${label}: sandbox_mode "read-only" ya da "workspace-write" olmalı`
+      );
+    }
+
     // targets: verildiyse {claude,codex,opencode} alt kümesi ve boş olmamalı
     const hasTargets = a && a.targets !== undefined;
     if (hasTargets) {
@@ -615,6 +629,29 @@ if (process.argv.includes("--selftest")) {
     "writesCode boolean olmalı"
   );
 
+  // V7c — sandbox_mode is the OpenCode edit permission. The generator reads
+  // anything other than "read-only" as leave to write, so an unrecognised
+  // value must be rejected here rather than silently granting access.
+  expectReject(
+    "V7c sandbox_mode is not a known value",
+    {
+      targetsDefault: ["claude"],
+      constitution: { planGate: true },
+      planGate: { planReviewer: "architect", codeReviewer: null },
+      routing: [{ path: "src/**", role: "dev" }],
+      agents: [
+        { name: "dev", model: "sonnet" },
+        {
+          name: "architect",
+          model: "opus",
+          writesCode: false,
+          sandbox_mode: "danger-full-access",
+        },
+      ],
+    },
+    'sandbox_mode "read-only" ya da "workspace-write" olmalı'
+  );
+
   // V8 — owner is not generated for every ecosystem its executors run in.
   expectReject(
     "V8 owner does not cover executor targets",
@@ -637,14 +674,22 @@ if (process.argv.includes("--selftest")) {
   );
 
   // V9 — the owner may inherit coverage from targetsDefault.
+  // Both sandbox values ride along here: a rule that rejected the real roster
+  // would otherwise pass its own suite, since no other accepted fixture
+  // declares a sandbox at all.
   expectAccept("V9 owner covers via targetsDefault", {
     targetsDefault: ["claude", "codex"],
     constitution: { planGate: true },
     planGate: { planReviewer: "architect", codeReviewer: null },
     routing: [{ path: "src/**", role: "dev" }],
     agents: [
-      { name: "dev", model: "sonnet" },
-      { name: "architect", model: "opus", writesCode: false },
+      { name: "dev", model: "sonnet", sandbox_mode: "workspace-write" },
+      {
+        name: "architect",
+        model: "opus",
+        writesCode: false,
+        sandbox_mode: "read-only",
+      },
     ],
   });
 
