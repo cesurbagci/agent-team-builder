@@ -236,15 +236,20 @@ function opencodeAgentBody(source) {
     .replaceAll('Task tool ile delege et', 'OpenCode @mention ile subagent\'e delege et')
 }
 
+// `writesCode` is a production-code prohibition carried in the role text;
+// `sandbox_mode` is the filesystem permission. They are not the same question:
+// a documentation owner is `writesCode: false` *and* `workspace-write`. Every
+// target must answer "can this role change files" the same way, or the same
+// role is granted a write area by one and denied it by another.
+function canWriteFiles(agent) {
+  return agent.sandbox_mode
+    ? agent.sandbox_mode !== 'read-only'
+    : agent.writesCode !== false
+}
+
 function renderOpencodeAgentMd(agent, manifest, source) {
   const writesCode = agent.writesCode !== false
-  // `writesCode` is a production-code prohibition carried in the role text;
-  // `sandbox_mode` is the filesystem permission. A doc-only owner is
-  // `writesCode: false` *and* `workspace-write` — denying its edits here would
-  // lock it out of the very directory routing put in its care.
-  const canEdit = agent.sandbox_mode
-    ? agent.sandbox_mode !== 'read-only'
-    : writesCode
+  const canEdit = canWriteFiles(agent)
   const mode = manifest.lead && agent.name === manifest.lead ? 'primary' : 'subagent'
   const edit = canEdit ? 'allow' : 'deny'
   const bash = canEdit && writesCode ? 'allow' : 'ask'
@@ -294,9 +299,12 @@ function renderDeveloperInstructions(agent, manifest, projectName) {
   // code directory that merely reads like one (`docsite/`) for documentation.
   // Named for what they are, not for `docs/`: reintroducing a path test here
   // is what produced both earlier bugs.
+  // A read-only role owns nothing it could maintain: granting it a write area
+  // would contradict the very permission its sandbox states, and barring other
+  // roles from a directory nobody can write is noise.
   const nonWritingOwners = new Set(
     (manifest.agents ?? [])
-      .filter(a => a && a.name && a.writesCode === false)
+      .filter(a => a && a.name && a.writesCode === false && canWriteFiles(a))
       .map(a => a.name)
   )
   // Several roles may share the documentation, so every owned route counts,
@@ -311,8 +319,20 @@ function renderDeveloperInstructions(agent, manifest, projectName) {
   // first, so barring this agent from the parent outright would contradict
   // the grant it was just given; name the exception instead.
   const routeBase = p => p.replace(/\*+$/, '').replace(/\/+$/, '')
-  const nestedIn = (inner, outer) =>
-    routeBase(inner).startsWith(routeBase(outer) + '/')
+  // Routes carry globs, so the containing route has to be matched as a pattern:
+  // `*` spans one segment, `**` spans any number. A literal prefix test would
+  // miss `modules/pay/docs/guides/**` inside `modules/*/docs/**`.
+  const nestedIn = (inner, outer) => {
+    const pattern = routeBase(outer)
+      .split('/')
+      .map(seg =>
+        seg === '**'
+          ? '.*'
+          : seg.replace(/[.+^${}()|[\]\\?]/g, '\\$&').replace(/\*/g, '[^/]*')
+      )
+      .join('/')
+    return new RegExp(`^${pattern}/`).test(routeBase(inner))
+  }
   const prohibit = route => {
     const carved = ownRoutes.filter(o => nestedIn(o.path, route.path))
     const except = carved.length
@@ -683,6 +703,9 @@ async function runSelftest() {
   const manifest = {
     targetsDefault: ['claude', 'codex'],
     docLanguage: 'tr',
+    // The architect is workspace-write, so it must own a route: a role that may
+    // write files and has nowhere to write is the incoherence V7e rejects.
+    routing: [{ path: 'docs/**', role: 'architect' }],
     architectureDocs: { root: 'docs/mimari', layout: 'central' },
     constitution: {
       noWorkaround: true,
@@ -841,7 +864,10 @@ async function runSelftest() {
   const ownedManifest = {
     docLanguage: 'tr',
     routing: [{ path: 'docs/**', role: 'architect' }],
-    agents: [{ name: 'architect', writesCode: false }, { name: 'dev' }],
+    agents: [
+      { name: 'architect', writesCode: false, sandbox_mode: 'workspace-write' },
+      { name: 'dev' },
+    ],
   }
   const ownerText = renderDeveloperInstructions(
     { name: 'architect', writesCode: false },
@@ -868,8 +894,8 @@ async function runSelftest() {
       { path: 'docs/guides/**', role: 'doc-writer' },
     ],
     agents: [
-      { name: 'architect', writesCode: false },
-      { name: 'doc-writer', writesCode: false },
+      { name: 'architect', writesCode: false, sandbox_mode: 'workspace-write' },
+      { name: 'doc-writer', writesCode: false, sandbox_mode: 'workspace-write' },
       { name: 'dev' },
     ],
   }
@@ -909,8 +935,8 @@ async function runSelftest() {
       { path: 'docs/guides/**', role: 'doc-writer' },
     ],
     agents: [
-      { name: 'architect', writesCode: false },
-      { name: 'doc-writer', writesCode: false },
+      { name: 'architect', writesCode: false, sandbox_mode: 'workspace-write' },
+      { name: 'doc-writer', writesCode: false, sandbox_mode: 'workspace-write' },
     ],
   }
   const siblingWriter = renderDeveloperInstructions(
@@ -936,7 +962,10 @@ async function runSelftest() {
       { path: 'modules/pay/docs/**', role: 'architect' },
       { path: 'modules/pay/**', role: 'dev' },
     ],
-    agents: [{ name: 'architect', writesCode: false }, { name: 'dev' }],
+    agents: [
+      { name: 'architect', writesCode: false, sandbox_mode: 'workspace-write' },
+      { name: 'dev' },
+    ],
   }
   const perModuleDev = renderDeveloperInstructions(
     { name: 'dev' },
@@ -948,6 +977,90 @@ async function runSelftest() {
       '`modules/pay/docs/**` altina yazma; orasi `architect` rolunun.'
     ),
     'per-module documentation must be recognised even without a docs/ prefix'
+  )
+
+  // A read-only role owns nothing. Routing may legitimately name one (a
+  // security reviewer scoped to a path), but granting it a write area would
+  // contradict its own sandbox, and Codex would then promise what OpenCode
+  // denies — the cross-target split this derivation exists to prevent.
+  const readOnlyRouted = {
+    docLanguage: 'tr',
+    routing: [
+      { path: 'src/auth/**', role: 'security-reviewer' },
+      { path: 'src/**', role: 'dev' },
+    ],
+    agents: [
+      { name: 'security-reviewer', writesCode: false, sandbox_mode: 'read-only' },
+      { name: 'dev', sandbox_mode: 'workspace-write' },
+    ],
+  }
+  assert(
+    !renderDeveloperInstructions(
+      { name: 'security-reviewer', writesCode: false, sandbox_mode: 'read-only' },
+      readOnlyRouted,
+      'demo'
+    ).includes('Yazma alanin'),
+    'a read-only role must never be granted a write area'
+  )
+  assert(
+    !renderDeveloperInstructions({ name: 'dev' }, readOnlyRouted, 'demo').includes(
+      'src/auth/** altina yazma'
+    ),
+    'a developer must not be barred from a path whose routed role cannot write'
+  )
+  // Same reasoning for an undeclared sandbox: the fallback says it cannot
+  // write, so it cannot own.
+  assert(
+    !renderDeveloperInstructions(
+      { name: 'ghost', writesCode: false },
+      {
+        docLanguage: 'tr',
+        routing: [{ path: 'docs/**', role: 'ghost' }],
+        agents: [{ name: 'ghost', writesCode: false }],
+      },
+      'demo'
+    ).includes('Yazma alanin'),
+    'a non-writer with no declared sandbox must not be treated as an owner'
+  )
+
+  // Routes carry globs. modules/*/docs/** contains modules/pay/docs/guides/**,
+  // which a literal prefix comparison does not see.
+  const globNested = {
+    docLanguage: 'tr',
+    routing: [
+      { path: 'modules/*/docs/**', role: 'architect' },
+      { path: 'modules/pay/docs/guides/**', role: 'doc-writer' },
+    ],
+    agents: [
+      { name: 'architect', writesCode: false, sandbox_mode: 'workspace-write' },
+      { name: 'doc-writer', writesCode: false, sandbox_mode: 'workspace-write' },
+    ],
+  }
+  assert(
+    renderDeveloperInstructions(
+      { name: 'doc-writer', writesCode: false, sandbox_mode: 'workspace-write' },
+      globNested,
+      'demo'
+    ).includes(
+      '\`modules/*/docs/**\` altina yazma (kendi yolun \`modules/pay/docs/guides/**\` haric)'
+    ),
+    'the carve-out must see through a wildcard segment in the containing route'
+  )
+  // `*` spans exactly one segment: modules/*/docs/** does not reach a docs
+  // directory nested a level deeper, so no carve-out belongs there.
+  assert(
+    !renderDeveloperInstructions(
+      { name: 'doc-writer', writesCode: false, sandbox_mode: 'workspace-write' },
+      {
+        ...globNested,
+        routing: [
+          { path: 'modules/*/docs/**', role: 'architect' },
+          { path: 'modules/pay/sub/docs/guides/**', role: 'doc-writer' },
+        ],
+      },
+      'demo'
+    ).includes('haric'),
+    'a single-star segment must not swallow a deeper path'
   )
 
   // A code directory that merely reads like documentation belongs to the role
@@ -1238,8 +1351,10 @@ async function runSelftest() {
   const trimmedManifest = {
     ...manifest,
     // Dropping architect also drops every reference to it: a consults entry
-    // naming a removed agent is rejected, which is the same rule the wizard
-    // follows when a team has no architect.
+    // or a routing row naming a removed agent is rejected, which is the same
+    // rule the wizard follows when a team has no architect — and there the
+    // docs row disappears with its owner.
+    routing: manifest.routing.filter(r => r.role !== 'architect'),
     agents: manifest.agents
       .filter(a => a.name !== 'architect')
       .map(a => ({ ...a, consults: (a.consults ?? []).filter(c => c !== 'architect') })),

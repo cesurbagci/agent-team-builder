@@ -186,6 +186,15 @@ export function validate(doc) {
       );
     }
 
+    // A read-only agent cannot write, so it cannot write code. Left unchecked
+    // this combination passes the plan gate's executor requirement with an
+    // agent that every target denies edits to.
+    if (a && a.writesCode !== false && a.sandbox_mode === "read-only") {
+      errors.push(
+        `${label}: sandbox_mode "read-only" ise writesCode false olmalı — kod yazamayan bir agent executor sayılamaz`
+      );
+    }
+
     // targets: verildiyse {claude,codex,opencode} alt kümesi ve boş olmamalı
     const hasTargets = a && a.targets !== undefined;
     if (hasTargets) {
@@ -326,6 +335,31 @@ export function validate(doc) {
           errors.push(`routing[${i}]: role "${r.role}" bir agent name olmalı`);
         }
       });
+    }
+  }
+
+  // A doc-only role that may write files must have somewhere to write it.
+  // Ownership reaches the generator only through routing, so an unrouted
+  // `workspace-write` non-writer is told by Codex that it changes no files
+  // while OpenCode hands it edit rights — the same role, two answers.
+  {
+    const routedRoles = new Set(
+      (Array.isArray(doc.routing) ? doc.routing : [])
+        .map((r) => r && r.role)
+        .filter(Boolean)
+    );
+    for (const a of Array.isArray(doc.agents) ? doc.agents : []) {
+      if (
+        a &&
+        a.name &&
+        a.writesCode === false &&
+        a.sandbox_mode === "workspace-write" &&
+        !routedRoles.has(a.name)
+      ) {
+        errors.push(
+          `agents["${a.name}"]: writesCode false + sandbox_mode "workspace-write" ise routing'de en az bir yol verilmeli — yoksa yazma izni var ama yazacağı yer yok`
+        );
+      }
     }
   }
 
@@ -651,6 +685,62 @@ if (process.argv.includes("--selftest")) {
     },
     'sandbox_mode "read-only" ya da "workspace-write" olmalı'
   );
+
+  // V7d — read-only and "writes code" cannot both hold. Such an agent would
+  // otherwise satisfy the plan gate's per-ecosystem executor requirement while
+  // every target denies it edits.
+  expectReject(
+    "V7d read-only agent claims to write code",
+    {
+      targetsDefault: ["claude"],
+      constitution: { planGate: true },
+      planGate: { planReviewer: "architect", codeReviewer: null },
+      routing: [{ path: "src/**", role: "dev" }],
+      agents: [
+        { name: "dev", model: "sonnet", sandbox_mode: "read-only" },
+        { name: "architect", model: "opus", writesCode: false },
+      ],
+    },
+    "writesCode false olmalı"
+  );
+
+  // V7e — a doc-only role that may write files but owns no route: Codex tells
+  // it it changes no files, OpenCode grants edit.
+  expectReject(
+    "V7e writable non-writer has no routed path",
+    {
+      targetsDefault: ["claude"],
+      routing: [{ path: "src/**", role: "dev" }],
+      agents: [
+        { name: "dev", model: "sonnet" },
+        {
+          name: "doc-writer",
+          model: "haiku",
+          writesCode: false,
+          sandbox_mode: "workspace-write",
+        },
+      ],
+    },
+    "routing'de en az bir yol verilmeli"
+  );
+
+  // …and the same roster is fine once the route exists.
+  expectAccept("V7e routed writable non-writer", {
+    targetsDefault: ["claude"],
+    routing: [
+      { path: "src/**", role: "dev" },
+      { path: "docs/**", role: "doc-writer" },
+    ],
+    agents: [
+      { name: "dev", model: "sonnet" },
+      {
+        name: "doc-writer",
+        model: "haiku",
+        writesCode: false,
+        sandbox_mode: "workspace-write",
+      },
+    ],
+  });
 
   // V8 — owner is not generated for every ecosystem its executors run in.
   expectReject(

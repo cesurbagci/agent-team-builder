@@ -28,6 +28,13 @@ drift olmaz: `project/CLAUDE.md`'deki tablo ile `manifest.routing` elle ayrı tu
   **Kod yazmayan hiçbir doküman rolü yoksa bu satır üretilmez.** O zaman `docs/` özel
   sahipliği olmayan sıradan bir dizindir ve kod yolu sahipliği kuralları neyse o geçerlidir.
 
+- **`layout: per-module` ise ayrıca `modules/*/docs/**` → aynı sahip.** Modül dokümanı
+  (`architecture-docs.md` → per-module ağacı) `modules/<name>/docs/` altındadır ve bu yol
+  `modules/<name>/**` → extension-developer satırının **içinde** kalır. Ayrı satır
+  yazılmazsa modül dokümanının sahibi doküman rolü değil developer olur; en özgül yol
+  kazandığı için bu satır developer satırını modül `docs/`'u için doğru şekilde daraltır.
+  `layout: central` ise bu satır yazılmaz.
+
   > Bu satırı atlamak sahipliği sessizce yok eder: sahiplik generator'a **yalnız routing
   > üzerinden** geçer. Tabloya yazılmayan bir sahiplik üretilen talimatlarda yoktur — o rol
   > "dosya değiştirme, yalnız oku" talimatı alır. Doküman yazan bir rolü tabloya yazmadan

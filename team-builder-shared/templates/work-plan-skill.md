@@ -219,9 +219,13 @@ o iş için kural atlanır.
 
 ## İşi bitirme
 
-1. **Kapı 3 — kod denetimi.** Projenin kod denetleyicisi tanımlıysa çağır ve sonucu
-   `reviews.code-review`'a şemaya göre kaydet. `rejected` ise `reasons` boş olamaz,
-   gerekçeyi `s:review-notes`'a da yaz ve iş `in-progress/`'te kalır.
+1. **Kapı 3 — kod denetimi.** Projenin kod denetleyicisi tanımlıysa çağır. Denetleyici
+   kapı 1'deki **aynı** çıktıyı döndürür (`verdict` / `reviewed_revision` / `reasons`).
+   - `reviewed_revision` diskteki `revision` ile aynı değilse **kaydı yazma** — plan
+     denetim sırasında değişmiş demektir, denetimi tekrarla. Bayat bir kayıt `done/`'a
+     taşıma yetkisi verir; kapı 1'de olduğu gibi burada da geçersizdir.
+   - Sonucu `reviews.code-review`'a şemaya göre kaydet. `rejected` ise `reasons` boş
+     olamaz, gerekçeyi `s:review-notes`'a da yaz ve iş `in-progress/`'te kalır.
    Denetleyici tanımlı değilse `{ by: system, at: <bugün>, revision: <plan.revision>,
    verdict: skipped, reasons: [] }` kaydı düş.
 2. Kalıcı bir mimari karar çıktıysa ADR yazılmalı: projede mimarlık rolü **varsa** ona

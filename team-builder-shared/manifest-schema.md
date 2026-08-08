@@ -81,6 +81,12 @@ Generated dosyalar **elle değiştirilmez**; kaynak burasıdır.
   sayı/metin "kod yazmıyor" sayılamaz.
 - `sandbox_mode` (verildiyse) `read-only` ya da `workspace-write` olmalı — OpenCode
   `permission.edit` iznini belirlediği için tanınmayan bir değer sessizce yazma izni verir.
+- `sandbox_mode: read-only` ise `writesCode` `false` olmalı — yazamayan bir agent kod da
+  yazamaz; aksi hâlde plan kapısının "her ekosistemde bir executor" şartını, her hedefin
+  düzenlemeyi reddettiği bir agent'la geçerdi.
+- `writesCode: false` + `sandbox_mode: workspace-write` olan agent'a routing'de **en az bir
+  yol** verilmeli — sahiplik generator'a yalnız routing üzerinden geçtiği için yolu olmayan
+  böyle bir role Codex "dosya değiştirme" derken OpenCode yazma izni verir.
 - `agents[].name` portatif slug olmalı ve büyük/küçük harf duyarsız biçimde benzersiz olmalı
   — bu ad dosya yolu olarak kullanılır, `../` içeren bir ad hedef dizinin dışına yazardı.
 - `agents[].consults` (verildiyse) dizi olmalı ve her değeri tanımlı bir agent adı olmalı;
@@ -113,7 +119,8 @@ Generated dosyalar **elle değiştirilmez**; kaynak burasıdır.
   "routing": [
     { "path": "apps/**/main/src/**", "role": "backend-developer" },
     { "path": "apps/**/renderer/src/**", "role": "frontend-developer" },
-    { "path": "modules/*/**", "role": "extension-developer" }
+    { "path": "modules/*/**", "role": "extension-developer" },
+    { "path": "docs/**", "role": "architect" }
   ],
   "codeDocSync": [
     { "code": "packages/plugin-sdk/**", "doc": "docs/mimari/extension/extension-contract.md" },
@@ -138,7 +145,7 @@ Generated dosyalar **elle değiştirilmez**; kaynak burasıdır.
       "consults": [],
       "rules": ["Kod yazma; ADR/kısıt/tasarım üret."],
       "extra_instructions": [
-        "Production kod yazma. Yazma alanı yalnız docs/mimari/ altıdır.",
+        "Mimari kararları docs/mimari/ altında topla; ADR/kısıt/tasarım dosyalarını oraya yaz.",
         "Kod tabanını birincil kaynak olarak oku; dokümanları kod kontratlarının tamamlayıcısı olarak güncelle.",
         "Mimari karar gerekiyorsa gerekçeyi ve sonucunu kalıcı ADR olarak bırak."
       ]
