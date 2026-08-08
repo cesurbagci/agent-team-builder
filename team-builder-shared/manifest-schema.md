@@ -81,7 +81,12 @@ Generated dosyalar **elle değiştirilmez**; kaynak burasıdır.
   sayı/metin "kod yazmıyor" sayılamaz.
 - `sandbox_mode` (verildiyse) `read-only` ya da `workspace-write` olmalı — OpenCode
   `permission.edit` iznini belirlediği için tanınmayan bir değer sessizce yazma izni verir.
-- `agents[].name` portatif slug olmalı ve büyük/küçük harf duyarsız biçimde benzersiz olmalı.
+- `agents[].name` portatif slug olmalı ve büyük/küçük harf duyarsız biçimde benzersiz olmalı
+  — bu ad dosya yolu olarak kullanılır, `../` içeren bir ad hedef dizinin dışına yazardı.
+- `agents[].consults` (verildiyse) dizi olmalı ve her değeri tanımlı bir agent adı olmalı;
+  generator bu adı talimata birebir yazar, var olmayan bir role sevk anlamsızdır.
+- Her `skills[].name` zorunlu.
+- Her `codeDocSync[].code` ve `codeDocSync[].doc` dolu string olmalı.
 - `constitution.planGate: true` ise kök `planGate` nesnesi zorunlu, `planReviewer` ve
   `codeReviewer` anahtarlarının ikisi de bulunmalı, değerleri agent adı ya da `null` olmalı.
   `false` ya da yoksa kök `planGate` **bulunmamalı**.
