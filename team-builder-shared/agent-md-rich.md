@@ -53,7 +53,7 @@ Projenin stack'ini ve agent'ın domain'ini özetleyen 2-4 cümle. writesCode=fal
 
 ### `## Rol & Sınırlar`
 - Ne yapar, ne yapmaz.
-- `writesCode=false` → **"Kod yazma"** net madde (architect: "**tüm `docs/` dizinine yetkiliyim**, tüm dokümantasyonun sahibiyim; production koduna yazmam, sadece okurum"; reviewer: "kod yazmam, dosya değiştirmem, yalnız rapor üretirim").
+- `writesCode=false` → **"Kod yazma"** net madde. Yazma alanı **routing tablosundan** yazılır, "tüm `docs/`" gibi sabit bir ifadeyle değil (architect: "**routing'de bana verilen yollara yetkiliyim** — `<yollar>`; production koduna yazmam, sadece okurum"; reviewer: "kod yazmam, dosya değiştirmem, yalnız rapor üretirim"). Tabloda `docs/**` tek satırsa ifade "tüm `docs/`" olur; bölünmüşse (`docs/guides/**` doc-writer'da) ya da per-module satır varsa **kendi yolları** sayılır.
 - `writesCode=true` → "Sadece kendi domain'imde kod yazarım." Routing'de kod yazmayan bir
   role verilmiş **her** yol için cümleye "`<yol>` altına yazmam (orası `<rol>`ün)" eklenir —
   sahip architect de olabilir doc-writer da. Böyle bir yol yoksa eklenmez.
@@ -72,12 +72,12 @@ koddur; doküman kodu açıklar, yerine geçmez."
 
 ### `## Çalışma / Yasak Klasörleri`
 - **Çalışma:** yalnız yazabildiği yollar (writesCode=true → kendi domain kod yolları;
-  **architect → tüm `docs/` dizini**; reviewer → hiçbiri).
-- **Yasak:** yalnız okuduğu yollar. architect için tüm production kod yolları "sadece
-  okurum". developer için diğer domainler — architect **varsa** ayrıca `docs/` (orası
-  architect'in) ve `<arch-root>/`; architect **yoksa** ikisi de yasak listesinde
-  **yer almaz**. reviewer için
-  "her şeyi okurum, hiçbir şeye yazmam".
+  **architect → routing'de kendisine verilen yollar** (tek satırsa `docs/**`, bölünmüşse yalnız kendi payı, per-module ise `modules/*/docs/**` de dahil); reviewer → hiçbiri).
+- **Yasak:** yalnız okuduğu yollar. Doküman sahibi rol için tüm production kod yolları
+  "sadece okurum". developer için diğer domainler — ayrıca **routing'de kod yazmayan bir
+  role verilmiş her yol**, sahibinin adıyla (`docs/**` → architect, `docs/guides/**` →
+  doc-writer gibi). Böyle bir yol yoksa yasak listesinde doküman yolu **yer almaz**.
+  reviewer için "her şeyi okurum, hiçbir şeye yazmam".
 
 ### `## Kod-Doküman Senkronizasyonu` *(anayasa preset 2 açıksa)*
 manifest `codeDocSync[]` tablosu: `<kod yeri> → <beklenen doküman>`. Eksikse reviewer için
@@ -117,7 +117,7 @@ doküman güncellemesi kod değişikliğini yapan rolün işidir.
 ### `## Kısıtlar`
 Role özel sıkı kurallar (madde listesi):
 - writesCode=false → "Asla `<kod yolları>` altına yazma; sadece okursun."
-- architect → "Tüm `docs/` dizinine yetkilisin (tüm dokümantasyon); production koduna yazma. ADR varsa yeniden karar verme."
+- architect → "Routing'de sana verilen yollara yetkilisin — `<yollar>`; production koduna yazma. ADR varsa yeniden karar verme." (Yolları tablodan kopyala; başka bir role verilmiş doküman yolunu kendine yazma.)
 - reviewer → "Hiç kod yazma, hiç düzeltme; read-only."
 - Belirsiz tavsiye verme; kararı netleştir (architect). Raporu kısa tut (reviewer).
 - `extra_instructions[]` maddeleri burada veya ilgili bölümde yer alır.
@@ -128,7 +128,7 @@ Role özel sıkı kurallar (madde listesi):
 
 | manifest | gövdeye yansıma |
 |---|---|
-| `writesCode: false` | Rol & Sınırlar + Kısıtlar'da **"Kod yazma"** net; Çalışma klasörü dar (architect: **tüm `docs/`**; reviewer: yok). |
+| `writesCode: false` | Rol & Sınırlar + Kısıtlar'da **"Kod yazma"** net; Çalışma klasörü dar — **routing'de o role verilen yollar** (tek `docs/**` satırı varsa "tüm `docs/`"; bölünmüşse yalnız kendi payı; reviewer: yok). |
 | `writesCode: true` | Çalışma klasörü = kendi domain kod yolları; Yasak = diğer domain — architect **varsa** ayrıca **tüm `docs/`** (yalnız `<arch-root>/` değil), **yoksa** yalnız diğer domainler. |
 | `skills[].enforcement: mandatory` | `## Zorunlu Skill'ler` altında **MUTLAKA** emir kipi. |
 | `skills[].enforcement: when-needed` | `## Gerektiğinde Skill'ler` altında öneri dili. |

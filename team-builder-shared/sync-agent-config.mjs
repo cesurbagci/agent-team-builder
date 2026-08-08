@@ -449,14 +449,27 @@ function renderDeveloperInstructions(agent, manifest, projectName) {
 
 function renderCodexAgentToml(agent, manifest, projectName) {
   const modelLine = agent.model ? `model = ${tomlString(agent.model)}\n` : ''
+  const descriptionLine = agent.description
+    ? `description = ${tomlString(agent.description)}\n`
+    : ''
+  // These are enums on the Codex side. Both fields are optional in the
+  // manifest, and emitting `= ""` for an absent one is not "unset" — Codex
+  // rejects the agent outright ("reasoning_effort must not be empty",
+  // "unknown variant"). Omit them so the agent inherits the default.
+  const effortLine = agent.model_reasoning_effort
+    ? `model_reasoning_effort = ${tomlString(agent.model_reasoning_effort)}\n`
+    : ''
+  const sandboxLine = agent.sandbox_mode
+    ? `sandbox_mode = ${tomlString(agent.sandbox_mode)}\n`
+    : ''
   const developerInstructions = renderDeveloperInstructions(agent, manifest, projectName)
   return (
     GENERATED_HEADER +
     `name = ${tomlString(agent.name)}\n` +
-    `description = ${tomlString(agent.description)}\n` +
+    descriptionLine +
     modelLine +
-    `model_reasoning_effort = ${tomlString(agent.model_reasoning_effort)}\n` +
-    `sandbox_mode = ${tomlString(agent.sandbox_mode)}\n` +
+    effortLine +
+    sandboxLine +
     `nickname_candidates = ${tomlArray(agent.nickname_candidates)}\n` +
     '\n' +
     'developer_instructions = """\n' +
@@ -891,6 +904,26 @@ async function runSelftest() {
     'toml missing model_reasoning_effort'
   )
   assert(toml.includes('sandbox_mode = "workspace-write"'), 'toml missing sandbox_mode')
+  // Both fields are optional and both are enums on the Codex side: emitting
+  // `= ""` for an absent one makes Codex reject the agent rather than fall
+  // back to its default.
+  const bareToml = renderCodexAgentToml(
+    { name: 'bare' },
+    manifest,
+    'demo'
+  )
+  assert(
+    !bareToml.includes('model_reasoning_effort ='),
+    'an absent model_reasoning_effort must be omitted, not emitted empty'
+  )
+  assert(
+    !bareToml.includes('sandbox_mode ='),
+    'an absent sandbox_mode must be omitted, not emitted empty'
+  )
+  assert(
+    !/=\s*""/.test(bareToml.split('developer_instructions')[0]),
+    'no TOML key may be emitted with an empty value'
+  )
   assert(
     toml.includes('nickname_candidates = ["Architect", "ADR Lead"]'),
     'toml missing nickname_candidates'

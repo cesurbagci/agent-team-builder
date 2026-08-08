@@ -334,6 +334,35 @@ export function validate(doc) {
         // loses the directory that justified it.
         if (typeof r.path !== "string" || r.path === "") {
           errors.push(`routing[${i}]: path dolu bir string olmalı`);
+        } else {
+          // Restrict paths to the vocabulary routing.md documents: literal
+          // segments, `*` for part of one segment, `**` for any number of
+          // segments. Forms outside it (`***`, `a*b*c`, `**/**`, a leading or
+          // doubled slash) have no defined meaning here, and the ownership
+          // comparison cannot answer containment for them — it reported
+          // carve-outs for routes that merely overlap. Reject them at the
+          // boundary instead of guessing downstream.
+          const segs = r.path.split("/");
+          const bad = [];
+          // A leading or trailing slash produces an empty segment too, so this
+          // one check covers `/docs/**`, `docs/` and `docs//x/**` alike.
+          if (segs.some((s) => s === "")) {
+            bad.push("boş segment — başta, sonda ya da arada fazladan `/`");
+          }
+          if (segs.some((s) => s !== "**" && !/^[^/*]*\*?[^/*]*$/.test(s))) {
+            bad.push("bir segmentte birden çok `*` ya da `***`");
+          }
+          for (let k = 0; k + 1 < segs.length; k++) {
+            if (segs[k] === "**" && segs[k + 1] === "**") {
+              bad.push("ardışık `**`");
+              break;
+            }
+          }
+          if (bad.length > 0) {
+            errors.push(
+              `routing[${i}]: path "${r.path}" desteklenmeyen glob biçimi (${bad.join(", ")}) — segmentler düz metin, tek bir \`*\` ya da \`**\` olabilir`
+            );
+          }
         }
         if (!r.role) {
           errors.push(`routing[${i}]: role dolu olmalı`);
@@ -796,6 +825,52 @@ if (process.argv.includes("--selftest")) {
     },
     "dosya yazamıyor"
   );
+
+  // V7i — routing paths are restricted to the documented glob vocabulary.
+  // Outside it the ownership comparison cannot decide containment, and it
+  // emitted carve-outs for routes that only overlap.
+  const routePathCase = (path) => ({
+    targetsDefault: ["claude"],
+    routing: [
+      { path: "src/**", role: "dev" },
+      { path, role: "doc-writer" },
+    ],
+    agents: [
+      { name: "dev", model: "sonnet" },
+      {
+        name: "doc-writer",
+        model: "haiku",
+        writesCode: false,
+        sandbox_mode: "workspace-write",
+      },
+    ],
+  });
+  for (const path of [
+    "docs/*a*z*",
+    "docs/***",
+    "docs/**/**",
+    "/docs/**",
+    "docs//x/**",
+    "docs/",
+  ]) {
+    expectReject(
+      `V7i unsupported glob ${path}`,
+      routePathCase(path),
+      "desteklenmeyen glob biçimi"
+    );
+  }
+  // …and every form routing.md actually documents stays valid.
+  for (const path of [
+    "docs/**",
+    "docs/*",
+    "docs",
+    "**",
+    "apps/**/main/src/**",
+    "modules/*/docs/**",
+    "docs/**/*.md",
+  ]) {
+    expectAccept(`V7i supported glob ${path}`, routePathCase(path));
+  }
 
   // V7h — two roles on the same scope. Most-specific routing cannot choose
   // between equals, and the generator grants the path to one while forbidding

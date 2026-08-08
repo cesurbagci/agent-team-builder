@@ -120,8 +120,20 @@ export async function validatePlanGateArtifacts(rootDir) {
       }
       cursor = hits[0]
     }
-    if (!planTpl.includes(PROGRESS_SENTINEL)) {
+    // The sentinel marks an untouched progress section, so it has to sit
+    // inside one — once. Anywhere else and "replace the sentinel with real
+    // progress" either finds nothing or leaves a second copy behind, and a
+    // resumed plan reads as not-started.
+    const sentinelHits = markerPositions(planTpl, PROGRESS_SENTINEL.slice(5, -4))
+    const progressAt = markerPositions(planTpl, 's:progress')[0]
+    if (sentinelHits.length === 0) {
       errors.push(`templates/plan.md missing sentinel ${PROGRESS_SENTINEL}`)
+    } else if (sentinelHits.length > 1) {
+      errors.push(
+        `templates/plan.md sentinel appears ${sentinelHits.length} times, expected once`
+      )
+    } else if (progressAt === undefined || sentinelHits[0] < progressAt) {
+      errors.push('templates/plan.md sentinel must sit after the s:progress marker')
     }
 
     const fm = frontmatter(planTpl)
@@ -131,6 +143,14 @@ export async function validatePlanGateArtifacts(rootDir) {
       for (const field of PLAN_FIELDS) {
         if (!new RegExp(`^${field}:`, 'm').test(fm)) {
           errors.push(`templates/plan.md missing frontmatter field ${field}`)
+        }
+      }
+      // `reviews` is not a scalar: both gates append to their own array, and a
+      // template that declares only the parent key leaves each gate inventing
+      // where its record goes.
+      for (const gate of ['plan-review', 'code-review']) {
+        if (!new RegExp(`^\\s+${gate}:`, 'm').test(fm)) {
+          errors.push(`templates/plan.md reviews is missing the ${gate} array`)
         }
       }
     }
@@ -367,6 +387,47 @@ async function runSelftest() {
       'plan.md must start with YAML frontmatter',
       'a plan template with no frontmatter',
       () => fs.writeFile(planPath, GOOD_PLAN.split('---\n').slice(2).join('---\n'))
+    )
+
+    // Both gates append to their own array; a template declaring only the
+    // parent key leaves each gate to invent where its record goes.
+    for (const gate of ['plan-review', 'code-review']) {
+      await expectError(
+        `reviews is missing the ${gate} array`,
+        `a plan template whose reviews omits ${gate}`,
+        () =>
+          fs.writeFile(
+            planPath,
+            GOOD_PLAN.replace(new RegExp(`^\\s+${gate}: \\[\\]\\n`, 'm'), '')
+          )
+      )
+    }
+    // The sentinel means "this progress section is untouched", so it has to be
+    // in one, once. Elsewhere, replacing it either finds nothing or leaves a
+    // copy behind and a resumed plan reads as not-started.
+    await expectError(
+      'sentinel must sit after the s:progress marker',
+      'a sentinel placed above the progress section',
+      () =>
+        fs.writeFile(
+          planPath,
+          GOOD_PLAN.replace(PROGRESS_SENTINEL, '').replace(
+            '<!-- s:what -->',
+            `${PROGRESS_SENTINEL}\n<!-- s:what -->`
+          )
+        )
+    )
+    await expectError(
+      'sentinel appears 2 times',
+      'a duplicated sentinel',
+      () =>
+        fs.writeFile(
+          planPath,
+          GOOD_PLAN.replace(
+            PROGRESS_SENTINEL,
+            `${PROGRESS_SENTINEL}\n${PROGRESS_SENTINEL}`
+          )
+        )
     )
 
     // --- contract ------------------------------------------------------------

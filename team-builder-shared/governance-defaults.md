@@ -24,11 +24,11 @@ agent md gövdesindeki "Çalışma/Yasak klasörleri" ile uygulanır):
 - `model`: **opus** · `model_reasoning_effort`: **high** · `sandbox_mode`: **workspace-write**
   — sahiplendiği `docs/` dizinine yazması gerektiği için `read-only` olamaz; production
   koduna yazma yasağı talimatla uygulanır (reviewer'dan farkı budur).
-- **Yazma yetkisi: tüm `docs/` dizini** (tüm dokümantasyonun sahibi). Mimari dokümanlar `docs/<arch-root>/` altında toplanır ama architect `docs/`'un tamamına yazabilir; production koduna yazamaz. Rol önerisinde ve agent md'sinde **"docs/ dizinine yetkili"** olarak ifade et — alt klasörleri (`docs/architecture/adr` vb.) tek tek sayma.
+- **Yazma yetkisi: routing'de kendisine verilen doküman yolları.** Varsayılan tek satır `docs/**`'tir — o zaman "tüm `docs/` dizini" doğru ifadedir ve alt klasörleri (`docs/architecture/adr` vb.) tek tek sayma. Doküman **bölünmüşse** (doc-writer'a `docs/guides/**` verildiyse) ya da per-module satır varsa yetkiyi **tablodaki kendi yollarıyla** ifade et; "tüm `docs/`" demek başka bir rolün alanını da sahiplenmek olur. Production koduna hiçbir durumda yazamaz.
 - `consults`: [] (son mercii kendisidir).
 - Topolojide genelde `lead`.
 - Kurallar:
-  - "Production kod yazma; **yazma alanın tüm `docs/` dizinidir** (mimari dokümanlar `docs/<arch-root>/` altında)."
+  - "Production kod yazma; **yazma alanın routing'de sana verilen yollardır**" (tek satır `docs/**` ise: "tüm `docs/` dizinidir"; mimari dokümanlar `docs/<arch-root>/` altında).
   - "Kod tabanını birincil kaynak olarak oku; dokümanları kod kontratlarının tamamlayıcısı olarak güncelle."
   - "ADR / mimari kısıt / tasarım kararı üret; gerekçe ve sonucu kalıcı doküman olarak bırak."
   - "Mimari soruların son mercii sensin."
