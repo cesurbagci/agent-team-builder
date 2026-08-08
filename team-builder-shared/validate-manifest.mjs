@@ -368,31 +368,6 @@ export function validate(doc) {
     }
   }
 
-  // Two rows covering the same scope cannot be resolved: routing picks the
-  // most specific match, and there is no most specific one between equals.
-  // The generator would grant the path to one role and forbid it to the other
-  // in the same breath. `docs` and `docs/**` name the same scope, so they
-  // collide too.
-  {
-    const canonicalRoute = (p) => {
-      const trimmed = String(p).replace(/\/+/g, "/").replace(/\/+$/, "");
-      return /\*/.test(trimmed) ? trimmed : `${trimmed}/**`;
-    };
-    const seen = new Map();
-    (Array.isArray(doc.routing) ? doc.routing : []).forEach((r) => {
-      if (!r || typeof r.path !== "string" || r.path === "") return;
-      const key = canonicalRoute(r.path);
-      const first = seen.get(key);
-      if (first === undefined) {
-        seen.set(key, r.path);
-        return;
-      }
-      errors.push(
-        `routing: "${first}" ve "${r.path}" aynı kapsamı gösteriyor — aynı yolu iki satıra yazma, en özgül eşleşme aralarında seçim yapamaz`
-      );
-    });
-  }
-
   // Two routes may share paths only when one of them is the more specific: the
   // table resolves by most-specific match, so a partial overlap has no winner.
   // `a/*/c` and `a/b/*` both claim `a/b/c` and neither contains the other —
@@ -406,7 +381,18 @@ export function validate(doc) {
         const a = rows[i].path;
         const b = rows[j].path;
         if (!routesOverlap(a, b)) continue;
-        if (routeContains(a, b) || routeContains(b, a)) continue;
+        const aInB = routeContains(b, a);
+        const bInA = routeContains(a, b);
+        // Equal scope has no most specific side either. It is not always a
+        // repeated spelling: `**/*` and `*/**` are different strings for the
+        // same set, so comparing canonical text missed it.
+        if (aInB && bInA) {
+          errors.push(
+            `routing: "${a}" ve "${b}" aynı kapsamı gösteriyor — en özgül eşleşme eşitler arasında seçim yapamaz; tek satıra indir`
+          );
+          continue;
+        }
+        if (aInB || bInA) continue;
         errors.push(
           `routing: "${a}" ve "${b}" kesişiyor ama biri ötekini kapsamıyor — en özgül eşleşme kesişimde bir sahip seçemez; yollardan birini diğerinin altına al ya da ayır`
         );
@@ -912,6 +898,31 @@ if (process.argv.includes("--selftest")) {
     "modules/*/docs/**",
   ]) {
     expectAccept(`V7i supported glob ${path}`, routePathCase(path));
+  }
+
+  // V7l — routes that name the same set without being the same string.
+  // `**/*` and `*/**` both mean "every non-empty path", so comparing canonical
+  // text missed them; equality has no most-specific side either.
+  for (const [a, b] of [
+    ["**/*", "*/**"],
+    ["docs", "docs/**"],
+    ["docs/**", "docs/**"],
+  ]) {
+    expectReject(
+      `V7l equal scope ${a} vs ${b}`,
+      {
+        targetsDefault: ["claude"],
+        routing: [
+          { path: a, role: "dev" },
+          { path: b, role: "other" },
+        ],
+        agents: [
+          { name: "dev", description: "rol aciklamasi", model: "sonnet" },
+          { name: "other", description: "rol aciklamasi", model: "sonnet" },
+        ],
+      },
+      "aynı kapsamı gösteriyor"
+    );
   }
 
   // V7k — routes that overlap without either containing the other. Both claim

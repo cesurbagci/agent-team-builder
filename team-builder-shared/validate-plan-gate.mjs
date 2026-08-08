@@ -207,8 +207,22 @@ export async function validatePlanGateArtifacts(rootDir) {
       if (!/^name:\s*work-plan\s*$/m.test(fm)) {
         errors.push('templates/work-plan-skill.md frontmatter needs name: work-plan')
       }
-      if (!/^description:\s*\S/m.test(fm)) {
-        errors.push('templates/work-plan-skill.md frontmatter needs a description')
+      // Not a regex over the block: `\s*` spans newlines, so `description:`
+      // followed by another key read as filled, and `description: ""` or a
+      // bare comment counted as present.
+      const described = fm
+        .split('\n')
+        .map(line => /^description:(.*)$/.exec(line))
+        .find(Boolean)
+      const value = described
+        ? described[1]
+            .replace(/(^|\s)#.*$/, '$1')
+            .trim()
+            .replace(/^(['"])(.*)\1$/, '$2')
+            .trim()
+        : ''
+      if (value === '' || value === '~' || value === 'null') {
+        errors.push('templates/work-plan-skill.md frontmatter needs a non-empty description')
       }
     }
 
@@ -521,7 +535,7 @@ async function runSelftest() {
       () => fs.writeFile(skillPath, GOOD_SKILL.replace('name: work-plan', 'name: wp'))
     )
     await expectError(
-      'needs a description',
+      'needs a non-empty description',
       'a skill template with an empty description',
       () =>
         fs.writeFile(
@@ -529,6 +543,21 @@ async function runSelftest() {
           GOOD_SKILL.replace('description: Plan kapisi proseduru.', 'description:')
         )
     )
+    // A comment is not a value, and `""` is an empty one.
+    for (const [label, written] of [
+      ['a description that is only a comment', 'description: # yok'],
+      ['a quoted-empty description', 'description: ""'],
+    ]) {
+      await expectError(
+        'needs a non-empty description',
+        `${label} in the skill template`,
+        () =>
+          fs.writeFile(
+            skillPath,
+            GOOD_SKILL.replace('description: Plan kapisi proseduru.', written)
+          )
+      )
+    }
     await expectError(
       'needs name: work-plan',
       'frontmatter keys that only appear in the body',

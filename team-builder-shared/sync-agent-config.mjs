@@ -653,8 +653,16 @@ async function checkAgentSources(ctx, manifest) {
       problems.push(`${where} must start with YAML frontmatter`)
       continue
     }
-    if (frontmatterValue(block, 'description') === null) {
+    // One description reaches all three targets: Claude gets this file's, and
+    // Codex and OpenCode get the manifest's. If they differ, the same role is
+    // described two ways depending on where it is read.
+    const description = frontmatterValue(block, 'description')
+    if (description === null) {
       problems.push(`${where} frontmatter needs a non-empty description`)
+    } else if (description !== agent.description) {
+      problems.push(
+        `${where} frontmatter description must match the manifest's (source: ${JSON.stringify(description)}, manifest: ${JSON.stringify(agent.description)})`
+      )
     }
     const declared = frontmatterValue(block, 'name')
     if (declared !== agent.name) {
@@ -849,6 +857,20 @@ async function runSelftest() {
         'a description that is only a comment',
         good.replace('description: Mimari kararlar icin.', 'description: # yok'),
         'needs a non-empty description',
+      ],
+      // A non-string is not a description; it also read as "present" because
+      // the token is non-empty.
+      [
+        'a description that is a YAML sequence',
+        good.replace('description: Mimari kararlar icin.', 'description: []'),
+        'must match the manifest',
+      ],
+      // Claude reads this file, Codex and OpenCode read the manifest. Two
+      // different values mean the same role is described two ways.
+      [
+        'a description disagreeing with the manifest',
+        good.replace('description: Mimari kararlar icin.', 'description: Baska bir sey.'),
+        'must match the manifest',
       ],
     ]) {
       await fs.writeFile(sourcePath, broken)

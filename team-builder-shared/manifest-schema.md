@@ -84,6 +84,14 @@ Generated dosyalar **elle değiştirilmez**; kaynak burasıdır.
 - `lead` verildiyse bir agent `name`'i olmalı.
 - `routing[].path` dolu bir **string** olmalı (generator yolları `typeof === "string"` ile eşler; sayı gibi bir değer doğrulamayı geçip üretimde sessizce düşerdi) ve `routing[].role` dolu olmalı; `routing[].role` bir agent `name`'i olmalı.
 - Bir yolun verildiği rol **dosya yazabilmeli** (`sandbox_mode` `read-only` değil; alan yoksa `writesCode`). Routing sahipliktir ve bağlayıcıdır — yazamayan bir rol onu yerine getiremez.
+- `routing[].path` **dar dilbilgisine** uymalı: her segment ya düz metin, ya `*`, ya `**`.
+  Segment içi kısmi joker (`src/*.ts`, `docs/a*`), `.`/`..`, ardışık `**` ve baştaki/sondaki
+  fazladan `/` kabul edilmez. Joker içermeyen bir yol (`docs`) o dizinin alt ağacıdır.
+- İki routing yolu **aynı kapsamı** gösteremez — aynı dizgi olmasalar bile (`**/*` ile
+  `*/**` aynı kümedir). En özgül eşleşme eşitler arasında seçim yapamaz.
+- İki routing yolu **kısmen çakışamaz**: ya biri ötekini kapsar (`docs/**` ⊃
+  `docs/guides/**`), ya da tamamen ayrıdır. `a/*/c` ile `a/b/*` ikisi de `a/b/c`'yi ister
+  ve hiçbiri ötekini kapsamaz — kesişimde sahip belirsizdir.
 - `constitution` alanları (verildiyse) boolean olmalı.
 - `writesCode` (verildiyse) boolean olmalı — kapı sahipliği bu alana bakar, falsy bir
   sayı/metin "kod yazmıyor" sayılamaz.
