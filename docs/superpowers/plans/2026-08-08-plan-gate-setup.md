@@ -56,7 +56,7 @@ Plan kapısı değişmezlerini makine tarafına indirir. **Ayrıca bugün açık
 - Consumes: yok
 - Produces: `validate(doc)` — geçersizse `Error` fırlatır, geçerliyse `true`. Task 4'teki sihirbaz üretimi bu fonksiyonu çağırır.
 
-- [ ] **Step 1: Başarısız selftest vakalarını yaz**
+- [x] **Step 1: Başarısız selftest vakalarını yaz**
 
 `team-builder-shared/validate-manifest.mjs` içinde, var olan `if (process.argv.includes("--selftest")) {` bloğunun **sonuna**, `if (!ok) process.exit(1);` satırından **önce** ekle:
 
@@ -360,7 +360,7 @@ Plan kapısı değişmezlerini makine tarafına indirir. **Ayrıca bugün açık
   }
 ```
 
-- [ ] **Step 2: Selftest'i çalıştır, kırmızı olduğunu gör**
+- [x] **Step 2: Selftest'i çalıştır, kırmızı olduğunu gör**
 
 ```bash
 node team-builder-shared/validate-manifest.mjs --selftest
@@ -368,7 +368,7 @@ node team-builder-shared/validate-manifest.mjs --selftest
 
 Beklenen: exit 1 ve çok sayıda `SELFTEST FAIL: ... accepted` satırı — kural kodu henüz yok, geçersiz manifest'ler kabul ediliyor. `V5` ve `V9` (kabul vakaları) geçmeli.
 
-- [ ] **Step 3: Ad kurallarını uygula**
+- [x] **Step 3: Ad kurallarını uygula**
 
 `team-builder-shared/validate-manifest.mjs`, dosya başındaki sabitlere ekle:
 
@@ -431,7 +431,7 @@ Agent döngüsündeki name bloğunu şununla değiştir:
 
 `lead` ve `routing` kontrollerindeki `agentNames.has(...)` çağrılarını `agentsByName.has(...)` yap (iki yer: `doc.lead` kontrolü ve `routing[i].role` kontrolü).
 
-- [ ] **Step 4: Plan kapısı kurallarını uygula**
+- [x] **Step 4: Plan kapısı kurallarını uygula**
 
 `export function validate(doc)` bloğundan **önce**, `CONSTITUTION_FIELDS` tanımından sonra ekle:
 
@@ -551,7 +551,7 @@ function validatePlanGate(doc, errors, agentsByName) {
   if (errors.length) {
 ```
 
-- [ ] **Step 5: Selftest'i çalıştır, yeşil olduğunu gör**
+- [x] **Step 5: Selftest'i çalıştır, yeşil olduğunu gör**
 
 ```bash
 node team-builder-shared/validate-manifest.mjs --selftest
@@ -559,7 +559,7 @@ node team-builder-shared/validate-manifest.mjs --selftest
 
 Beklenen: `SELFTEST PASS`, exit 0.
 
-- [ ] **Step 6: Diğer iki selftest'in bozulmadığını doğrula**
+- [x] **Step 6: Diğer iki selftest'in bozulmadığını doğrula**
 
 ```bash
 node team-builder-shared/sync-agent-config.mjs --selftest && node team-builder-shared/validate-plan-gate.mjs --selftest
@@ -567,7 +567,7 @@ node team-builder-shared/sync-agent-config.mjs --selftest && node team-builder-s
 
 Beklenen: iki kez `SELFTEST PASS`. `sync` fixture'larındaki agent adları (`architect`, `developer`) slug kuralına uyuyor; kırmızı gelirse yeni ad kuralı var olan bir fixture'ı bozmuş demektir — **fixture'ı düzelt, kuralı gevşetme**.
 
-- [ ] **Step 7: Şemayı belgele**
+- [x] **Step 7: Şemayı belgele**
 
 `team-builder-shared/manifest-schema.md` — önce **bayat ana satırı** düzelt. Şu satırı:
 
@@ -608,7 +608,7 @@ Doğrulama kuralları listesine (`- constitution alanları ... boolean olmalı.`
 - `planGate` açıkken hedeflenen her ekosistemde en az bir uygun executor bulunmalı.
 ```
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add team-builder-shared/validate-manifest.mjs team-builder-shared/manifest-schema.md
@@ -630,7 +630,7 @@ Generator'a **hiçbir yetenek eklenmez.** `.agent-source/skills/` altındaki her
 - Consumes: yok
 - Produces: yok (davranış kanıtı)
 
-- [ ] **Step 1: S1 ve S2 vakalarını yaz**
+- [x] **Step 1: S1 ve S2 vakalarını yaz**
 
 `team-builder-shared/sync-agent-config.mjs`, `runSelftest()` içinde `demo-skill` dizinini oluşturan satırın yanına `work-plan` dizinini de ekle:
 
@@ -741,7 +741,7 @@ da yok.
 > `LEDGER_RELATIVE` sabitini kullandığı için `read` ile birlikte çalışır — ikisi de aynı
 > köke göredir.
 
-- [ ] **Step 2: Selftest'i çalıştır**
+- [x] **Step 2: Selftest'i çalıştır**
 
 ```bash
 node team-builder-shared/sync-agent-config.mjs --selftest
@@ -749,7 +749,7 @@ node team-builder-shared/sync-agent-config.mjs --selftest
 
 Beklenen: `SELFTEST PASS`. **Kırmızı gelirse durup nedenini oku** — S1 kırmızıysa mirror ad bazlı filtreleniyor demektir, S2 kırmızıysa sync `.agent-work/`'e dokunuyor demektir. İkisi de bu planın "generator değişmez" varsayımını çürütür; düzeltme generator'da yapılır ve commit mesajında belirtilir.
 
-- [ ] **Step 3: `.agent-work/` notunu belgele**
+- [x] **Step 3: `.agent-work/` notunu belgele**
 
 `team-builder-shared/canonical-source.md` — generated olmayan alanları anlatan bölüme ekle:
 
@@ -770,7 +770,7 @@ kanıtlar: dizine konan bir dosya generate sonrası yerinde durur, `--check` tem
 ledger'da görünmez.
 ```
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add team-builder-shared/sync-agent-config.mjs team-builder-shared/canonical-source.md team-builder-shared/sync-pipeline.md
@@ -791,7 +791,7 @@ Plan kapısını beşinci anayasa preseti olarak tanımlar. **Diğer dördünden
 - Consumes: Task 1'in `constitution.planGate` ve kök `planGate` şeması
 - Produces: KARAR 5 metni ve `answers.planGate` durum alanı — Task 4'teki sihirbaz bunlara dayanır
 
-- [ ] **Step 1: "Dördü de default açık" ifadesini düzelt**
+- [x] **Step 1: "Dördü de default açık" ifadesini düzelt**
 
 `team-builder-shared/constitution.md`, "## Amaç" bölümünde şu paragrafı:
 
@@ -826,7 +826,7 @@ CLAUDE.md/AGENTS.md'ye gömülür. İlk dördünün `default` değeri `true`, KA
 `false`'tur; kullanıcı toggle ile değiştirirse o preset ona göre yansır.
 ```
 
-- [ ] **Step 2: Sunum kuralları tablosuna beşinci satırı ekle**
+- [x] **Step 2: Sunum kuralları tablosuna beşinci satırı ekle**
 
 `team-builder-shared/constitution.md`, "SUNUM KURALLARI" bölümündeki sade açıklama tablosuna ekle:
 
@@ -843,7 +843,7 @@ Aynı bölümdeki 4. maddeyi şununla değiştir:
    doldurur; plan kapısı kendi sorusunda, kendi gerekçesiyle sunulur.
 ```
 
-- [ ] **Step 3: KARAR 5'i yaz**
+- [x] **Step 3: KARAR 5'i yaz**
 
 `team-builder-shared/constitution.md`, "## KARAR 4" bölümünün sonuna (bir sonraki `---` ayıracından önce) ekle:
 
@@ -883,7 +883,7 @@ Kurulum sözleşmesinin tamamı: `plan-gate.md`. Çalışma zamanı prosedürü 
 projeye kurulan `work-plan` skill'indedir.
 ```
 
-- [ ] **Step 4: Sihirbaz akışı özetini güncelle**
+- [x] **Step 4: Sihirbaz akışı özetini güncelle**
 
 `team-builder-shared/constitution.md`, en alttaki "## Sihirbaz akışı (özet)" bölümünde 1. ve 2. maddeleri şununla değiştir:
 
@@ -901,7 +901,7 @@ projeye kurulan `work-plan` skill'indedir.
    - KARAR 5 → iki kapı sahibi (yukarıda)
 ```
 
-- [ ] **Step 5: Sihirbaz durumuna `planGate` ekle**
+- [x] **Step 5: Sihirbaz durumuna `planGate` ekle**
 
 `team-builder-shared/wizard-state.md`, şema örneğindeki `"constitution"` **satırını** şu iki
 satırla **değiştir** — araya ekleme, yoksa `constitution` anahtarı iki kez yazılır:
@@ -921,7 +921,7 @@ Aynı dosyanın "## Notlar" bölümüne ekle:
   hiç yazılmaz.
 ```
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add team-builder-shared/constitution.md team-builder-shared/wizard-state.md
@@ -941,7 +941,7 @@ Sihirbazın soru ve üretim adımlarını bağlar.
 - Consumes: Task 1'in `validate()` kuralları, Task 3'ün KARAR 5 metni ve `answers.planGate`
 - Produces: Adım 8a üretim listesi — Task 5'in prose koşulları buna eklenir
 
-- [ ] **Step 1: Adım 7B'ye beşinci preseti ekle**
+- [x] **Step 1: Adım 7B'ye beşinci preseti ekle**
 
 `team-builder-setup/SKILL.md`, Adım 7B'nin başındaki paragrafı şununla değiştir:
 
@@ -983,7 +983,7 @@ bir sahip seçtir. Bu kural Adım 8b'de `validate()` tarafından da denetlenir; 
 doğrulama hatasıyla karşılaştırmadan burada çöz.**
 ```
 
-- [ ] **Step 2: Adım 7B'nin sonuç satırını güncelle**
+- [x] **Step 2: Adım 7B'nin sonuç satırını güncelle**
 
 Adım 7B'nin sonundaki satırı:
 
@@ -999,7 +999,7 @@ Sonuçları `manifest.constitution` (+ varsa `codeDocSync[]`, + plan kapısı a�
 manifest'i geçersiz kılar.
 ```
 
-- [ ] **Step 3: Adım 6'ya `codeReviewer` kuralını ekle**
+- [x] **Step 3: Adım 6'ya `codeReviewer` kuralını ekle**
 
 `team-builder-setup/SKILL.md`, Adım 6'nın sonundaki alıntı satırından sonra ekle:
 
@@ -1012,7 +1012,7 @@ manifest'i geçersiz kılar.
 > uygulanır; ikisinin farklı ad kullanması drift'tir.
 ```
 
-- [ ] **Step 4: Adım 8a'ya plan kapısı üretimini ekle**
+- [x] **Step 4: Adım 8a'ya plan kapısı üretimini ekle**
 
 `team-builder-setup/SKILL.md`, Adım 8a'daki `.agent-source/README.md` maddesinden sonra ekle:
 
@@ -1037,7 +1037,7 @@ manifest'i geçersiz kılar.
   `work-plan` skill kaynağı yazılmaz, dolayısıyla mirror da oluşmaz.
 ```
 
-- [ ] **Step 5: Adım 8b doğrulama listesine ekle**
+- [x] **Step 5: Adım 8b doğrulama listesine ekle**
 
 `team-builder-setup/SKILL.md`, Adım 8'de manifest doğrulamasını anlatan satırdaki parantez içi listeye şunu ekle (`constitution alanları boolean` ifadesinden sonra):
 
@@ -1045,7 +1045,7 @@ manifest'i geçersiz kılar.
 ; agent adları portatif slug ve büyük/küçük harf duyarsız benzersiz; `constitution.planGate: true` ise kök `planGate` nesnesi var ve `planReviewer`/`codeReviewer` anahtarlarının ikisi de bulunuyor, değerleri kod yazmayan bir agent adı ya da `null`; kapalıysa kök `planGate` yok
 ```
 
-- [ ] **Step 6: Adım 9 özetine ekle**
+- [x] **Step 6: Adım 9 özetine ekle**
 
 `team-builder-setup/SKILL.md`, Adım 9'da kullanıcıya gösterilen özete plan kapısı satırını ekle:
 
@@ -1056,7 +1056,7 @@ manifest'i geçersiz kılar.
   diye sorabilirsin." Kapalıysa bu satırı **hiç yazma** — var olmayan bir akışa atıf yapma.
 ```
 
-- [ ] **Step 7: Adım tablosunu güncelle**
+- [x] **Step 7: Adım tablosunu güncelle**
 
 `team-builder-setup/SKILL.md`'nin en altındaki adım özet tablosunda 7. satırı şununla değiştir:
 
@@ -1064,7 +1064,7 @@ manifest'i geçersiz kılar.
 | 7 | Kalite odakları (checkbox) + Anayasa presetleri + Plan kapısı (ayrı soru) | `quality-dimensions.md`, `constitution.md`, `plan-gate.md` |
 ```
 
-- [ ] **Step 8: Bayat "4 preset" ifadelerini düzelt ve referansları ekle**
+- [x] **Step 8: Bayat "4 preset" ifadelerini düzelt ve referansları ekle**
 
 `team-builder-setup/SKILL.md`, soru-sorma tekniğini anlatan şu satırı:
 
@@ -1086,7 +1086,7 @@ Aynı dosyanın başındaki paylaşılan referans listesinde `constitution.md` s
 - `~/.claude/skills/team-builder-shared/templates/work-plan-skill.md` — projeye kurulacak `work-plan` skill'inin şablonu.
 ```
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add team-builder-setup/SKILL.md
@@ -1116,7 +1116,7 @@ Spec'in en dağınık gereksinimi: `docs/` yasağı **üç prose kaynağında** 
 > değiştirileceği belirsizleşir — bu durumda **`Routing temel kuralı:` ile başlayan**
 > olanı değiştir, `Kod review kapısını kim tanımlar` ile başlayana dokunma.
 
-- [ ] **Step 1: `routing.md`'yi koşullandır**
+- [x] **Step 1: `routing.md`'yi koşullandır**
 
 `team-builder-shared/routing.md`, `docs/** → architect` maddesini şununla değiştir:
 
@@ -1201,7 +1201,7 @@ Ayrıca `.agent-work/` sahipliğini belgele. `routing.md`'ye yol→rol tablosunu
   durumunu. Plan kapısı kapalıysa dizin yoktur ve satır yazılmaz.
 ```
 
-- [ ] **Step 2: `governance-defaults.md`'yi koşullandır**
+- [x] **Step 2: `governance-defaults.md`'yi koşullandır**
 
 `team-builder-shared/governance-defaults.md`, developer bölümündeki üç satırı şununla değiştir:
 
@@ -1263,7 +1263,7 @@ Doc Writer'ın kural cümlesini şununla değiştir:
   Architect **yoksa** — "Kullanıcı-bakış dokümanını ve README'leri sen yazar ve günceltirsin. Mimari karar gerekiyorsa kullanıcıya sor." (ADR yasağı kalkar: yazacak başka rol yoktur.)
 ```
 
-- [ ] **Step 3: `agent-md-rich.md`'yi koşullandır**
+- [x] **Step 3: `agent-md-rich.md`'yi koşullandır**
 
 `team-builder-shared/agent-md-rich.md`, `writesCode=true` satırını şununla değiştir:
 
@@ -1325,7 +1325,7 @@ Bölüm **kısa tutulur ve prosedür tekrar edilmez** — tek otorite `work-plan
 aynı kuralı agent md'sinde de anlatmak drift üretir.
 ```
 
-- [ ] **Step 4: `team-builder-setup/SKILL.md`'deki architect varsayımlarını koşullandır**
+- [x] **Step 4: `team-builder-setup/SKILL.md`'deki architect varsayımlarını koşullandır**
 
 Adım 5'teki developer rol önerisi satırını şununla değiştir:
 
@@ -1367,7 +1367,7 @@ Adım 7B'deki 1 numaralı sade açıklamayı şununla değiştir:
 1. **Workaround yasağı** (`noWorkaround`) — "Geçici çözüm / kestirme yasak; belirsizlikte [architect varsa: mimara] [architect yoksa: sana] sorulur.[Reviewer varsa: Riskli kestirme desenlerini otomatik 'düzeltilmeli' işaretler.]"
 ```
 
-- [ ] **Step 5: Koşullandırmanın tam olduğunu doğrula**
+- [x] **Step 5: Koşullandırmanın tam olduğunu doğrula**
 
 **Grep tek başına yetmez** ve buna güvenme: koşul çoğu yerde bir sonraki satırda duruyor,
 satır bazlı ters-grep onu göremez. Önce şu listeyi **elle** doğrula — her madde için
@@ -1418,7 +1418,7 @@ danış/gidilir/sevk et" — belirsizlik hedefi, (3) "orası architect'in" — `
 Architect yoksa üçü de anlamsızlaşır; ikisi çelişki üretir (`docs/` sahipsizken yasak
 sürer), biri boşa düşer (danışılacak kimse yok).
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add team-builder-shared/routing.md team-builder-shared/governance-defaults.md team-builder-shared/agent-md-rich.md team-builder-setup/SKILL.md
@@ -1438,7 +1438,7 @@ README bugün "4 anayasa preseti" diyor ve hepsinin default açık olduğunu ima
 - Consumes: Task 3'ün KARAR 5 metni
 - Produces: yok
 
-- [ ] **Step 1: İngilizce bölümü güncelle**
+- [x] **Step 1: İngilizce bölümü güncelle**
 
 `README.md`, `/team-builder-setup` satırındaki `constitution presets` ifadesini `constitution presets (including the optional plan gate)` yap.
 
@@ -1460,7 +1460,7 @@ bu yanlış olacak. Şu satırı:
   your project (`.agent-work/` and a `work-plan` skill), which is why you opt into it.
 ```
 
-- [ ] **Step 2: Türkçe bölümü güncelle**
+- [x] **Step 2: Türkçe bölümü güncelle**
 
 `README.md` Türkçe bölümünde, `/team-builder-setup` satırındaki `anayasa presetleri` ifadesini `anayasa presetleri (isteğe bağlı plan kapısı dahil)` yap.
 
@@ -1479,7 +1479,7 @@ Aynı şekilde, "hepsi varsayılan açık" diyen satırı:
   üretir (`.agent-work/` ve bir `work-plan` skill'i) — o yüzden açmak bilinçli bir tercihtir.
 ```
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add README.md
@@ -1490,7 +1490,7 @@ git commit -m "docs: document the plan gate preset in both README languages"
 
 ## Uygulama sonrası doğrulama
 
-- [ ] **Üç selftest de geçiyor**
+- [x] **Üç selftest de geçiyor**
 
 ```bash
 node team-builder-shared/validate-manifest.mjs --selftest && node team-builder-shared/sync-agent-config.mjs --selftest && node team-builder-shared/validate-plan-gate.mjs --selftest
@@ -1498,7 +1498,7 @@ node team-builder-shared/validate-manifest.mjs --selftest && node team-builder-s
 
 Beklenen: üç kez `SELFTEST PASS`.
 
-- [ ] **Plan 1 artefaktları hâlâ geçerli**
+- [x] **Plan 1 artefaktları hâlâ geçerli**
 
 ```bash
 node team-builder-shared/validate-plan-gate.mjs --root .
@@ -1506,7 +1506,7 @@ node team-builder-shared/validate-plan-gate.mjs --root .
 
 Beklenen: `Plan gate artifacts are valid.`
 
-- [ ] **Kurulum tuzağı yok**
+- [x] **Kurulum tuzağı yok**
 
 ```bash
 rm -rf /tmp/tb-pg2 && mkdir -p /tmp/tb-pg2 && HOME=/tmp/tb-pg2 ./install.sh opencode >/dev/null && find /tmp/tb-pg2 -name 'SKILL.md' | sed 's|.*/skills/||' | sort
@@ -1514,7 +1514,7 @@ rm -rf /tmp/tb-pg2 && mkdir -p /tmp/tb-pg2 && HOME=/tmp/tb-pg2 ./install.sh open
 
 Beklenen tam olarak üç satır: `architecture-advisor/SKILL.md`, `team-builder-setup/SKILL.md`, `team-builder-sync/SKILL.md`.
 
-- [ ] **Plan 1 artefaktlarına dokunulmadı**
+- [x] **Plan 1 artefaktlarına dokunulmadı**
 
 ```bash
 git diff --stat HEAD~6 -- team-builder-shared/plan-gate.md team-builder-shared/templates/ team-builder-shared/validate-plan-gate.mjs
@@ -1522,7 +1522,7 @@ git diff --stat HEAD~6 -- team-builder-shared/plan-gate.md team-builder-shared/t
 
 Beklenen: boş çıktı.
 
-- [ ] **V ve S senaryoları kodda karşılık buluyor**
+- [x] **V ve S senaryoları kodda karşılık buluyor**
 
 Spec'in `## Doğrulama` bölümündeki V1–V16 ve S1–S2 satırlarını tek tek geç; her biri için
 selftest kodunda karşılığı olan vakayı göster. Karşılığı olmayan satır kalırsa **plan
@@ -1552,7 +1552,7 @@ node -e "import('./team-builder-shared/validate-manifest.mjs').then(m=>m.validat
 
 Beklenen: hata yok. W1 ve W3–W6 için ayrıca `sync --check` temiz olmalı.
 
-- [ ] **Sihirbaz metninde jargon sızıntısı yok**
+- [x] **Sihirbaz metninde jargon sızıntısı yok**
 
 ```bash
 grep -n "planGate\|planReviewer\|codeReviewer\|writesCode" team-builder-setup/SKILL.md | grep -i "sor\|göster\|de ki\|\">"
