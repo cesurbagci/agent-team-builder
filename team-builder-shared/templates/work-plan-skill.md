@@ -223,8 +223,9 @@ o iş için kural atlanır.
    gerekçeyi `s:review-notes`'a da yaz ve iş `in-progress/`'te kalır.
    Denetleyici tanımlı değilse `{ by: system, at: <bugün>, revision: <plan.revision>,
    verdict: skipped, reasons: [] }` kaydı düş.
-2. Kalıcı bir mimari karar çıktıysa mimarlık rolüne ADR yazdır ve `adr:` alanına bağla —
-   bunu **taşımadan önce** yap; `done/` arşivdir, oraya girdikten sonra dosya değişmez.
+2. Kalıcı bir mimari karar çıktıysa ADR yazılmalı: projede mimarlık rolü **varsa** ona
+   yazdır, **yoksa** kullanıcıya sor. Sonucu `adr:` alanına bağla — bunu **taşımadan
+   önce** yap; `done/` arşivdir, oraya girdikten sonra dosya değişmez.
 3. **`done/`'a taşıma yetkisi:** son `code-review` kaydı `approved` **ya da** denetleyici
    tanımsız olduğu için `skipped` ise taşı. Denetleyici tanımsızken kullanıcıdan **ek onay
    isteme** — kapı 3 yoktur, iş doğrudan biter.

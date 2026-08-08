@@ -23,11 +23,15 @@ drift olmaz: `project/CLAUDE.md`'deki tablo ile `manifest.routing` elle ayrı tu
   tek tek yazılmaz; `docs/**` yeter).
   **Architect yoksa bu satır üretilmez.** O zaman `docs/` özel sahipliği olmayan sıradan
   bir dizindir ve kod yolu sahipliği kuralları neyse o geçerlidir.
-- **`.agent-work/**` → `work-plan` akışı — yalnız plan kapısı açıksa.** Bu dizin
-  agent'ların çalışma alanıdır: planlar, ham kayıtlar, ilerleme notları. Buraya **yalnız
-  `work-plan` skill'ini çalıştıran agent** yazar; denetleyiciler dahil kimse doğrudan
-  dosya değiştirmez, sonuç döndürür. Tablonun geri kalanı kod yollarını yönetir, bu satır
-  iş akışı durumunu. Plan kapısı kapalıysa dizin yoktur ve satır yazılmaz.
+
+> **`.agent-work/` — routing tablosuna GİRMEZ.** Plan kapısı açıksa bu dizin agent'ların
+> çalışma alanıdır (planlar, ham kayıtlar, ilerleme notları) ve buraya **yalnız `work-plan`
+> skill'ini çalıştıran agent** yazar; denetleyiciler dahil kimse doğrudan dosya
+> değiştirmez, sonuç döndürür. Ama bu kural `manifest.routing[]`'e **satır olarak
+> yazılamaz**: `routing[].role` bir **agent adı** olmak zorundadır ve `work-plan` bir
+> agent değil, bir skill'dir — öyle bir satır manifest'i geçersiz kılar. Kural yalnız
+> düzyazıdır; sahiplik, çalıştıran agent'ın kim olduğuna değil, hangi skill'i
+> çalıştırdığına bağlıdır.
 
 ## Temel Kural (DEĞİŞMEZ)
 
@@ -42,6 +46,9 @@ drift olmaz: `project/CLAUDE.md`'deki tablo ile `manifest.routing` elle ayrı tu
 
 Bu üç madde CLAUDE.md/AGENTS.md'nin routing bölümüne **birebir** (genelleştirilmiş
 proje adlarıyla) yazılır. "YASAK" ve "bypass = ihlal" ifadeleri yumuşatılmaz.
+**Tek istisna üçüncü maddedir:** architect takımda yoksa danışma hedefi "architect"
+yerine "kullanıcı" yazılır. Var olmayan bir role birebir atıf yapmak, birebirliği korumak
+uğruna kuralı anlamsızlaştırır.
 
 ## Tablo Mantığı
 

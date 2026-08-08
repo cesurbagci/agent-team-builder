@@ -14,7 +14,7 @@ Bir rol için "ekleyelim mi?" → EVET ise sırayla:
 1. **Governance varsayılanlarını göster → kabul/değiştir.**
    `governance-defaults.md`'den o rolün varsayılanlarını GÖSTER: `model`,
    `model_reasoning_effort`, `sandbox_mode`, `writesCode`, `color`, varsayılan kurallar
-   (`rules[]`), `consults` (developer için `["architect"]`). Kullanıcı kabul eder/düzenler.
+   (`rules[]`), `consults` (architect takımdaysa developer için `["architect"]`, **yoksa boş `[]`**). Kullanıcı kabul eder/düzenler.
 
 2. **Hedefleri sor (`targets`).**
    Bu agent hangi ekosistem(ler)de üretilsin: `claude`, `codex`, `opencode` veya bir
@@ -24,7 +24,8 @@ Bir rol için "ekleyelim mi?" → EVET ise sırayla:
 
 3. **`writesCode` ve `consults`'u teyit et.**
    writesCode=false roller (architect, reviewer) için "Kod yazma" net olacak (agent md'de).
-   developer için `consults=[architect]` varsayılan; doğrula.
+   developer için `consults=[architect]` varsayılan — **architect takımda yoksa `consults=[]`**
+   ve belirsizlikte kullanıcıya sorulur; doğrula.
 
 4. **Skill öner + enforcement sor.**
    `skill-recommend.md` ile role + tespit edilen stack'e uygun skill öner. Seçilen her skill

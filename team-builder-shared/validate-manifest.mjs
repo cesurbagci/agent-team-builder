@@ -698,6 +698,55 @@ if (process.argv.includes("--selftest")) {
     "ekosisteminde uygun executor yok"
   );
 
+  // V13c — routing names ONLY a non-code-writing agent. Isolates the
+  // writesCode half of the eligible-executor derivation: with routing
+  // non-empty, dropping that half would wrongly make the reviewer an executor.
+  expectReject(
+    "V13c routed agent does not write code",
+    {
+      targetsDefault: ["claude"],
+      constitution: { planGate: true },
+      planGate: { planReviewer: "architect", codeReviewer: null },
+      routing: [{ path: "docs/**", role: "architect" }],
+      agents: [{ name: "architect", model: "opus", writesCode: false }],
+    },
+    "en az bir agent gerekli"
+  );
+
+  // V13d — a code-writing agent exists but no routing row names it. Isolates
+  // the routing half: dropping it would wrongly make an unrouted developer an
+  // executor.
+  expectReject(
+    "V13d code-writing agent is not routed",
+    {
+      targetsDefault: ["claude"],
+      constitution: { planGate: true },
+      planGate: { planReviewer: null, codeReviewer: null },
+      routing: [],
+      agents: [{ name: "dev", model: "sonnet" }],
+    },
+    "en az bir agent gerekli"
+  );
+
+  // V9b — every agent overrides targetsDefault, so codex is NOT a targeted
+  // ecosystem and must not demand an executor. Reading targetsDefault directly
+  // instead of the union of effective targets would reject this.
+  expectAccept("V9b overridden targetsDefault is not targeted", {
+    targetsDefault: ["claude", "codex"],
+    constitution: { planGate: true },
+    planGate: { planReviewer: "architect", codeReviewer: null },
+    routing: [{ path: "src/**", role: "dev" }],
+    agents: [
+      { name: "dev", targets: ["claude"], model: "sonnet" },
+      {
+        name: "architect",
+        targets: ["claude"],
+        model: "opus",
+        writesCode: false,
+      },
+    ],
+  });
+
   // V14 — planReviewer key missing.
   expectReject(
     "V14 planReviewer missing",

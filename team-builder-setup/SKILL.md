@@ -164,7 +164,7 @@ Adımları **bu sırayla** uygula. Her adımda kullanıcıya sor, cevabı al, so
 
 `~/.claude/skills/team-builder-shared/routing.md` kurallarını kullan. **Yalnız Adım 5'te eklenen roller** kullanılabilir.
 
-1. Proje analizine göre bir **path → rol** tablosu taslağı öner (örn. `apps/**/main/src/**` → `backend-developer`, `apps/**/renderer/src/**` → `frontend-developer`). **Architect eklendiyse** ayrıca `docs/<arch-root>/**` → `architect` satırını öner; **eklenmediyse bu satırı önerme** — `docs/` özel sahibi olmayan sıradan bir dizindir.
+1. Proje analizine göre bir **path → rol** tablosu taslağı öner (örn. `apps/**/main/src/**` → `backend-developer`, `apps/**/renderer/src/**` → `frontend-developer`). **Architect eklendiyse** ayrıca `docs/**` → `architect` satırını öner (alt klasör değil, **tüm `docs/`** — architect tüm dokümantasyonun sahibidir; `docs/<arch-root>/**` yazmak mimari kök dışındaki dokümanı sahipsiz bırakır); **eklenmediyse bu satırı önerme** — `docs/` özel sahibi olmayan sıradan bir dizindir.
 2. Kullanıcı onaylar / düzeltir / satır ekler-siler. Onaysız satır kesinleşmez.
 3. Onaylanan satırları manifest kök `routing[]`'e (`{ path, role }`) yaz. `role` mutlaka eklenen bir rol olmalı.
 

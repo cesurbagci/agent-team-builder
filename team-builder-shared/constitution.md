@@ -139,7 +139,8 @@ tag'leri, `@example` zorunluluğu, ESLint plugin entegrasyonu). Dil kuralları
 
 ## KARAR 5 — Plan kapısı  (`planGate`) · DEFAULT KAPALI
 
-**Ne:** Kod yazılmadan önce iş için plan yazılır, denetlenir ve **kullanıcı onaylar**.
+**Ne:** Kod yazılmadan önce iş için plan yazılır, (denetleyici tanımlıysa) denetlenir ve
+**kullanıcı onaylar** — kullanıcı onayı her zaman vardır, atlanamaz.
 Onaylanan işler bir havuzda birikir; hangisinin ne zaman yapılacağını kullanıcı seçer.
 Üç kapı vardır: kapı 1 plan denetimi (`planReviewer`), kapı 2 kullanıcı onayı (her zaman
 vardır, atlanamaz), kapı 3 kod denetimi (`codeReviewer`).
