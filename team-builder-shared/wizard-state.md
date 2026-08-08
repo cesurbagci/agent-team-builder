@@ -36,7 +36,8 @@ dosyasını **sil**. Kurulum tamamlandı; artık edit/add/sync kullanılır.
     "agents": [ /* tamamlanmış agent girişleri (manifest agents[] formatında) */ ],
     "pendingRoles": ["reviewer"],        // seçili ama henüz yapılandırılmamış
     "focus": ["performance","code-design"],
-    "constitution": { "noWorkaround": true, "codeDocSync": true, "perAgentMemory": true, "languageStandard": true },
+    "constitution": { "noWorkaround": true, "codeDocSync": true, "perAgentMemory": true, "languageStandard": true, "planGate": true },
+    "planGate": { "planReviewer": "architect", "codeReviewer": null },  // yalnız constitution.planGate açıksa
     "codeDocSync": [],
     "routing": [],
     "lead": "architect"
@@ -57,3 +58,8 @@ Alanlar `manifest-schema.md` ile uyumlu; tamamlanan kısımlar doldurulur, geris
 - State **tek gerçek ilerleme kaydıdır**; her adımda güncel tutulur (yazmayı unutma).
 - Bozuk/eksik state → kullanıcıya söyle, baştan başlamayı öner.
 - `add`/`edit` bu state'i kullanmaz (onlar tamamlanmış `.agent-source/` üzerinde çalışır).
+- **İki kapı sahibi sorusu ayrı ayrı kaydedilir.** Kullanıcı plan kapısını açıp ilk soruyu
+  cevapladıktan sonra oturum kesilirse, resume'da o cevap **yeniden sorulmaz**: state'te
+  `answers.planGate.planReviewer` doludur, `codeReviewer` anahtarı henüz yoktur. Devam
+  ederken yalnız eksik anahtarı sor. `constitution.planGate` kapalıysa `answers.planGate`
+  hiç yazılmaz.
