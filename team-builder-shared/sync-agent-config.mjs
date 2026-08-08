@@ -283,20 +283,33 @@ function renderDeveloperInstructions(agent, manifest, projectName) {
   // without a documentation owner must not tell developers to stay out of a
   // directory nobody owns, and must not hand every non-writing role a write
   // area it was never given.
-  const docsOwner = (manifest.routing ?? []).find(
+  // Documentation may be split across several roles — `docs/**` to one and
+  // `docs/guides/**` to another — so every docs route counts, not just the
+  // first. Taking one would hand this agent someone else's directory.
+  const docsRoutes = (manifest.routing ?? []).filter(
     r => r && typeof r.path === 'string' && r.path.startsWith('docs')
   )
+  const ownRoutes = docsRoutes.filter(r => r.role === agent.name)
+  const otherRoutes = docsRoutes.filter(r => r.role !== agent.name)
+
   if (writesCode) {
     lines.push("- Sadece kendi domain'inde kod yaz.")
-    if (docsOwner && docsOwner.role !== agent.name) {
+    for (const route of otherRoutes) {
       lines.push(
-        `- \`${docsOwner.path}\` altina yazma; orasi \`${docsOwner.role}\` rolunun.`
+        `- \`${route.path}\` altina yazma; orasi \`${route.role}\` rolunun.`
       )
     }
   } else {
     lines.push('- Production kod yazma.')
-    if (docsOwner && docsOwner.role === agent.name) {
-      lines.push(`- Yazma alanin \`${docsOwner.path}\` altidir.`)
+    if (ownRoutes.length > 0) {
+      lines.push(
+        `- Yazma alanin ${ownRoutes.map(r => `\`${r.path}\``).join(', ')} altidir.`
+      )
+      for (const route of otherRoutes) {
+        lines.push(
+          `- \`${route.path}\` altina yazma; orasi \`${route.role}\` rolunun.`
+        )
+      }
     } else {
       lines.push('- Dosya degistirme; yalniz okur ve rapor uretirsin.')
     }
@@ -819,6 +832,36 @@ async function runSelftest() {
   assert(
     devText.includes('`docs/**` altina yazma; orasi `architect` rolunun.'),
     'a developer must be kept out of the routed docs path'
+  )
+
+  // Documentation may be split between roles. Every docs route counts: the
+  // owner of one sub-path must still be kept out of the other.
+  const splitManifest = {
+    docLanguage: 'tr',
+    routing: [
+      { path: 'docs/**', role: 'architect' },
+      { path: 'docs/guides/**', role: 'doc-writer' },
+    ],
+    agents: [],
+  }
+  const splitWriter = renderDeveloperInstructions(
+    { name: 'doc-writer', writesCode: false },
+    splitManifest,
+    'demo'
+  )
+  assert(
+    splitWriter.includes('Yazma alanin `docs/guides/**` altidir.'),
+    'a split docs owner must be granted its own route'
+  )
+  assert(
+    splitWriter.includes('`docs/**` altina yazma; orasi `architect` rolunun.'),
+    'a split docs owner must still be kept out of the other role\'s route'
+  )
+  const splitDev = renderDeveloperInstructions({ name: 'dev' }, splitManifest, 'demo')
+  assert(
+    splitDev.includes('`docs/**` altina yazma') &&
+      splitDev.includes('`docs/guides/**` altina yazma'),
+    'a developer must be kept out of every docs route, not just the first'
   )
 
   const ownerlessManifest = { docLanguage: 'tr', routing: [], agents: [] }

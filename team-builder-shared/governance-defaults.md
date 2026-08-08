@@ -21,7 +21,9 @@ agent md gövdesindeki "Çalışma/Yasak klasörleri" ile uygulanır):
 ## 1. Architect / Tech Lead  (çekirdek, default: EKLE, lead)
 
 - `writesCode`: **false** (doc-only). Production kodu yalnız **okur**.
-- `model`: **opus** · `model_reasoning_effort`: **high** · `sandbox_mode`: **read-only**
+- `model`: **opus** · `model_reasoning_effort`: **high** · `sandbox_mode`: **workspace-write**
+  — sahiplendiği `docs/` dizinine yazması gerektiği için `read-only` olamaz; production
+  koduna yazma yasağı talimatla uygulanır (reviewer'dan farkı budur).
 - **Yazma yetkisi: tüm `docs/` dizini** (tüm dokümantasyonun sahibi). Mimari dokümanlar `docs/<arch-root>/` altında toplanır ama architect `docs/`'un tamamına yazabilir; production koduna yazamaz. Rol önerisinde ve agent md'sinde **"docs/ dizinine yetkili"** olarak ifade et — alt klasörleri (`docs/architecture/adr` vb.) tek tek sayma.
 - `consults`: [] (son mercii kendisidir).
 - Topolojide genelde `lead`.
@@ -106,6 +108,8 @@ Her rol, `manifest.json` `agents[]` içine şu metadata ile yazılır:
 }
 ```
 
-Architect ve reviewer'da `sandbox_mode: read-only` + `writesCode: false`; developer'larda
+`writesCode: false` her ikisinde de vardır ama sandbox ayrışır: reviewer hiçbir şey
+yazmadığı için `read-only`, architect sahiplendiği `docs/` dizinine yazdığı için
+`workspace-write`'dır (production kodu yasağı talimattadır). Developer'larda
 `workspace-write` + `writesCode: true`. Domain → developer eşlemesi projeye özeldir ve
 sihirbaz tarafından kullanıcıya onaylatılır.

@@ -117,7 +117,7 @@ Adımları **bu sırayla** uygula. Her adımda kullanıcıya sor, cevabı al, so
 
 - **arch-root** sor (sade): "Türkçe `docs/mimari` mı, İngilizce `docs/architecture` mı?"
 - **layout** sor (sade): "Tüm kararlar tek yerde mi toplansın (**central**), yoksa her modülün kendi `docs/`'u da olsun mu (**per-module**)?"
-- `per-module` seçilirse: modül listesi **SORULMAZ**; kararlar yazıldıkça organik oluşur ve "modül kararları modül altına yazılır" kuralı architect'in talimatına eklenir.
+- `per-module` seçilirse: modül listesi **SORULMAZ**; kararlar yazıldıkça organik oluşur ve "modül kararları modül altına yazılır" kuralı, dokümantasyonu sahiplenen rolün talimatına eklenir (architect eklendiyse ona; eklenmediyse proje talimatına).
 - `architectureDocs.root` ve `architectureDocs.layout` değerlerini not et (manifest köküne).
 
 ### Adım 5 — Roller (önce takımı kur — üye-üye)

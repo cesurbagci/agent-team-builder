@@ -57,7 +57,7 @@ dosyasını oku. `.codex/agent-definitions/<name>.md` içindeki rol talimatları
 bağlayıcıdır; Claude'a özgü frontmatter metadata alanlarını (`tools`, `model`,
 `memory`, `color`) Codex konfigürasyonu olarak yorumlama.
 
-<writesCode=false ise:>  - Production kod yazma. Yazma alanı prensip olarak <arch-root>/ altıdır.
+<writesCode=false ise:>  - Production kod yazma. Routing'de bu role bir docs yolu verildiyse yazma alanı o yoldur; verilmediyse dosya değiştirmez, yalnız okur ve rapor üretir.
 <writesCode=true ise:>   - Sadece kendi domain'inde kod yaz; <arch-root>/ altına yazma.
 - Kod tabanını birincil kaynak olarak oku; dokümanları kod kontratlarının tamamlayıcısı olarak güncelle.
 <extra_instructions[] satırları buraya eklenir.>

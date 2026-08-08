@@ -278,8 +278,12 @@ export function validate(doc) {
           errors.push(`codeDocSync[${i}]: nesne olmalı`);
           return;
         }
-        if (!row.code) errors.push(`codeDocSync[${i}]: code dolu olmalı`);
-        if (!row.doc) errors.push(`codeDocSync[${i}]: doc dolu olmalı`);
+        if (typeof row.code !== "string" || row.code === "") {
+          errors.push(`codeDocSync[${i}]: code dolu bir string olmalı`);
+        }
+        if (typeof row.doc !== "string" || row.doc === "") {
+          errors.push(`codeDocSync[${i}]: doc dolu bir string olmalı`);
+        }
       });
     }
   }
@@ -817,7 +821,18 @@ if (process.argv.includes("--selftest")) {
       codeDocSync: [{ code: "src/api/**" }],
       agents: [{ name: "dev", model: "sonnet" }],
     },
-    "doc dolu olmalı"
+    "doc dolu bir string olmalı"
+  );
+
+  // V19b — a truthy non-string is not a path.
+  expectReject(
+    "V19b codeDocSync row with non-string sides",
+    {
+      targetsDefault: ["claude"],
+      codeDocSync: [{ code: 42, doc: {} }],
+      agents: [{ name: "dev", model: "sonnet" }],
+    },
+    "code dolu bir string olmalı"
   );
 
   // V14 — planReviewer key missing.

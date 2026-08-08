@@ -17,7 +17,8 @@ Aşağıda `<arch-root>` bu seçimi temsil eder.
 - **central:** tüm mimari dokümanlar `docs/<arch-root>/` altında toplanır.
 - **per-module:** central'a ek olarak her modül kendi dokümanını tutar:
   `modules/<name>/docs/{README.md, api.md, kararlar/}`. Modül listesi SORULMAZ; ADR'ler
-  yazıldıkça organik oluşur. Seçilen kural architect md'sine yazılır.
+  yazıldıkça organik oluşur. Seçilen kural, dokümantasyonu sahiplenen rolün md'sine
+  yazılır; öyle bir rol yoksa CLAUDE.md/AGENTS.md'nin doküman bölümüne.
 
 ---
 
