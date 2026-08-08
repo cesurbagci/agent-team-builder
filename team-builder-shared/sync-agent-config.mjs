@@ -338,23 +338,35 @@ function renderDeveloperInstructions(agent, manifest, projectName) {
     })
     return new RegExp(`${source}$`)
   }
-  // Paths the route matches, sampling `**` at zero, one and two segments
-  // because it spans any depth. The zero and two samples are deliberately
-  // redundant: no glob accepts a bounded depth range wider than one, so
-  // whichever of them a wrong answer would trip, the other trips too. Dropping
-  // either leaves every case here passing — keep both anyway, the cost is an
-  // array literal and the guarantee is that a route claiming to be nested
-  // really is nested at every depth.
+  // Paths the route matches. `**` is sampled at zero, one and two segments
+  // because it spans any depth; the zero and two samples are deliberately
+  // redundant, since no glob accepts a bounded depth range wider than one.
+  //
+  // A wildcard is filled with two probes rather than one, and they differ in
+  // their first and last character. A single filler let a partial-segment
+  // pattern swallow it: with `x`, `a/*` looked contained by `a/x*`, which is
+  // false — `a/zzz` is in the first and not the second. A prefix pattern now
+  // fails one probe and a suffix pattern fails the other. This is a decision
+  // procedure for the shapes routing tables actually use, not full glob
+  // subset; it errs toward reporting "not nested", which costs an exception
+  // clause rather than granting a directory.
+  const PROBES = ['ax1', 'zb2']
   const join = (a, b) => (a && b ? `${a}/${b}` : a || b)
   const samplesOf = glob => {
-    let paths = ['']
-    for (const seg of segmentsOf(glob)) {
-      paths =
-        seg === '**'
-          ? paths.flatMap(p => ['', 'a', 'a/b'].map(fill => join(p, fill)))
-          : paths.map(p => join(p, seg.replace(/\*/g, 'x')))
+    const out = new Set()
+    for (const probe of PROBES) {
+      let paths = ['']
+      for (const seg of segmentsOf(glob)) {
+        paths =
+          seg === '**'
+            ? paths.flatMap(p =>
+                ['', probe, `${probe}/${probe}`].map(fill => join(p, fill))
+              )
+            : paths.map(p => join(p, seg.replace(/\*/g, probe)))
+      }
+      for (const p of paths) if (p) out.add(p)
     }
-    return [...new Set(paths.filter(Boolean))]
+    return [...out]
   }
   // One route is inside another when every path it can produce is also matched
   // by that other route. Reducing each route to a directory first was not
@@ -957,6 +969,40 @@ async function runSelftest() {
     'an agent that owns nothing must get no carve-out'
   )
 
+  // Three roles sharing a root: the middle one is inside the widest and
+  // contains the narrowest, so its prohibitions must carve out its own route
+  // for the former and stay bare for the latter.
+  const threeDeep = {
+    docLanguage: 'tr',
+    routing: [
+      { path: 'docs/**', role: 'architect' },
+      { path: 'docs/guides/**', role: 'doc-writer' },
+      { path: 'docs/guides/api/**', role: 'api-writer' },
+    ],
+    agents: [
+      { name: 'architect', writesCode: false, sandbox_mode: 'workspace-write' },
+      { name: 'doc-writer', writesCode: false, sandbox_mode: 'workspace-write' },
+      { name: 'api-writer', writesCode: false, sandbox_mode: 'workspace-write' },
+    ],
+  }
+  const middle = renderDeveloperInstructions(
+    { name: 'doc-writer', writesCode: false, sandbox_mode: 'workspace-write' },
+    threeDeep,
+    'demo'
+  )
+  assert(
+    middle.includes(
+      '`docs/**` altina yazma (kendi yolun `docs/guides/**` haric); orasi `architect` rolunun.'
+    ),
+    'the middle owner carves its route out of the route that contains it'
+  )
+  assert(
+    middle.includes(
+      '`docs/guides/api/**` altina yazma; orasi `api-writer` rolunun.'
+    ),
+    'the middle owner is barred from the route nested inside its own, with no exception'
+  )
+
   // Sibling owners: neither path contains the other, so neither prohibition
   // may carry a carve-out. Without this the nesting test could return true
   // unconditionally and every case above would still pass.
@@ -1131,6 +1177,26 @@ async function runSelftest() {
       false,
       'a wider route is not inside a narrower one sharing its root',
     ],
+    // A partial-segment pattern must not appear to contain a full wildcard:
+    // `a/zzz` is in `a/*` and not in `a/x*`. One filler token let it.
+    [['a/x*', 'a/*'], false, 'a prefix pattern must not swallow a full wildcard'],
+    [['a/*q', 'a/*'], false, 'a suffix pattern must not swallow a full wildcard'],
+    // The two that matter for the probes themselves: a pattern shaped like one
+    // probe must still fail, because the other probe does not share its first
+    // or last character. With a single probe — or two alike at either end —
+    // these report containment that does not hold.
+    [
+      ['a/a*', 'a/*'],
+      false,
+      'a prefix matching one probe must not pass: the other probe starts differently',
+    ],
+    [
+      ['a/*1', 'a/*'],
+      false,
+      'a suffix matching one probe must not pass: the other probe ends differently',
+    ],
+    // …while the genuinely narrower partial pattern is inside it.
+    [['a/*', 'a/x*'], true, 'a partial pattern is inside the full wildcard'],
     // A route with no wildcard names a directory and governs what is under it.
     [['docs', 'docs/guides/**'], true, 'a wildcard-free route governs its subtree'],
     // Two roles on the same path: neither is inside the other, so the
