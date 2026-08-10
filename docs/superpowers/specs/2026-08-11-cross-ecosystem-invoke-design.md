@@ -71,8 +71,9 @@ Kapı 1 ve kapı 3 için **aynı**:
 1. Kapı sahibini manifest'ten al (`planGate.planReviewer` / `codeReviewer`).
 2. Sahibin **etkin hedeflerini** çöz. Oturumun ekosistemi bunlardan biriyse → **çekirdek
    davranışı**, bu spec devreye girmez.
-3. Değilse hedef ekosistemi seç: etkin hedeflerden biri. Birden fazlaysa sıralama
-   manifest'teki `targets` sırasıdır; kullanıcıya sorulmaz (hata hâli hariç).
+3. Değilse hedef ekosistemi seç: etkin hedeflerden biri. Birden fazlaysa **etkin hedefler
+   listesinin sırasındaki ilki** alınır — sahibin kendi `targets`'ı varsa o dizinin,
+   yoksa `targetsDefault`'un sırası. Kullanıcıya sorulmaz (hata hâli hariç).
 4. Hedefin **rol tanımını oku**. Yoksa bu bir hatadır (aşağıya bakın).
 5. Prompt'u kur: rol tanımı + plan dosyasının tamamı + çıktı sözleşmesi.
 6. CLI'ı **proje kökünde** çalıştır. Hedef, deposu okuyabilmelidir: kapı 1'in reddetme
@@ -192,6 +193,19 @@ denetim değeri tam olarak ondadır: hangi planın hangi kapıyı neden atladı�
 
 Gerekçesiz bir kullanıcı atlaması kabul edilmez; kullanıcı gerekçe vermezse kapı atlanmaz.
 
+**Çekirdeğin N14 kuralı revize edilir.** Bugün: *"`skipped` kaydında `by` değeri `system`
+değil → Reddedilir"*. Bu kural, `skipped`'ın tek anlamının "denetleyici tanımsız" olduğu
+varsayımıyla yazılmıştı. Yeni hâli:
+
+> `skipped` kaydında `by` değeri **`system` ya da `user`** olmalı; başka bir değer
+> reddedilir. `approved`/`rejected` kayıtlarında ikisi de **asla** bulunmaz (N15 aynen
+> kalır).
+
+`by` gramerini **üç yer** tanımlıyor ve üçü birlikte güncellenmelidir; biri geride kalırsa
+doğrulayıcı ile skill birbirini yalanlar:
+`plan-gate.md` (kayıt şeması), `templates/work-plan-skill.md` (denetim kaydı şeması) ve
+çekirdek spec'in kayıt tanımı.
+
 ## Komut eşlemesi
 
 Ekosistem → komut eşlemesi **araçta sabittir**; manifest'te opsiyonel override bulunur.
@@ -221,6 +235,21 @@ yüklemesini sağlar; ikisi çelişmez, prompt bağlayıcıdır.
 Çekirdeğin öbür plan kapısı kuralları (`planGate` nesnesinin varlığı, sahiplerin
 `writesCode: false` olması, hedeflenen her ekosistemde bir executor bulunması) **aynen
 kalır**.
+
+## team-builder reposunda değişecekler
+
+| Dosya | Değişiklik |
+|---|---|
+| `templates/work-plan-skill.md` | Yeni **"Başka ekosistemdeki kapı sahibi"** bölümü: çağrı dizisi, verdict bloğu, hata seçenekleri. `by` gramerine `user` eklenir; `reasons` kuralı `by: user` için genişler. |
+| `plan-gate.md` | Kayıt şemasında `by` grameri ve `reasons` kuralı güncellenir (kurulum sözleşmesi skill ile aynı şeyi söylemeli). |
+| `validate-manifest.mjs` | Kapsama kuralı kaldırılır, "kapı sahibinin etkin hedefleri boş olamaz" gelir. Kural listesi ve selftest'ler buna göre. |
+| `manifest-schema.md` | Doğrulama kuralları listesi (sihirbazın elle doğrulama fallback'i buraya bakıyor). |
+| `validate-plan-gate.mjs` | Şablon/doküman denetimleri `by` gramerinin yeni hâlini belgeliyor mu diye genişletilir. |
+| Çekirdek spec (`2026-08-02-...`) | N14 revizyonu ve KARAR 21'in kapatıldığı bu spec'e işaret edilir. |
+| `codex-target.md` / `opencode-target.md` | Komut eşlemesi ve sandbox bayrağı karşılıkları belgelenir. |
+
+**Üretilen dosyalarda değişiklik yok.** B, üretim (`sync`) çıktısını değiştirmez; yalnız
+runtime davranışını ve doğrulama kurallarını değiştirir.
 
 ## Kabul kriterleri
 
