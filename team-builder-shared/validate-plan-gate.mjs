@@ -22,6 +22,15 @@ export const SECTION_MARKERS = [
   's:progress',
 ]
 
+// Every accepted `by` value form. The shipped skill is the only copy of the
+// record schema a project sees; if it stops naming a form, agents stop writing
+// it while the validator still accepts it — the two drift apart silently.
+export const BY_GRAMMAR_TOKENS = [
+  '<ekosistem>/<agent-adı>',
+  'system',
+  'user/<agent-adı>',
+]
+
 export const PROGRESS_SENTINEL = '<!-- progress:not-started -->'
 export const CANCEL_NOTE_TAG = '<!-- note:cancelled -->'
 
@@ -243,6 +252,13 @@ export async function validatePlanGateArtifacts(rootDir) {
     if (!skillTpl.includes(CANCEL_NOTE_TAG)) {
       errors.push(`templates/work-plan-skill.md does not document ${CANCEL_NOTE_TAG}`)
     }
+    for (const token of BY_GRAMMAR_TOKENS) {
+      if (!skillTpl.includes(token)) {
+        errors.push(
+          `templates/work-plan-skill.md does not document by-value form ${token}`
+        )
+      }
+    }
   }
 
   // A file literally named SKILL.md under team-builder-shared/ would be picked
@@ -342,6 +358,7 @@ const GOOD_SKILL = [
   ...SECTION_MARKERS.map((m) => `<!-- ${m} -->`),
   PROGRESS_SENTINEL,
   CANCEL_NOTE_TAG,
+  ...BY_GRAMMAR_TOKENS,
   '',
 ].join('\n')
 
@@ -566,6 +583,14 @@ async function runSelftest() {
           skillPath,
           '---\ntitle: x\n---\n\nname: work-plan\ndescription: x\n'
         )
+    )
+    // The shipped skill is the only copy of the record schema a project sees.
+    // If it stops naming an accepted `by` form, agents stop writing it while
+    // the validator still accepts one — the two drift apart silently.
+    await expectError(
+      'does not document by-value form user/<agent-adı>',
+      'a shipped skill that dropped the user waiver form',
+      () => fs.writeFile(skillPath, GOOD_SKILL.replace('user/<agent-adı>', 'user'))
     )
 
     // --- stray SKILL.md ------------------------------------------------------
