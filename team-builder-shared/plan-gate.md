@@ -78,11 +78,13 @@ içindir.
   reasons: [<madde>, ...] }
 ```
 
-- `by`: üç biçim — `<ekosistem>/<agent-adı>`, `system`, `user/<agent-adı>`. `system` ve
-  `user/` **yalnız** `skipped` kayıtlarında; `approved`/`rejected` kayıtlarında asla.
-  Çıplak `user` geçersiz: feragat bir sahibe bağlıdır, sahip değişirse düşer.
-- `reasons`: **her zaman dizi**; `rejected` boş olamaz, `skipped` + `by: user/<ad>` de
-  boş olamaz (kullanıcının gerekçesi). `approved` ve `skipped` + `by: system` → `[]`.
+- `by`: üç biçim — `<ekosistem>/<agent-adı>`, `system`, `user/<agent-adı>` (`user` bir
+  ekosistem değil, ayrı bir ön ek). İki yönlü kural: `system` ve `user/` **yalnız**
+  `skipped` kayıtlarında bulunur, **ve** her `skipped` kaydı ikisinden birini taşır;
+  `approved`/`rejected` ikisini de asla taşımaz. Çıplak `user` geçersiz: feragat bir
+  sahibe bağlıdır, sahip değişirse düşer.
+- `reasons`: **her zaman dizi**; `rejected` boş olamaz, `skipped` + `by: user/<agent-adı>`
+  de boş olamaz (kullanıcının gerekçesi). `approved` ve `skipped` + `by: system` → `[]`.
 - Kayıtlar **asla silinmez**; sonraki kayıt öncekini geçersiz kılar.
 
 ## Kapı yüklemleri

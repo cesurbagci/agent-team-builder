@@ -120,6 +120,9 @@ Her kapı sonucu `reviews.plan-review` ya da `reviews.code-review` dizisine **ta
     Yalnız `skipped`. Ad **zorunludur**: feragat o sahibe verilmiştir, sahip sonradan
     değişirse feragat düşmelidir — tıpkı onay gibi.
   - `approved` ve `rejected` kayıtlarında `system` ve `user/` **asla** bulunmaz.
+  - `skipped` kayıtlarında `by` **yalnız** `system` ya da `user/<agent-adı>` olabilir;
+    `<ekosistem>/<agent-adı>` biçimi `skipped`'te geçersizdir — denetleyici karar
+    verdiyse `approved` ya da `rejected` yazar, kendisi hiçbir zaman `skipped` yazmaz.
 - `at`: `YYYY-MM-DD`; eksik ya da başka biçim geçersizdir.
 - `revision`: kaydın denetlediği revizyon — pozitif tam sayı. `"3"` (metin), `3.5`, `0`
   ve negatif değerler geçersizdir.
@@ -129,8 +132,9 @@ Her kapı sonucu `reviews.plan-review` ya da `reviews.code-review` dizisine **ta
   - `approved` → `[]`. Denetleyici gerekçe yazsa bile kayda `[]` geçer.
   - `rejected` → **boş olamaz**.
   - `skipped` + `by: system` → `[]` — söylenecek bir şey yok, denetleyici tanımsız.
-  - `skipped` + `by: user/<ad>` → **boş olamaz**. Kaydın bütün denetim değeri burada:
-    hangi planın hangi kapıyı neden atladığı. Kullanıcı gerekçe vermezse kapı atlanmaz.
+  - `skipped` + `by: user/<agent-adı>` → **boş olamaz**. Kaydın bütün denetim değeri
+    burada: hangi planın hangi kapıyı neden atladığı. Kullanıcı gerekçe vermezse kapı
+    atlanmaz.
 - Kayıtlar **asla silinmez**; sonraki kayıt öncekini geçersiz kılar.
 
 ### `planReviewPassed` — plan onayı geçerli mi?
