@@ -90,14 +90,19 @@ içindir.
 ## Kapı yüklemleri
 
 **`planReviewPassed(plan, manifest)` — kalıcı.** Dosyayla taşınır, **çağıran oturumdan
-bağımsızdır**. Karşılaştırılacak sahip kimliği planın kendi `executor` ekosisteminden
-kurulur (`<executor.ecosystem>/<planReviewer>`), çağıran oturumdan değil — plan dosyaları
-paylaşılır ve onay hangi oturumdan bakıldığına göre değişmemelidir.
+bağımsızdır**. Karşılaştırılacak **ad** planın manifest'teki güncel sahibinden gelir, çağıran oturumdan
+değil — plan dosyaları paylaşılır ve onay hangi oturumdan bakıldığına göre değişmemelidir.
+**Ekosistem** ise denetimin fiilen çalıştığı yerdir ve sahibin etkin hedeflerinden biri
+olmalıdır; denetleyici projenin başka bir ekosisteminde üretilmiş olabilir.
 
-| `planReviewer` | Koşul |
-|---|---|
-| Bir agent adı | Son kayıt `approved`, `kayıt.revision === plan.revision`, `kayıt.by` güncel sahiple aynı |
-| `null` | Son kayıt `skipped`, `kayıt.revision === plan.revision`, sahip hâlâ `null` |
+| `planReviewer` | Son kayıt | `kayıt.by` |
+|---|---|---|
+| Bir agent adı | `approved` | `<denetimin ekosistemi>/<güncel sahip>` — ekosistem sahibin etkin hedeflerinden biri |
+| Bir agent adı | `skipped` | `user/<güncel sahip>` — kullanıcı feragati |
+| `null` | `skipped` | `system`, sahip hâlâ `null` |
+
+Üçünde de `kayıt.revision === plan.revision`. Ad karşılaştırması **güncel** sahibe
+karşıdır: sahip değişirse onay da feragat de düşer.
 
 **`doneAuthorized` — anlık.** `in-progress/ → done/` hareketini yetkilendirir, saklanmaz;
 bu yüzden dosyaya bakarak doğrulanamaz ve klasör değişmezi değildir. **Yalnız başarılı

@@ -143,10 +143,21 @@ Bu yüklem **dosyayla birlikte taşınır** ve **çağıran oturumdan bağımsı
 başka bir ekosistemde açtığında yeniden denetletme; kimlik planın kendi `executor`
 ekosisteminden kurulur, senin oturumundan değil.
 
-| Projenin plan denetleyicisi | Doğru olma koşulu |
-|---|---|
-| Bir agent adı | `plan-review`'ın **son** kaydı `approved`, `kayıt.revision === plan.revision`, ve `kayıt.by` = `<executor'ın ekosistemi>/<güncel denetleyici adı>` |
-| Tanımsız (`null`) | `plan-review`'ın **son** kaydı `skipped`, `kayıt.revision === plan.revision`, ve denetleyici hâlâ tanımsız |
+Üç yoldan biriyle doğru olur. Hepsinde ortak: bakılan kayıt `plan-review`'ın **son**
+kaydıdır ve `kayıt.revision === plan.revision` olmalıdır.
+
+| Projenin plan denetleyicisi | Son kayıt | `kayıt.by` |
+|---|---|---|
+| Bir agent adı | `approved` | `<denetimin çalıştığı ekosistem>/<güncel denetleyici adı>` — ekosistem, denetleyicinin **etkin hedeflerinden biri** olmalı |
+| Bir agent adı | `skipped` | `user/<güncel denetleyici adı>` — kullanıcı feragati |
+| Tanımsız (`null`) | `skipped` | `system`, ve denetleyici **hâlâ** tanımsız |
+
+Ad karşılaştırması üç satırda da **güncel** denetleyiciye karşıdır. Kapı sahibi
+değişirse hem eski onaylar hem eski feragatler düşer; yeni sahiple kapıyı yeniden geç.
+
+Ekosistem kısıtı `approved` satırında **denetimin çalıştığı** ekosistemdir, executor'ınki
+değil — denetleyici başka bir ekosistemde çalışıyor olabilir (bkz. *Başka ekosistemdeki
+kapı sahibi*).
 
 ### `executor` geçerli mi?
 
@@ -256,12 +267,16 @@ o iş için kural atlanır.
 3. **`done/`'a taşıma yetkisi:** son `code-review` kaydı **ve** `kayıt.revision ===
    plan.revision` şartı birlikte sağlanmalı — `planReviewPassed`'daki ile aynı ölçü:
    - denetleyici bir ad taşıyorsa: son kayıt `approved`, `kayıt.revision` planın
-     `revision`'ına eşit **ve** `kayıt.by` **güncel** denetleyiciyle aynı. Denetleyici
-     sonradan değiştiyse eski sahibin onayı yetki vermez — kapı 3'ü yeni sahiple
-     çalıştır (`planReviewPassed` kapı 1 için aynı şeyi yapar);
-   - denetleyici tanımsızsa: son kayıt `skipped`, `kayıt.revision` eşit **ve** denetleyici
-     **hâlâ** tanımsız. Sonradan bir kod denetleyicisi tanımlandıysa eski `skipped` kaydı
-     yetki vermez; kapı 3'ü çalıştır.
+     `revision`'ına eşit **ve** `kayıt.by` **güncel** denetleyiciyle aynı — ekosistem
+     kısmı denetleyicinin etkin hedeflerinden biri olmalı. Denetleyici sonradan
+     değiştiyse eski sahibin onayı yetki vermez — kapı 3'ü yeni sahiple çalıştır
+     (`planReviewPassed` kapı 1 için aynı şeyi yapar);
+   - denetleyici bir ad taşıyor ve kapıya ulaşılamadıysa: son kayıt `skipped`,
+     `kayıt.revision` eşit **ve** `kayıt.by` = `user/<güncel denetleyici adı>`. Sahip
+     değişmişse bu feragat de düşer;
+   - denetleyici tanımsızsa: son kayıt `skipped`, `kayıt.revision` eşit, `kayıt.by` =
+     `system` **ve** denetleyici **hâlâ** tanımsız. Sonradan bir kod denetleyicisi
+     tanımlandıysa eski `skipped` kaydı yetki vermez; kapı 3'ü çalıştır.
    Denetleyici tanımsızken kullanıcıdan **ek onay isteme** — kapı 3 yoktur, iş doğrudan
    biter.
 4. **Kod denetimi onayı tek seferliktir.** İş `done/`'a gitmeden kesilirse, devam
