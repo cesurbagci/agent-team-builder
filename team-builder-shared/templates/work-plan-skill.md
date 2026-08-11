@@ -208,6 +208,8 @@ bakılmaz, ama geçiş bittiğinde koşul sağlanmıyorsa hata vardır.
 4. **Kapı 1 — plan denetimi.** Projenin plan denetleyicisi tanımlıysa onu çağır. Reddetme
    ölçütleri: kabul kriteri yok ya da ölçülemez; `paths` gövdeyle tutarsız; açık soru
    cevapsız; yaklaşım mevcut bir ADR'ye aykırı.
+   Denetleyici senin ekosisteminde üretilmemişse **Başka ekosistemdeki kapı sahibi**
+   bölümünü izle; çıktı sözleşmesi ve hata hâli oradadır.
    Denetleyici sana şunu döndürür:
    ```
    verdict: approved | rejected
@@ -256,6 +258,9 @@ o iş için kural atlanır.
 
 1. **Kapı 3 — kod denetimi.** Projenin kod denetleyicisi tanımlıysa çağır. Denetleyici
    kapı 1'deki **aynı** çıktıyı döndürür (`verdict` / `reviewed_revision` / `reasons`).
+   Kod denetleyicisi senin ekosisteminde üretilmemişse **Başka ekosistemdeki kapı
+   sahibi** bölümünü izle — kapı 3'te prompt'a uygulama farkını (temel referans +
+   değişen dosyalar) da eklersin.
    - `reviewed_revision` diskteki `revision` ile aynı değilse **kaydı yazma** — plan
      denetim sırasında değişmiş demektir, denetimi tekrarla. Bayat bir kayıt `done/`'a
      taşıma yetkisi verir; kapı 1'de olduğu gibi burada da geçersizdir.
@@ -283,6 +288,113 @@ o iş için kural atlanır.
    biter.
 4. **Kod denetimi onayı tek seferliktir.** İş `done/`'a gitmeden kesilirse, devam
    edildiğinde denetimi **yeniden** çalıştır — eski kayıt geçmiştir, yetki vermez.
+
+## Başka ekosistemdeki kapı sahibi
+
+Kapı sahibi senin ekosisteminde üretilmemişse onu **harici CLI çağrısıyla** kendi
+ekosisteminde çalıştırırsın. Kapı 1 ve kapı 3 için dizi aynıdır.
+
+1. Sahibin **etkin hedeflerini** çöz (kendi `targets`'ı, yoksa `targetsDefault`).
+   Senin ekosistemin bunlardan biriyse **çapraz çağrı yok** — normal yoldan çağır.
+2. Değilse hedef ekosistem, etkin hedefler listesinin **sırasındaki ilkidir**.
+   Kullanıcıya sorma.
+3. Hedefin **rol tanımını oku**:
+   `.claude/agents/<ad>.md`, `.codex/agent-definitions/<ad>.md`,
+   `.opencode/agents/<ad>.md`. Dosya yoksa bu bir hatadır (aşağıya bak).
+4. Prompt'u kur: **rol tanımının tamamı** + **plan dosyasının tamamı** + aşağıdaki çıktı
+   sözleşmesi.
+   - **Kapı 3'te ayrıca** uygulama farkını ekle: planın açıldığı temel referans ve
+     değişen dosyaların listesi. Taze bir denetleyici süreci depoyu okuyabilir ama hangi
+     değişikliğin bu plana ait olduğunu göremez — çalışma ağacı zaten kirliyse ya da
+     birden çok plan sürüyorsa okumak yanıltır. Kapı 1'de bu bölüm yoktur.
+5. CLI'ı **proje kökünde** çalıştır. Hedefin depoyu okuması gerekir: kapı 1'in reddetme
+   ölçütlerinden biri "yaklaşım mevcut bir ADR'ye aykırı"dır.
+
+   | Ekosistem | Komut |
+   |---|---|
+   | `claude` | `claude -p --agent <ad>` |
+   | `codex` | `codex exec --sandbox read-only -` |
+   | `opencode` | `opencode run --agent <ad>` |
+
+   - **Prompt stdin'den gider**, argüman olarak değil: rol + planın tamamı kolayca
+     işletim sisteminin argüman sınırını aşar ve tırnak hatası üretir.
+   - **Sandbox her zaman salt-okunur** — sahibin `sandbox_mode`'una **bakma**.
+     `writesCode: false` dosya sistemi izni değildir; doküman sahibi bir rol meşru
+     biçimde `workspace-write` olabilir. Denetim çağrısı hiçbir şey yazmaz.
+   - **Zaman aşımı 10 dakika.** Süre dolarsa süreç ağacının tamamını sonlandır.
+   - Manifest'te `planGate.cli.<ekosistem>` varsa çalıştırılabilir **yol** olarak onu
+     kullan; argümanlar yine yukarıdaki tablodandır.
+
+### Çıktı sözleşmesi
+
+Hedeften şunu istersin — **işaretler, alan adları ve değerler çevrilmez**, yalnız
+hedefe verdiğin açıklama metni proje diline çevrilir:
+
+```
+<!-- verdict -->
+verdict: approved | rejected
+reviewed_revision: <denetlediği revision>
+reasons:
+- <madde>
+- <madde>
+<!-- /verdict -->
+```
+
+Ayrıştırma kuralları:
+
+- İşaretler **kendi satırlarında ve tam**. stdout'ta tam bir açılış ve tam bir kapanış,
+  bu sırayla. Sıfır, ikiden çok, ya da ters sıra → hata.
+- Blok içinde **yalnız bu üç alan**. Bilinmeyen alan, tekrarlanan alan, eksik alan → hata.
+- `verdict` yalnız `approved` ya da `rejected`. `skipped` hedeften **gelmez** — onu
+  yalnız sen yazarsın.
+- Blok **dışındaki** metni yok say; modeller düşünme/özet metni yazar.
+- `reasons`: `rejected` ise boş olamaz. `approved` ise kayda **`[]`** yazarsın — hedef
+  madde yazmışsa onları at.
+- `by` alanını **sen** doldurursun, hedef değil: kimi çağırdığını sen biliyorsun.
+  Hedefin kendi kimliğini beyan etmesine izin verme.
+
+### Sonuç üç sınıftan biridir
+
+| Sınıf | Ne zaman | Ne yaparsın |
+|---|---|---|
+| Taşıma hatası | CLI yok/`PATH`'te değil, yetkisiz, zaman aşımı, çıkış kodu ≠ 0 | **Kayıt yazma.** Geçerli bir blok gelmiş olsa bile yok say — sağlıklı bitmemiş süreçten çıkan blok güvenilmez. |
+| Protokol hatası | Blok yok, birden çok, ya da şemaya uymuyor | **Kayıt yazma.** |
+| Verdict | Geçerli blok, sağlıklı çıkış | Kaydı yaz. |
+
+**Hata `rejected` değildir.** Ulaşılamayan bir kapıyı "reddetti" saymak planı gereksiz
+düzeltme döngüsüne sokar; ayrıştırma hatasını "onayladı" saymak sessiz onaydır.
+
+`reviewed_revision` diskteki `revision` ile aynı değilse **kaydı yazma** — plan denetim
+sırasında değişmiş demektir, denetimi tekrarla.
+
+### Hata hâlinde kullanıcıya ne sorarsın
+
+Kayıt yazılmaz, plan bulunduğu klasörde kalır. Kullanıcıya bu üç seçeneği bu sırayla sun:
+
+1. **Tekrar dene** — taşıma hatalarında anlamlı; protokol hatasında genelde değil.
+2. **`<sahip>`'i `<başka ekosistem>`'de çalıştır** — yalnız sahibin **etkin
+   hedeflerinden** ve rol tanımı dosyası **gerçekten var** olanları listele. Böyle bir
+   ekosistem yoksa bu maddeyi **hiç gösterme**. Agent adı uydurma; öneri manifest'ten
+   türer.
+3. **Bu kapıyı atla** — kullanıcıdan **gerekçe iste**, sonra:
+   `{ by: user/<sahibin adı>, at: <bugün>, revision: <plan.revision>,
+   verdict: skipped, reasons: [<kullanıcının gerekçesi>] }`.
+   Gerekçe vermezse kapıyı **atlama**.
+
+Kullanıcı seçim yapmadan bırakırsa hiçbir şey yazma; sonraki oturum kapıyı sağlanmamış
+görür ve baştan dener.
+
+2. seçenek **farklı bir agent değildir**, aynı sahibin başka ekosistemidir. Kullanıcı
+gerçekten başka bir denetleyici istiyorsa bu, kapı sahibini değiştirmektir — *Kapı
+sahipleri değişirse* kuralları geçerlidir.
+
+### Codex'te sınır
+
+`codex exec`'te agent seçme bayrağı yok; yalnız `.codex/agent-definitions/<ad>.md`
+prompt'a gömülür. `.codex/agents/<ad>.toml`'daki model/effort **uygulanmaz** — çağrı
+Codex'in o oturumdaki varsayılan modeliyle koşar. Denetim kararı rol metnine dayanır.
+Öbür iki ekosistemde `--agent` verildiği için konfigürasyon da yüklenir; yani ekosistemler
+arası **birebir aynı** karar bekleme.
 
 ## Kapı sahipleri değişirse
 
