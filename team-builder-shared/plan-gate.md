@@ -73,12 +73,16 @@ içindir.
 ### Denetim kaydı
 
 ```yaml
-{ by: <ekosistem>/<agent-adı> | system, at: <YYYY-MM-DD>, revision: <n>,
-  verdict: approved | rejected | skipped, reasons: [<madde>, ...] }
+{ by: <ekosistem>/<agent-adı> | system | user/<agent-adı>, at: <YYYY-MM-DD>,
+  revision: <n>, verdict: approved | rejected | skipped,
+  reasons: [<madde>, ...] }
 ```
 
-- `by`: `skipped` kayıtlarında **`system`**; diğerlerinde asla `system` değil.
-- `reasons`: **her zaman dizi**; `rejected` ise boş olamaz.
+- `by`: üç biçim — `<ekosistem>/<agent-adı>`, `system`, `user/<agent-adı>`. `system` ve
+  `user/` **yalnız** `skipped` kayıtlarında; `approved`/`rejected` kayıtlarında asla.
+  Çıplak `user` geçersiz: feragat bir sahibe bağlıdır, sahip değişirse düşer.
+- `reasons`: **her zaman dizi**; `rejected` boş olamaz, `skipped` + `by: user/<ad>` de
+  boş olamaz (kullanıcının gerekçesi). `approved` ve `skipped` + `by: system` → `[]`.
 - Kayıtlar **asla silinmez**; sonraki kayıt öncekini geçersiz kılar.
 
 ## Kapı yüklemleri

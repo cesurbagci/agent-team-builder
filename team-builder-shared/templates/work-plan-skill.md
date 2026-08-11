@@ -106,20 +106,31 @@ Her kapı sonucu `reviews.plan-review` ya da `reviews.code-review` dizisine **ta
 şekilde yazılır — beş alanın hepsi zorunludur:
 
 ```yaml
-{ by: <ekosistem>/<agent-adı> | system, at: <YYYY-MM-DD>, revision: <n>,
-  verdict: approved | rejected | skipped, reasons: [<madde>, ...] }
+{ by: <ekosistem>/<agent-adı> | system | user/<agent-adı>, at: <YYYY-MM-DD>,
+  revision: <n>, verdict: approved | rejected | skipped,
+  reasons: [<madde>, ...] }
 ```
 
-- `by`: `<ekosistem>/<agent-adı>` biçimi zorunlu — çıplak ad (`architect`), eksik parça
-  (`claude/`) ya da boş parça (`//x`) geçersizdir. **Yalnız `skipped`** kayıtlarında
-  `system` yazılır; `approved` ve `rejected` kayıtlarında **asla** `system` olamaz.
+- `by`: üç biçimden biri — `<ekosistem>/<agent-adı>`, `system`, ya da
+  `user/<agent-adı>`. Çıplak ad (`architect`), eksik parça (`claude/`), boş parça
+  (`//x`) ve **çıplak `user`** geçersizdir. Ekosistem yalnız `claude`, `codex` ya da
+  `opencode` olabilir; `user` bir ekosistem değildir, ayrı bir ön ektir.
+  - `system` — denetleyici tanımsız. Yalnız `skipped`.
+  - `user/<agent-adı>` — adı geçen kapı sahibine ulaşılamadı, kullanıcı kapıyı atladı.
+    Yalnız `skipped`. Ad **zorunludur**: feragat o sahibe verilmiştir, sahip sonradan
+    değişirse feragat düşmelidir — tıpkı onay gibi.
+  - `approved` ve `rejected` kayıtlarında `system` ve `user/` **asla** bulunmaz.
 - `at`: `YYYY-MM-DD`; eksik ya da başka biçim geçersizdir.
 - `revision`: kaydın denetlediği revizyon — pozitif tam sayı. `"3"` (metin), `3.5`, `0`
   ve negatif değerler geçersizdir.
 - `verdict`: yalnız `approved`, `rejected`, `skipped`. Başka değer (`ok`, `pending`)
   geçersizdir.
-- `reasons`: **her zaman dizi** — `approved` ve `skipped` kayıtlarında `[]`, `rejected`
-  kayıtlarında **boş olamaz**. Metin ya da eksik alan geçersizdir.
+- `reasons`: **her zaman dizi**. Metin ya da eksik alan geçersizdir.
+  - `approved` → `[]`. Denetleyici gerekçe yazsa bile kayda `[]` geçer.
+  - `rejected` → **boş olamaz**.
+  - `skipped` + `by: system` → `[]` — söylenecek bir şey yok, denetleyici tanımsız.
+  - `skipped` + `by: user/<ad>` → **boş olamaz**. Kaydın bütün denetim değeri burada:
+    hangi planın hangi kapıyı neden atladığı. Kullanıcı gerekçe vermezse kapı atlanmaz.
 - Kayıtlar **asla silinmez**; sonraki kayıt öncekini geçersiz kılar.
 
 ### `planReviewPassed` — plan onayı geçerli mi?
