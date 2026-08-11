@@ -348,8 +348,9 @@ komuta yönlendirme ve `.agent-work/` iskeletini kurmayı teklif etme.
 - `s:progress` güncellerken `revision` artırmak — ilerleme planlama içeriği değildir.
 - `revision` artınca dosyayı bulunduğu klasörde bırakmak — `approved/` ve `in-progress/`
   `draft/`'a döner.
-- Başka ekosistemde onaylanmış planı yeniden denetletmek — onay `executor` ekosistemine
-  bağlıdır, senin oturumuna değil.
+- Başka ekosistemde onaylanmış planı yeniden denetletmek — onay **denetimin çalıştığı**
+  ekosisteme bağlıdır, senin oturumuna değil. Denetleyici executor'dan başka bir
+  ekosistemde koşmuş olabilir; bu geçerli bir onaydır.
 - Havuza sıra dayatmak — kullanıcı seçer.
 - Reddedilen kaydı silmek — kayıtlar birikir, sonraki kayıt öncekini geçersiz kılar.
 - Denetim kaydını eksik yazmak — beş alanın hepsi, `skipped` kayıtlarında da zorunlu.

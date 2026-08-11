@@ -90,8 +90,9 @@ içindir.
 ## Kapı yüklemleri
 
 **`planReviewPassed(plan, manifest)` — kalıcı.** Dosyayla taşınır, **çağıran oturumdan
-bağımsızdır**. Karşılaştırılacak **ad** planın manifest'teki güncel sahibinden gelir, çağıran oturumdan
-değil — plan dosyaları paylaşılır ve onay hangi oturumdan bakıldığına göre değişmemelidir.
+bağımsızdır**. Karşılaştırılacak **ad** planın manifest'teki güncel sahibinden gelir,
+çağıran oturumdan değil — plan dosyaları paylaşılır ve onay hangi oturumdan bakıldığına
+göre değişmemelidir.
 **Ekosistem** ise denetimin fiilen çalıştığı yerdir ve sahibin etkin hedeflerinden biri
 olmalıdır; denetleyici projenin başka bir ekosisteminde üretilmiş olabilir.
 
