@@ -40,7 +40,7 @@
 
 ---
 
-### Görev 1: `by` gramerini doğrulayıcıya bir sabit olarak tanıt
+### Task 1 — Görev 1: `by` gramerini doğrulayıcıya bir sabit olarak tanıt
 
 Skill ve sözleşme dokümanları `user/<ad>` gramerini gerçekten belgeliyor mu — bunu mekanik olarak denetleyecek altyapıyı **önce** kur. Böylece sonraki görevlerde dokümanı değiştirmeyi unutmak testte patlar.
 
@@ -131,7 +131,7 @@ git commit -m "test: require the shipped skill to document every by-value form"
 
 ---
 
-### Görev 2: `user/<ad>` gramerini kayıt şemalarına yaz
+### Task 2 — Görev 2: `user/<ad>` gramerini kayıt şemalarına yaz
 
 **Files:**
 - Modify: `team-builder-shared/templates/work-plan-skill.md:103-124` (`### Denetim kaydı şeması`)
@@ -251,7 +251,7 @@ git commit -m "feat: add user/<ad> to the by grammar in both record schemas"
 
 ---
 
-### Görev 3: Yüklem tablolarına üçüncü satırı ekle
+### Task 3 — Görev 3: Yüklem tablolarına üçüncü satırı ekle
 
 Bu, spec'in en kolay atlanan noktası: kayıt yazılabilir olması onu **geçerli** yapmaz. `planReviewPassed` tablosu iki satırdı ve adlı bir denetleyici için `skipped` hiçbirini sağlamıyordu.
 
@@ -378,7 +378,7 @@ ediyor ve ad karsilastirmasi korundugu icin sahip degisince feragat de dusuyor."
 
 ---
 
-### Görev 4: Çapraz çağrı bölümünü skill'e yaz
+### Task 4 — Görev 4: Çapraz çağrı bölümünü skill'e yaz
 
 Bu görevin çıktısı projelere kopyalanan **tek** runtime otoritesidir. Buradaki her cümle bir agent'ın çalışma zamanında izleyeceği kuraldır; eksik bırakılan bir detay uydurulur.
 
@@ -547,7 +547,7 @@ git commit -m "feat: document the cross-ecosystem gate call in the shipped skill
 
 ---
 
-### Görev 5: Çapraz çağrı bölümünün varlığını mekanik olarak zorla
+### Task 5 — Görev 5: Çapraz çağrı bölümünün varlığını mekanik olarak zorla
 
 Görev 4'ün yazdığı bölüm skill'den düşerse hiçbir test patlamaz — bu görev o boşluğu kapatır.
 
@@ -638,7 +638,7 @@ git commit -m "test: require the shipped skill to document the verdict block"
 
 ---
 
-### Görev 6: Kapsama kuralını doğrulayıcıdan kaldır
+### Task 6 — Görev 6: Kapsama kuralını doğrulayıcıdan kaldır
 
 **Files:**
 - Modify: `team-builder-shared/validate-manifest.mjs:125-132` (kapsama döngüsü)
@@ -748,7 +748,7 @@ oturumun ekosisteminde yok -- dogrudan reddediyordu. Yerine yeni kural gelmiyor:
 
 ---
 
-### Görev 7: `planGate.cli` yol override'ını şemaya al
+### Task 7 — Görev 7: `planGate.cli` yol override'ını şemaya al
 
 **Files:**
 - Modify: `team-builder-shared/validate-manifest.mjs` (`checkPlanGate` içine)
@@ -900,7 +900,7 @@ git commit -m "feat: accept planGate.cli path overrides"
 
 ---
 
-### Görev 8: Hedef dokümanlarına komut ve sandbox eşlemesini yaz
+### Task 8 — Görev 8: Hedef dokümanlarına komut ve sandbox eşlemesini yaz
 
 **Files:**
 - Modify: `team-builder-shared/codex-target.md`
@@ -974,7 +974,7 @@ git commit -m "docs: record the cross-ecosystem call per target"
 
 ---
 
-### Görev 9: Çekirdek spec'i revize et
+### Task 9 — Görev 9: Çekirdek spec'i revize et
 
 Çekirdek spec N14'ü ve iki satırlı yüklemi hâlâ eski hâliyle söylüyor; öyle kalırsa bir sonraki okuyan uygulanan kuralla çelişen bir referans metni bulur.
 
@@ -1080,7 +1080,7 @@ git commit -m "docs: revise the core spec for the user waiver and close KARAR 21
 
 ---
 
-### Görev 10: Uçtan uca elle prova
+### Task 10 — Görev 10: Uçtan uca elle prova
 
 Doğrulayıcılar kuralların **belgelendiğini** kanıtlar, **işlediğini** değil. Kapı prosedürünü elle yürütmek bu planda başka hiçbir adımın bulamayacağı boşlukları bulur — önceki turda `slug` boşluğu tam böyle çıkmıştı.
 
