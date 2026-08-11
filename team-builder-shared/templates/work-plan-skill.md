@@ -140,8 +140,10 @@ Her kapı sonucu `reviews.plan-review` ya da `reviews.code-review` dizisine **ta
 ### `planReviewPassed` — plan onayı geçerli mi?
 
 Bu yüklem **dosyayla birlikte taşınır** ve **çağıran oturumdan bağımsızdır**. Bir planı
-başka bir ekosistemde açtığında yeniden denetletme; kimlik planın kendi `executor`
-ekosisteminden kurulur, senin oturumundan değil.
+başka bir ekosistemde açtığında yeniden denetletme. Karşılaştırılacak **ad** manifest'teki
+güncel denetleyiciden gelir, senin oturumundan değil — plan dosyaları paylaşılır ve onay
+hangi oturumdan bakıldığına göre değişmemelidir. **Ekosistem** ise denetimin fiilen
+çalıştığı yerdir; denetleyici projenin başka bir ekosisteminde üretilmiş olabilir.
 
 Üç yoldan biriyle doğru olur. Hepsinde ortak: bakılan kayıt `plan-review`'ın **son**
 kaydıdır ve `kayıt.revision === plan.revision` olmalıdır.
