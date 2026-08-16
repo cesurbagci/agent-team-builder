@@ -76,9 +76,11 @@ function validatePlanGate(doc, errors, agentsByName) {
     return;
   }
 
-  // Every ecosystem the project targets has to be able to run a plan, and the
-  // gate owner has to exist in every ecosystem its executors run in. Together
-  // these keep work from landing where no reviewer or no executor exists.
+  // Every ecosystem the project targets has to be able to run a plan: an
+  // eligible executor must exist there, so work never lands where no
+  // executor can pick it up. (The gate owner does not have to be generated
+  // in every executor's ecosystem — an unreachable owner runs over an
+  // external CLI call instead.)
   const executors = eligibleExecutors(doc);
   const executorTargets = new Set(
     executors.flatMap((a) => effectiveTargets(doc, a))
@@ -121,14 +123,6 @@ function validatePlanGate(doc, errors, agentsByName) {
         `planGate.${key} "${owner}" kod yazmayan bir agent olmalı (writesCode: false)`
       );
       continue;
-    }
-    const ownerTargets = new Set(effectiveTargets(doc, agent));
-    for (const eco of executorTargets) {
-      if (!ownerTargets.has(eco)) {
-        errors.push(
-          `planGate.${key} "${owner}" "${eco}" ekosisteminde üretilmiyor — kapı sahibi tüm uygun executor'ların ekosistemlerini kapsamalı`
-        );
-      }
     }
   }
 }
@@ -1059,26 +1053,25 @@ if (process.argv.includes("--selftest")) {
     ],
   });
 
-  // V8 — owner is not generated for every ecosystem its executors run in.
-  expectReject(
-    "V8 owner does not cover executor targets",
-    {
-      targetsDefault: ["claude"],
-      constitution: { planGate: true },
-      planGate: { planReviewer: "architect", codeReviewer: null },
-      routing: [{ path: "src/**", role: "dev" }],
-      agents: [
-        { name: "dev", description: 'rol aciklamasi', targets: ["claude", "codex"], model: "sonnet" },
-        {
-          name: "architect", description: 'rol aciklamasi',
-          targets: ["claude"],
-          model: "opus",
-          writesCode: false,
-        },
-      ],
-    },
-    "kapsamalı"
-  );
+  // V8 — the owner need not be generated in every executor's ecosystem. This is
+  // the whole point of cross-ecosystem invocation: a claude session reaches a
+  // codex-only reviewer over the CLI. `dev` still targets codex, so the
+  // per-ecosystem executor rule (which this change keeps) is satisfied.
+  expectAccept("V8 owner outside an executor ecosystem", {
+    targetsDefault: ["claude"],
+    constitution: { planGate: true },
+    planGate: { planReviewer: "architect", codeReviewer: null },
+    routing: [{ path: "src/**", role: "dev" }],
+    agents: [
+      { name: "dev", description: 'rol aciklamasi', targets: ["claude", "codex"], model: "sonnet" },
+      {
+        name: "architect", description: 'rol aciklamasi',
+        targets: ["codex"],
+        model: "opus",
+        writesCode: false,
+      },
+    ],
+  });
 
   // V9 — the owner may inherit coverage from targetsDefault.
   // Both sandbox values ride along here: a rule that rejected the real roster

@@ -113,9 +113,12 @@ Generated dosyalar **elle değiştirilmez**; kaynak burasıdır.
   `codeReviewer` anahtarlarının ikisi de bulunmalı, değerleri agent adı ya da `null` olmalı.
   `false` ya da yoksa kök `planGate` **bulunmamalı**.
 - Kapı sahipleri kod yazmayan agent olmalı (`writesCode: false`).
-- Kapı sahibinin etkin hedefleri, uygun executor'ların (routing'de geçen + kod yazan)
-  etkin hedeflerinin birleşimini kapsamalı.
 - `planGate` açıkken hedeflenen her ekosistemde en az bir uygun executor bulunmalı.
+  Bu kural hedeflenen ekosistemleri **tüm** agent'lardan hesaplar, kapı sahibi dahil;
+  yani yalnız bir ekosistemde üretilen bir kapı sahibi o ekosistemde bir executor
+  bulunmasını da zorunlu kılar. Kapı sahibinin **executor'ların ekosistemlerini
+  kapsaması** artık gerekmiyor — ulaşılamayan sahip harici CLI çağrısıyla çalıştırılır
+  (bkz. `plan-gate.md`, *Başka ekosistemdeki kapı sahibi*).
 
 ---
 
