@@ -30,6 +30,8 @@ teklif etme (en alttaki bölüme bak).
 
 `executor` ve denetim kayıtları `<ekosistem>/<agent-adı>` biçiminde yazılır, o yüzden
 önce ekosistemi çözmen gerekir. Bu, **skill'in okunduğu yola** bakılarak yapılır:
+(Tek istisna: kapı sahibi başka bir ekosistemdeyse denetim kaydına **çağrının koştuğu**
+ekosistem girer, seninki değil — bkz. *Başka ekosistemdeki kapı sahibi*.)
 
 | Skill'in konumu | Ekosistem |
 |---|---|
@@ -312,7 +314,7 @@ ekosisteminde çalıştırırsın. Kapı 1 ve kapı 3 için dizi aynıdır.
 
    | Ekosistem | Komut |
    |---|---|
-   | `claude` | `claude -p --allowedTools Read Grep Glob` |
+   | `claude` | `claude -p --allowedTools "Read,Grep,Glob"` |
    | `codex` | `codex exec --sandbox read-only -` |
    | `opencode` | `opencode run` |
 
@@ -373,13 +375,17 @@ Ayrıştırma kuralları:
   yalnız sen yazarsın.
 - Blok **dışındaki** metni yok say; modeller düşünme/özet metni yazar.
 - `reasons`: `approved` için hedefin bloğunda **boş dizi** (`reasons: []`) kabul edilen
-  biçimdir — alan **eksik değildir**, değeri boştur; kayda yine **`[]`** yazarsın, hedef
-  madde yazmışsa onları at. `rejected` için boş olamaz — boşsa **→ hata**: kaydı yazma,
+  biçimdir — alan **eksik değildir**, değeri boştur. Alan var ama altında hiç madde yoksa
+  (`reasons:` tek başına) bu da **boş sayılır**, hata değildir. Kayda her hâlde **`[]`**
+  yazarsın; hedef madde yazmışsa onları at. `rejected` için boş olamaz — boşsa **→ hata**: kaydı yazma,
   gerekçe uydurma.
 - `by` alanını **sen** doldurursun, hedef değil: kimi çağırdığını sen biliyorsun.
   Hedefin kendi kimliğini beyan etmesine izin verme. Değer `<denetimin çalıştığı
-  ekosistem>/<sahibin adı>`dır — yani 2. adımda seçtiğin **hedef ekosistem**, **senin
-  oturumunun ekosistemi değil**. **Bu, "Hangi ekosistemdesin?" bölümündeki kuralın
+  ekosistem>/<sahibin adı>`dır — **bu bloğu döndüren çağrının fiilen koştuğu** ekosistem,
+  **senin oturumunun ekosistemi değil**. Hata hâlinde kullanıcı "başka ekosistemde
+  çalıştır" dediyse kayda **o** ekosistem girer, 2. adımda ilk seçtiğin değil: kayıt
+  denetimin nerede yapıldığını söyler, nerede denenmiş olduğunu değil.
+  **Bu, "Hangi ekosistemdesin?" bölümündeki kuralın
   istisnasıdır:** o kural denetim kaydının ekosistemini skill'in okunduğu yoldan (senin
   ekosisteminden) çözer; çapraz çağrıda kayda giren ekosistem **senin değil, çağrının
   fiilen çalıştığı** ekosistemdir. Karıştırırsan `planReviewPassed`'ın ilk satırı hiç
@@ -408,8 +414,9 @@ davranışında olduğu gibi.
 
 ### Hata hâlinde kullanıcıya ne sorarsın
 
-Kayıt yazılmaz, plan bulunduğu klasörde kalır — **1. ve 2. seçenekte**. Kullanıcıya bu
-üç seçeneği bu sırayla sun:
+1. ve 2. seçenek **kendiliğinden kayıt yazmaz**; plan bulunduğu klasörde kalır ve
+yeniden yapılan çağrı normal akışa döner — başarılı olursa kaydı o akış yazar.
+Kullanıcıya bu üç seçeneği bu sırayla sun:
 
 1. **Tekrar dene** — taşıma hatalarında anlamlı; protokol hatasında genelde değil.
 2. **`<sahip>`'i `<başka ekosistem>`'de çalıştır** — yalnız sahibin **etkin

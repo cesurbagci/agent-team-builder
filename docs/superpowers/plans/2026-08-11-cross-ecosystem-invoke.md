@@ -417,15 +417,21 @@ ekosisteminde çalıştırırsın. Kapı 1 ve kapı 3 için dizi aynıdır.
 
    | Ekosistem | Komut |
    |---|---|
-   | `claude` | `claude -p --agent <ad>` |
+   | `claude` | `claude -p --allowedTools "Read,Grep,Glob"` |
    | `codex` | `codex exec --sandbox read-only -` |
-   | `opencode` | `opencode run --agent <ad>` |
+   | `opencode` | `opencode run` |
 
    - **Prompt stdin'den gider**, argüman olarak değil: rol + planın tamamı kolayca
      işletim sisteminin argüman sınırını aşar ve tırnak hatası üretir.
-   - **Sandbox her zaman salt-okunur** — sahibin `sandbox_mode`'una **bakma**.
-     `writesCode: false` dosya sistemi izni değildir; doküman sahibi bir rol meşru
-     biçimde `workspace-write` olabilir. Denetim çağrısı hiçbir şey yazmaz.
+   - **`--agent` verme.** Rolü zaten prompt'a gömüyorsun; `--agent` bunun üstüne hedefin
+     kendi konfigürasyonunu, dolayısıyla **izinlerini** yükler. OpenCode'da
+     `permission.edit` doğrudan agent konfigürasyonundan gelir ve doküman sahibi bir rol
+     meşru biçimde `allow`'dur.
+   - **Sahibin `sandbox_mode`'una bakma.** `writesCode: false` dosya sistemi izni
+     değildir; doküman sahibi bir rol meşru biçimde `workspace-write` olabilir.
+   - **Salt-okunurluğu üç CLI eşit zorlamıyor.** `codex` işletim sistemi düzeyinde;
+     `claude` kapalı izin listesiyle; **`opencode` hiç zorlamıyor** — orada koruma
+     sözleşmeseldir ve bunu açıkça yaz.
    - **Zaman aşımı 10 dakika.** Süre dolarsa süreç ağacının tamamını sonlandır.
    - Manifest'te `planGate.cli.<ekosistem>` varsa çalıştırılabilir **yol** olarak onu
      kullan; argümanlar yine yukarıdaki tablodandır.
@@ -493,13 +499,21 @@ görür ve baştan dener.
 gerçekten başka bir denetleyici istiyorsa bu, kapı sahibini değiştirmektir — *Kapı
 sahipleri değişirse* kuralları geçerlidir.
 
-### Codex'te sınır
+### Çağrı rol taklididir, tam konfigürasyon değil
 
-`codex exec`'te agent seçme bayrağı yok; yalnız `.codex/agent-definitions/<ad>.md`
-prompt'a gömülür. `.codex/agents/<ad>.toml`'daki model/effort **uygulanmaz** — çağrı
-Codex'in o oturumdaki varsayılan modeliyle koşar. Denetim kararı rol metnine dayanır.
-Öbür iki ekosistemde `--agent` verildiği için konfigürasyon da yüklenir; yani ekosistemler
-arası **birebir aynı** karar bekleme.
+`--agent` hiçbir ekosistemde verilmediği için hedefin **yalnız rol tanımı** prompt'a
+gömülür; kendi konfigürasyonu yüklenmez. Rol tanımı dosyaları:
+
+| Ekosistem | Rol tanımı |
+|---|---|
+| `claude` | `.claude/agents/<ad>.md` |
+| `codex` | `.codex/agent-definitions/<ad>.md` |
+| `opencode` | `.opencode/agents/<ad>.md` |
+
+Konfigürasyon yüklenmediği için agent'a atanmış model ve effort/variant ayarları
+**uygulanmaz** — çağrı, o CLI'ın oturumdaki varsayılan modeliyle koşar. Denetim kararı
+rol metnine dayanır; aynı planı iki ekosistemdeki aynı role denetletirsen **birebir aynı
+kararı bekleme**.
 ````
 
 - [ ] **Step 2: Doğrulayıcıları çalıştır**
