@@ -58,6 +58,12 @@ Tasarım, CLI'ların agent seçme özelliğine dayanamaz. Yerel kurulumda ölç�
 Bu yüzden çağrı, rolü **prompt'a gömerek** kurulur (KARAR B3). Team-builder her hedef için
 rol tanımını zaten üretiyor, malzeme mevcut.
 
+**Sonradan çıkan ikinci gerekçe:** `--agent` yalnız gereksiz değil, **zararlı**. Verildiği
+yerde hedefin kendi konfigürasyonunu yükler — dolayısıyla izinlerini de. OpenCode'da
+`permission.edit` doğrudan agent konfigürasyonundan gelir ve doküman sahibi bir rol
+meşru biçimde `allow`'dur; `--agent architect` demek, denetleyiciye yazma izni vermek
+demektir. Bu yüzden `--agent` **hiçbir ekosistemde verilmez**.
+
 ## Terimler
 
 | Terim | Tanım |
@@ -90,12 +96,14 @@ Kapı 1 ve kapı 3 için **aynı**:
 6. CLI'ı **proje kökünde** çalıştır. Hedef, deposu okuyabilmelidir: kapı 1'in reddetme
    ölçütlerinden biri *"yaklaşım mevcut bir ADR'ye aykırı"*dır, yani denetleyicinin
    `docs/` altını okuması gerekir. Prompt planı taşır, depo bağlamını taşımaz.
-   - **Sandbox her zaman salt-okunur** — sahibin `sandbox_mode`'undan **bağımsız**.
-     `writesCode: false` dosya sistemi izni değildir: doküman sahibi bir rol
-     `writesCode: false` **ve** `sandbox_mode: workspace-write` olabilir, üstelik bu
-     meşrudur (`opencode-target.md`: *"İkisini tek bayrağa indirgeme"*). Rolün kendi
-     sandbox'ı eşlenirse hedef `.agent-work/`'e yazabilir. Denetim çağrısı hiçbir şey
-     yazmaz; bu yüzden izin **rolden değil çağrı türünden** gelir.
+   - **Sahibin `sandbox_mode`'u çağrıya taşınmaz.** `writesCode: false` dosya sistemi
+     izni değildir: doküman sahibi bir rol `writesCode: false` **ve**
+     `sandbox_mode: workspace-write` olabilir, üstelik bu meşrudur
+     (`opencode-target.md`: *"İkisini tek bayrağa indirgeme"*). Rolün kendi izinleri
+     eşlenirse hedef `.agent-work/`'e yazabilir. Denetim çağrısı hiçbir şey yazmaz; bu
+     yüzden izin **rolden değil çağrı türünden** gelir. Her ekosistemde o CLI'ın en
+     kısıtlayıcı mekanizması kullanılır — ve mekanizmanın gücü ekosisteme göre değişir,
+     bkz. *Salt-okunurluk ne kadar zorlanıyor*.
    - **Zaman aşımı: varsayılan 10 dakika.** Etkileşimsiz koşuda izin istemine takılan bir
      çağrı da burada yakalanır; süresiz bekleme kapıyı sessizce kilitler. Süre dolunca
      **süreç ağacının tamamı** sonlandırılır — CLI'lar alt süreç açar, yalnız üstü
@@ -300,8 +308,16 @@ dosyanın yolu** override edilebilir; argümanlar edilemez.
 | Ekosistem | Varsayılan çağrı | Prompt nasıl gider |
 |---|---|---|
 | `codex` | `codex exec --sandbox read-only -` | **stdin** |
-| `opencode` | `opencode run --agent <ad>` | **stdin** |
-| `claude` | `claude -p --agent <ad>` | **stdin** |
+| `opencode` | `opencode run` | **stdin** |
+| `claude` | `claude -p --allowedTools Read Grep Glob` | **stdin** |
+
+**`--agent` hiçbir ekosistemde verilmez.** İlk taslak, destekleyen iki ekosistemde
+verilmesini öngörüyordu. Ölçüm bunun yanlış olduğunu gösterdi: `--agent`, hedefin kendi
+konfigürasyonunu yükler — **tam da salt-okunur kuralının "bakma" dediği izinleri**.
+OpenCode'da `permission.edit` doğrudan agent konfigürasyonundan gelir ve doküman sahibi
+bir rol meşru biçimde `allow`'dur; `--agent architect` demek, denetleyiciye yazma izni
+vermek demektir. KARAR B3 rolü zaten prompt'a gömdüğü için `--agent` hiçbir şey
+kazandırmıyordu — kaldırmak tek kod yolunu da güçlendirir.
 
 **Prompt argüman değil, stdin.** Prompt rol tanımının **tamamını** ve plan dosyasının
 **tamamını** taşır — kolayca on binlerce karakter. Argüman olarak geçirmek işletim
@@ -316,17 +332,31 @@ olmayan bir kuruluma işaret etme ihtiyacını karşılar, argüman kurgusunu ar
 ve manifest'te tek satırda denetlenebilir kalır. Alan verilmezse ekosistemin adı `PATH`'ten
 çözülür.
 
-`--agent` desteği olan iki ekosistemde de rol **yine prompt'a gömülür** (KARAR B3): tek
-kod yolu, tek hata biçimi. `--agent` verilmesi, hedefin kendi konfigürasyonunu da
-yüklemesini sağlar; ikisi çelişmez, prompt bağlayıcıdır.
+### Salt-okunurluk ne kadar zorlanıyor
 
-**Codex'te çağrı rol taklididir, tam konfigürasyon değil.** `codex exec`'te `--agent`
-olmadığı için yalnız `.codex/agent-definitions/<ad>.md` prompt'a gömülür;
-`.codex/agents/<ad>.toml`'daki model/effort **uygulanmaz** — çağrı Codex'in o oturumdaki
-varsayılan modeliyle koşar. Bu bilinçli bir sınırdır: denetim kararı rol metnine
-dayanır. Öbür iki ekosistemde `--agent` verildiği için konfigürasyon da yüklenir; yani
-model seçimi ekosisteme göre **farklıdır** ve bu, çıkan kararların ekosistemler arası
-birebir aynı olmasını beklememek demektir.
+Kural tektir — **denetim çağrısı hiçbir şey yazmaz** — ama üç CLI'ın bunu zorlama gücü
+farklıdır ve bu **olduğu gibi yazılmalıdır**; "sandbox engeller" demek, engellemediği
+yerde yanlış bir güvenlik iddiasıdır.
+
+| Ekosistem | Mekanizma | Gücü |
+|---|---|---|
+| `codex` | `--sandbox read-only` | **İşletim sistemi düzeyinde.** Yazma denemesi başarısız olur. |
+| `claude` | `--allowedTools Read Grep Glob` | **İzin listesi.** Yazma araçları hiç verilmez; liste kapalı olduğu için sonradan eklenen bir araç da otomatik dışarıda kalır. |
+| `opencode` | — | **Yok.** `opencode run`'da salt-okunur bayrağı bulunmuyor; tersi var (`--dangerously-skip-permissions`). |
+
+OpenCode'daki boşluk kapatılamıyor, bu yüzden **azaltılıyor ve açıkça yazılıyor**:
+`--agent` verilmediği için hedef, denetleyicinin izin verici konfigürasyonunu yüklemez.
+Kalan koruma mekanik değil, sözleşmeseldir: çekirdeğin *"`.agent-work/` altına yalnız sen
+yazarsın"* kuralı ve rol metninin kendisi. Bu, çağrıyı yapan tarafın kaydı yazmasıyla
+birleştiğinde **kaydın bütünlüğünü** korur; hedefin depoya hiç dokunamayacağını
+garanti etmez.
+
+**Çağrı rol taklididir, tam konfigürasyon değil — üçünde de.** `--agent` verilmediği
+için hiçbir ekosistemde agent'ın kendi model/effort ayarı uygulanmaz; çağrı, o CLI'ın o
+oturumdaki varsayılan modeliyle koşar. Prompt'a yalnız rol tanımı dosyası gömülür
+(`.codex/agent-definitions/<ad>.md`, `.claude/agents/<ad>.md`,
+`.opencode/agents/<ad>.md`). Bu bilinçli bir sınırdır: denetim kararı rol metnine
+dayanır. Sonuç olarak ekosistemler arası **birebir aynı karar beklenmemelidir**.
 
 ## Doğrulayıcı değişikliği
 
@@ -385,7 +415,7 @@ runtime davranışını ve doğrulama kurallarını değiştirir.
 | B-R6 | Kullanıcı "başka ekosistemde çalıştır" seçti | Kayıt o ekosistemle yazılır, `planReviewPassed` doğru |
 | B-R7 | Kullanıcı atladı | `{ by: user/<sahip>, verdict: skipped, reasons: [gerekçe] }`; yüklem **doğru**, plan ilerleyebilir |
 | B-R8 | Kapı 3'te çapraz çağrı | Kapı 1 ile aynı dizi + uygulama farkı prompt'a eklenir; `done/` yetkisi aynı gevşemiş ölçüyü kullanır |
-| B-R9 | Sahip `sandbox_mode: workspace-write` | Çağrı yine de **salt-okunur** sandbox'la koşar |
+| B-R9 | Sahip `sandbox_mode: workspace-write` | Çağrıya sahibin izinleri **taşınmaz**; `--agent` verilmez, ekosistemin kendi salt-okunur mekanizması kullanılır |
 | B-R10 | Hedef `approved` döndürdü ama `reasons` dolu | Kayıt `reasons: []` ile yazılır (normalizasyon) |
 
 ### Olumsuz (N)
@@ -403,7 +433,7 @@ runtime davranışını ve doğrulama kurallarını değiştirir.
 | B-N9 | `user/<ad>` bir `approved`/`rejected` kaydında | **Reddedilir** — yalnız `skipped` |
 | B-N10 | Kapı sahibi değişti, eski adla kayıt var | `planReviewPassed` **yanlış** — ad karşılaştırması korunur |
 | B-N11 | Kayıt ekosistemi sahibin etkin hedeflerinde değil | `planReviewPassed` **yanlış** |
-| B-N12 | Hedef `.agent-work/`'e yazmaya kalktı | Salt-okunur sandbox engeller (rolün `sandbox_mode`'u ne olursa olsun); kaydı yalnız çağıran yazar |
+| B-N12 | Hedef `.agent-work/`'e yazmaya kalktı | `codex`/`claude`'da mekanizma engeller; `opencode`'da **engellenmez** — koruma sözleşmeseldir ve kaydı yalnız çağıran yazar |
 | B-N13 | `by: user/<ad>` kaydında `reasons` boş | **Reddedilir** — gerekçesiz atlama yok |
 | B-N14 | Çağrı 10 dakikayı aştı | Zaman aşımı hatası; kayıt yazılmaz; süreç ağacı sonlandırılır |
 | B-N15 | Çıplak `by: user` (adsız) | **Reddedilir** — feragat bir sahibe bağlı olmalı |
@@ -418,7 +448,7 @@ runtime davranışını ve doğrulama kurallarını değiştirir.
 |---|---|---|
 | B1 | Çağrı otomatik ve senkron; çekirdeğin "harici CLI çağrısı yok" ilkesi bu kapsamda kalkar | Kullanıcı her kapıda röle olmamalı |
 | B2 | Executor devri kapsam dışı | Tek seferlik okuma çağrısıyla sürmekte olan iş devri aynı problem değil |
-| B3 | Rol prompt'a gömülür; üç ekosistemde tek kod yolu | `codex exec`'te `--agent` yok; CLI özelliğine bağımlılık kırılganlık |
+| B3 | Rol prompt'a gömülür; `--agent` **hiçbir ekosistemde verilmez** | `codex exec`'te zaten yok; verildiği yerlerde hedefin izin verici konfigürasyonunu yükleyip salt-okunur kuralını deliyordu |
 | B4 | Verdict işaretle sınırlı blokla döner | Başlıklar çevrilir, işaretler çevrilmez — çekirdek disiplini |
 | B5 | Ayrıştırma hatası ≠ `rejected` | İkisini karıştırmak sessiz onaya ya da yanlış düzeltme döngüsüne yol açar |
 | B6 | Kayıt şeması kapalı kalır; `substituted_for` **eklenmez** | Vekil yerine "aynı sahibin başka ekosistemi" yeterli; şema açmaya değmez |
@@ -426,7 +456,7 @@ runtime davranışını ve doğrulama kurallarını değiştirir.
 | B8 | Atlama izlenir ve `user/<ad>` ile **sahibe bağlanır** | KARAR 18'in kapsamadığı vaka; ada bağlamak feragatin sahip değişince düşmesini sağlar — yeni alan gerekmeden |
 | B9 | Komut eşlemesi sabit; override **yalnız yürütülebilir yolu** | Serbest kabuk komutu spec'in kendi saydığı riskin ta kendisi; yol tek satırda denetlenebilir |
 | B10 | Doğrulayıcının kapsama kuralı kalkar, **yerine bir şey gelmez** | "En az bir etkin hedef" kuralı zaten her agent için var; tekrarlamak koruma eklemez |
-| B11 | Çapraz denetim çağrısı **her zaman salt-okunur** koşar | `writesCode: false` dosya sistemi izni değil; doküman sahibi roller meşru biçimde `workspace-write` olabilir. İzin rolden değil çağrı türünden gelir |
+| B11 | Çağrıya rolün `sandbox_mode`'u **taşınmaz**; her ekosistemde o CLI'ın en kısıtlayıcı mekanizması kullanılır ve `opencode`'daki boşluk açıkça yazılır | `writesCode: false` dosya sistemi izni değil; doküman sahibi roller meşru biçimde `workspace-write` olabilir. Zorlanamayan bir garantiyi zorlanıyormuş gibi yazmak, yanlış güvenlik iddiasıdır |
 | B12 | Prompt stdin'den gider, süreç kabuksuz başlatılır | Rol + planın tamamı `ARG_MAX`'ı zorlar; kabuksuz `argv` enjeksiyon yüzeyini kaldırır |
 | B13 | Kapı 3 prompt'una uygulama farkı eklenir | Taze süreç, kirli çalışma ağacında hangi değişikliğin bu plana ait olduğunu göremez |
 

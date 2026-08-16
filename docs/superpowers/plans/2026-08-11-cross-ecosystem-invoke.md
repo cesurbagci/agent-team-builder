@@ -925,13 +925,19 @@ codex exec --sandbox read-only -
 ```
 
 - Prompt **stdin**'den gider (`-`): rol tanımı + planın tamamı argüman sınırını aşar.
+  Süreç kabuk olmadan, `argv` dizisiyle başlatılır.
 - Sandbox **her zaman `read-only`** — agent'ın `sandbox_mode`'una bakılmaz. `writesCode:
   false` dosya sistemi izni değildir; bir doküman sahibi meşru biçimde
   `workspace-write` olabilir ve o izinle çağrılırsa `.agent-work/`'e yazabilir.
   Denetim çağrısı hiçbir şey yazmaz.
-- **`--agent` yok.** Rol yalnız `.codex/agent-definitions/<ad>.md` prompt'a gömülerek
-  taşınır; `.codex/agents/<ad>.toml`'daki `model` ve `model_reasoning_effort`
-  **uygulanmaz**. Çağrı, Codex'in o oturumdaki varsayılan modeliyle koşar.
+  **Üç ekosistem içinde salt-okunurluğu işletim sistemi düzeyinde zorlayan tek CLI
+  Codex'tir**; `claude` izin listesiyle, `opencode` ise hiç zorlamaz. Bu, Codex'i çapraz
+  denetim için en güvenli hedef yapar.
+- **`--agent` yok** — Codex'te zaten yok, ama olsaydı da verilmezdi: `--agent` hedefin
+  kendi konfigürasyonunu, dolayısıyla izinlerini yükler. Rol yalnız
+  `.codex/agent-definitions/<ad>.md` prompt'a gömülerek taşınır;
+  `.codex/agents/<ad>.toml`'daki `model` ve `model_reasoning_effort` **uygulanmaz**.
+  Çağrı, Codex'in o oturumdaki varsayılan modeliyle koşar.
 - Manifest'te `planGate.cli.codex` varsa `codex` yerine o yol kullanılır; argümanlar
   değişmez.
 ```
@@ -947,16 +953,24 @@ Plan kapısı sahibi yalnız OpenCode'da üretilmişse başka bir ekosistemdeki 
 komutla çağırır:
 
 ```
-opencode run --agent <ad>
+opencode run
 ```
 
-- Prompt **stdin**'den gider.
-- `--agent` verildiği için agent'ın kendi konfigürasyonu da yüklenir; rol yine de
-  prompt'a gömülür — üç ekosistemde tek kod yolu, tek hata biçimi.
-- Sandbox **her zaman salt-okunur** — agent'ın `sandbox_mode`'una ve `permission.edit`
-  eşlemesine bakılmaz. Yukarıdaki *`writesCode: false` tek başına `deny` demek değildir*
-  notu tam olarak bu yüzden önemli: bir doküman sahibi `workspace-write`'tır ve kendi
-  izniyle çağrılırsa `.agent-work/`'e yazabilir.
+- Prompt **stdin**'den gider. Süreç kabuk olmadan, `argv` dizisiyle başlatılır.
+- **`--agent` verilmez.** Rol prompt'a gömülür — üç ekosistemde tek kod yolu, tek hata
+  biçimi. `--agent` vermek burada özellikle tehlikelidir: agent'ın kendi
+  konfigürasyonunu yükler, dolayısıyla `permission.edit`'ini de. Yukarıdaki
+  *`writesCode: false` tek başına `deny` demek değildir* notu tam olarak bu yüzden
+  önemli — bir doküman sahibi meşru biçimde `workspace-write`'tır ve `edit: allow`
+  alır. `--agent architect` demek, denetleyiciye yazma izni vermek demektir.
+  Konfigürasyon yüklenmediği için `opencode_model` ve variant ayarları da
+  **uygulanmaz**; çağrı OpenCode'un o oturumdaki varsayılanıyla koşar.
+- **Salt-okunurluk OpenCode'da CLI ile zorlanamıyor.** `opencode run`'da salt-okunur
+  bayrağı yok; tersi var (`--dangerously-skip-permissions`). Bunu "sandbox engeller"
+  diye yazma — engellemiyor. Kalan koruma **sözleşmeseldir**: `--agent` verilmediği
+  için izin verici rol konfigürasyonu yüklenmez, çekirdeğin *"`.agent-work/` altına
+  yalnız sen yazarsın"* kuralı geçerlidir ve kaydı yalnız çağıran yazar. Bu, **kaydın
+  bütünlüğünü** korur; hedefin depoya hiç dokunamayacağını garanti etmez.
 - Manifest'te `planGate.cli.opencode` varsa `opencode` yerine o yol kullanılır.
 ```
 
