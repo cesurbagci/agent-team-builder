@@ -163,3 +163,31 @@ Codex hedefi seçildiğinde generator (`sync-agent-config.mjs`) tek kaynak `.age
 `.codex/agents/<name>.toml` (TOML metadata + derlenen `developer_instructions`) +
 `.codex/agent-definitions/<name>.md` (kaynak md'nin verbatim kopyası) üretir. Hiçbir
 generated dosya elle düzenlenmez; değişiklik kaynakta yapılır, sonra sync + drift-check.
+
+---
+
+## Çapraz ekosistem denetim çağrısı
+
+Plan kapısı sahibi yalnız Codex'te üretilmişse başka bir ekosistemdeki oturum onu şu
+komutla çağırır:
+
+```
+codex exec --sandbox read-only -
+```
+
+- Prompt **stdin**'den gider (`-`): rol tanımı + planın tamamı argüman sınırını aşar.
+  Süreç kabuk olmadan, `argv` dizisiyle başlatılır.
+- Sandbox **her zaman `read-only`** — agent'ın `sandbox_mode`'una bakılmaz. `writesCode:
+  false` dosya sistemi izni değildir; bir doküman sahibi meşru biçimde
+  `workspace-write` olabilir ve o izinle çağrılırsa `.agent-work/`'e yazabilir.
+  Denetim çağrısı hiçbir şey yazmaz.
+  **Üç ekosistem içinde salt-okunurluğu işletim sistemi düzeyinde zorlayan tek CLI
+  Codex'tir**; `claude` izin listesiyle, `opencode` ise hiç zorlamaz. Bu, Codex'i çapraz
+  denetim için en güvenli hedef yapar.
+- **`--agent` yok** — Codex'te zaten yok, ama olsaydı da verilmezdi: `--agent` hedefin
+  kendi konfigürasyonunu, dolayısıyla izinlerini yükler. Rol yalnız
+  `.codex/agent-definitions/<ad>.md` prompt'a gömülerek taşınır;
+  `.codex/agents/<ad>.toml`'daki `model` ve `model_reasoning_effort` **uygulanmaz**.
+  Çağrı, Codex'in o oturumdaki varsayılan modeliyle koşar.
+- Manifest'te `planGate.cli.codex` varsa `codex` yerine o yol kullanılır; argümanlar
+  değişmez.

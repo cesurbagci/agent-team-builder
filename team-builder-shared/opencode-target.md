@@ -122,3 +122,31 @@ OpenCode hedefi seçildiğinde generator (`sync-agent-config.mjs`) tek kaynak `.
 için `.opencode/agents/<name>.md` (OpenCode frontmatter + kaynak md gövdesi) + `.opencode/skills/`
 mirror üretir. Hiçbir generated dosya elle düzenlenmez; değişiklik kaynakta yapılır, sonra
 sync + drift-check.
+
+---
+
+## Çapraz ekosistem denetim çağrısı
+
+Plan kapısı sahibi yalnız OpenCode'da üretilmişse başka bir ekosistemdeki oturum onu şu
+komutla çağırır:
+
+```
+opencode run
+```
+
+- Prompt **stdin**'den gider. Süreç kabuk olmadan, `argv` dizisiyle başlatılır.
+- **`--agent` verilmez.** Rol prompt'a gömülür — üç ekosistemde tek kod yolu, tek hata
+  biçimi. `--agent` vermek burada özellikle tehlikelidir: agent'ın kendi
+  konfigürasyonunu yükler, dolayısıyla `permission.edit`'ini de. Yukarıdaki
+  *`writesCode: false` tek başına `deny` demek değildir* notu tam olarak bu yüzden
+  önemli — bir doküman sahibi meşru biçimde `workspace-write`'tır ve `edit: allow`
+  alır. `--agent architect` demek, denetleyiciye yazma izni vermek demektir.
+  Konfigürasyon yüklenmediği için `opencode_model` ve variant ayarları da
+  **uygulanmaz**; çağrı OpenCode'un o oturumdaki varsayılanıyla koşar.
+- **Salt-okunurluk OpenCode'da CLI ile zorlanamıyor.** `opencode run`'da salt-okunur
+  bayrağı yok; tersi var (`--dangerously-skip-permissions`). Bunu "sandbox engeller"
+  diye yazma — engellemiyor. Kalan koruma **sözleşmeseldir**: `--agent` verilmediği
+  için izin verici rol konfigürasyonu yüklenmez, çekirdeğin *"`.agent-work/` altına
+  yalnız sen yazarsın"* kuralı geçerlidir ve kaydı yalnız çağıran yazar. Bu, **kaydın
+  bütünlüğünü** korur; hedefin depoya hiç dokunamayacağını garanti etmez.
+- Manifest'te `planGate.cli.opencode` varsa `opencode` yerine o yol kullanılır.
