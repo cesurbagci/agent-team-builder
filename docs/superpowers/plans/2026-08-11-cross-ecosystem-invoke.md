@@ -902,15 +902,18 @@ Expected: PASS.
 - [ ] **Step 5: Mutasyon testi**
 
 ```bash
+cp team-builder-shared/validate-manifest.mjs /tmp/vm.bak
 node -e '
 const fs = require("node:fs");
 const p = "team-builder-shared/validate-manifest.mjs";
 const orig = fs.readFileSync(p, "utf8");
 fs.writeFileSync(p, orig.replace("if (!TARGETS.includes(eco)) {", "if (false) {"));
-' && node team-builder-shared/validate-manifest.mjs --selftest; echo "exit=$?"; git checkout team-builder-shared/validate-manifest.mjs
+'
+node team-builder-shared/validate-manifest.mjs --selftest; echo "exit=$?"
+cp /tmp/vm.bak team-builder-shared/validate-manifest.mjs && rm /tmp/vm.bak
 ```
 
-Expected: V8c'nin başarısız olduğunu bildiren çıktı ve `exit=1`.
+Expected: V8c'nin başarısız olduğunu bildiren çıktı ve `exit=1`. **Geri yükleme `git checkout` ile yapılmaz** — henüz stage'lenmemiş çalışman varsa onu da siler; dosya yedeğinden dön.
 
 `exit=0` görürsen V8c kuralı savunmuyor — dur, testi düzelt.
 
