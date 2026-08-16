@@ -33,7 +33,7 @@
 | `team-builder-shared/validate-manifest.mjs` | Manifest kuralları + selftest. | Görev 6, 7 |
 | `team-builder-shared/manifest-schema.md` | Doğrulama kuralları listesi; sihirbazın elle doğrulama fallback'i buraya bakıyor. | Görev 6, 7 |
 | `team-builder-shared/codex-target.md` | Codex hedefi ayrıntıları — komut eşlemesi, sandbox bayrağı, model/effort sınırı. | Görev 8 |
-| `team-builder-shared/opencode-target.md` | OpenCode hedefi ayrıntıları — komut eşlemesi, sandbox bayrağı. | Görev 8 |
+| `team-builder-shared/opencode-target.md` | OpenCode hedefi ayrıntıları — komut eşlemesi, `--agent` verilmemesi, salt-okunur bayrağının **bulunmadığı**. | Görev 8 |
 | `docs/superpowers/specs/2026-08-02-plan-gate-design.md` | Çekirdek spec — N14 revizyonu, yüklem tablosu, KARAR 21'in kapanışı. | Görev 9 |
 
 **Yeni dosya yok.** `route-globs.mjs` gibi ayrı bir modül gerekmiyor: bu planda paylaşılan yeni bir algoritma yok, kural metni ve doğrulama var.
@@ -393,6 +393,27 @@ Bu görevin çıktısı projelere kopyalanan **tek** runtime otoritesidir. Burad
 
 `## Kapı sahipleri değişirse` satırının hemen öncesine ekle:
 
+> **Bu blok artık reçete değil — uygulandı ve üç inceleme turunda değişti.**
+>
+> Bölümün **yürürlükteki hâli** `team-builder-shared/templates/work-plan-skill.md`
+> içindedir; otorite orasıdır. Aşağıdaki metin ilk taslaktır ve **kasıtlı olarak
+> güncellenmemiştir** — bir planın 150 satırlık bir dokümanı ikizlemesi kalıcı bir
+> senkronizasyon borcudur.
+>
+> **Bu görevi yeniden çalıştırma.** Çalıştırırsan aşağıdaki taslak, incelemelerin
+> kapattığı bir Critical'ı geri getirir: başarılı bir çapraz denetimde `by` alanına
+> hangi değerin yazılacağı burada yazılı değildir, dolayısıyla agent dosyanın genel
+> kuralına düşüp **kendi** ekosistemini yazar — o değer hiçbir zaman denetleyicinin
+> etkin hedeflerinden biri olamaz ve plan `draft/`'tan çıkamaz.
+>
+> İncelemelerde kapanan öbür boşluklar: işaret eşleşmesinin boşluk toleransı ve
+> blok değil **işaret** sayıldığı; `reasons`'ın iki yönlü kuralı; rol tanımı dosyasının
+> eksikliğinin protokol hatası sayılması; bayat `reviewed_revision`'ın kullanıcı
+> seçenekleri akışının dışında kalması; hedefe "bloğu bir kez yaz" talimatı; feragat
+> kaydının hangi diziye gittiği; stdin'in kabuk enjeksiyonu gerekçesi.
+
+<details><summary>İlk taslak (tarihsel — uygulamaya esas alma)</summary>
+
 ````markdown
 ## Başka ekosistemdeki kapı sahibi
 
@@ -417,7 +438,7 @@ ekosisteminde çalıştırırsın. Kapı 1 ve kapı 3 için dizi aynıdır.
 
    | Ekosistem | Komut |
    |---|---|
-   | `claude` | `claude -p --allowedTools "Read,Grep,Glob"` |
+   | `claude` | `claude -p --allowedTools Read,Grep,Glob` |
    | `codex` | `codex exec --sandbox read-only -` |
    | `opencode` | `opencode run` |
 
@@ -515,6 +536,9 @@ Konfigürasyon yüklenmediği için agent'a atanmış model ve effort/variant ay
 rol metnine dayanır; aynı planı iki ekosistemdeki aynı role denetletirsen **birebir aynı
 kararı bekleme**.
 ````
+
+</details>
+
 
 - [ ] **Step 2: Doğrulayıcıları çalıştır**
 
@@ -1203,7 +1227,7 @@ git commit -m "docs: mark the scope B spec as implemented"
 | Spec bölümü | Görev |
 |---|---|
 | Çağrı dizisi (1–8) | 4 |
-| Salt-okunur sandbox (B11) | 4, 8 |
+| Rolün sandbox_mode'u taşınmaz; --agent verilmez; opencode boşluğu yazılır (B11) | 4, 8 |
 | Kapı 3 uygulama farkı (B13) | 4 |
 | Zaman aşımı + süreç ağacı | 4 |
 | Verdict bloğu + ayrıştırma kuralları | 4 |

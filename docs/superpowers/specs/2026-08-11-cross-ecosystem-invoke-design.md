@@ -309,7 +309,7 @@ dosyanın yolu** override edilebilir; argümanlar edilemez.
 |---|---|---|
 | `codex` | `codex exec --sandbox read-only -` | **stdin** |
 | `opencode` | `opencode run` | **stdin** |
-| `claude` | `claude -p --allowedTools Read Grep Glob` | **stdin** |
+| `claude` | `claude -p --allowedTools Read,Grep,Glob` | **stdin** |
 
 **`--agent` hiçbir ekosistemde verilmez.** İlk taslak, destekleyen iki ekosistemde
 verilmesini öngörüyordu. Ölçüm bunun yanlış olduğunu gösterdi: `--agent`, hedefin kendi
@@ -390,13 +390,13 @@ başka bir ekosistemde var ve orada iş de yapılıyor — bu kuralla çelişmez
 
 | Dosya | Değişiklik |
 |---|---|
-| `templates/work-plan-skill.md` | Yeni **"Başka ekosistemdeki kapı sahibi"** bölümü: çağrı dizisi, verdict bloğu + ayrıştırma kuralları, üç sonuç sınıfı, hata seçenekleri, salt-okunur sandbox, kapı 3'ün uygulama farkı. `by` gramerine `user/<ad>` eklenir; `reasons` kuralı genişler; **`planReviewPassed` ve `done/` yetki tabloları üçüncü satırı alır**. |
+| `templates/work-plan-skill.md` | Yeni **"Başka ekosistemdeki kapı sahibi"** bölümü: çağrı dizisi, verdict bloğu + ayrıştırma kuralları, üç sonuç sınıfı, hata seçenekleri, `--agent` verilmemesi ve salt-okunurluğun ekosisteme göre değişen gücü, kapı 3'ün uygulama farkı. `by` gramerine `user/<ad>` eklenir; `reasons` kuralı genişler; **`planReviewPassed` ve `done/` yetki tabloları üçüncü satırı alır**. |
 | `plan-gate.md` | Kayıt şemasında `by` grameri + `reasons` kuralı **ve** `planReviewPassed` tablosu güncellenir (kurulum sözleşmesi skill ile aynı şeyi söylemeli). |
 | `validate-manifest.mjs` | Kapsama kuralı kaldırılır; **yerine yeni kural gelmez**. Opsiyonel `planGate.cli.<ekosistem>` yol alanı şemaya girer. Kural listesi ve selftest'ler buna göre. |
 | `manifest-schema.md` | Doğrulama kuralları listesi + `planGate.cli` alanı (sihirbazın elle doğrulama fallback'i buraya bakıyor). |
 | `validate-plan-gate.mjs` | Şablon/doküman denetimleri `by` gramerinin **ve yüklem tablolarının** yeni hâlini belgeliyor mu diye genişletilir. |
 | Çekirdek spec (`2026-08-02-...`) | N14 revizyonu, yüklem tablosunun üçüncü satırı ve KARAR 21'in kapatıldığı bu spec'e işaret edilir. |
-| `codex-target.md` / `opencode-target.md` | Komut eşlemesi, salt-okunur sandbox bayrağı karşılıkları, Codex'te model/effort'un uygulanmadığı sınır. |
+| `codex-target.md` / `opencode-target.md` | Komut eşlemesi, `--agent` verilmemesi, salt-okunurluğun ekosisteme göre değişen gücü (opencode'da bayrak **yok**), model/effort'un **üçünde de** uygulanmadığı sınır. |
 
 **Üretilen dosyalarda değişiklik yok.** B, üretim (`sync`) çıktısını değiştirmez; yalnız
 runtime davranışını ve doğrulama kurallarını değiştirir.
