@@ -137,9 +137,12 @@ Sihirbaz üretimden **önce** şunları denetler:
   `null`.
 - Kapı sahibi **kod yazmayan** agent olmalı (`writesCode === false`; alan verilmemişse
   agent kod yazar sayılır).
-- Kapı sahibinin **etkin hedefleri**, tüm **uygun executor'ların** (routing'de geçen ve
-  kod yazan agent'lar) etkin hedeflerinin birleşimini kapsamalı.
-- Hedeflenen her ekosistemde en az bir uygun executor bulunmalı.
+- Hedeflenen her ekosistemde en az bir uygun executor bulunmalı. Bu kural hedeflenen
+  ekosistemleri **tüm** agent'lardan hesaplar, kapı sahibi dahil.
+- Kapı sahibinin, uygun executor'ların ekosistemlerini **kapsaması gerekmez.** Sahip
+  oturumun ekosisteminde üretilmemişse harici CLI çağrısıyla kendi ekosisteminde
+  çalıştırılır; prosedür `templates/work-plan-skill.md`'nin *Başka ekosistemdeki kapı
+  sahibi* bölümündedir.
 - Agent adları benzersiz (büyük/küçük harf duyarsız) ve slug kuralına uygun olmalı.
 
 Bu doğrulamaların kod tarafı `validate-manifest.mjs`'e aittir (ayrı iş).

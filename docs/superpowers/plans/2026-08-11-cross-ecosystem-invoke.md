@@ -770,7 +770,7 @@ Expected: PASS.
   yani yalnız bir ekosistemde üretilen bir kapı sahibi o ekosistemde bir executor
   bulunmasını da zorunlu kılar. Kapı sahibinin **executor'ların ekosistemlerini
   kapsaması** artık gerekmiyor — ulaşılamayan sahip harici CLI çağrısıyla çalıştırılır
-  (bkz. `plan-gate.md`, *Başka ekosistemdeki kapı sahibi*).
+  (bkz. `templates/work-plan-skill.md`, *Başka ekosistemdeki kapı sahibi*).
 ```
 
 - [ ] **Step 6: Commit**
