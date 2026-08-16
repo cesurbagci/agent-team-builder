@@ -1128,7 +1128,7 @@ if (process.argv.includes("--selftest")) {
         { name: "architect", description: 'rol aciklamasi', targets: ["codex"], model: "opus", writesCode: false },
       ],
     },
-    "planGate.cli"
+    "geçersiz ekosistem"
   );
 
   // V8d — an empty path would run the ecosystem name from PATH while looking
@@ -1149,7 +1149,29 @@ if (process.argv.includes("--selftest")) {
         { name: "architect", description: 'rol aciklamasi', targets: ["codex"], model: "opus", writesCode: false },
       ],
     },
-    "planGate.cli"
+    "dolu bir yol olmalı"
+  );
+
+  // V8e — cli itself must be an object. Without a case here the outer shape
+  // guard is untested: a refactor weakening it would let `cli: 42` through
+  // while every other line in the block stays covered.
+  expectReject(
+    "V8e cli override wrong shape",
+    {
+      targetsDefault: ["claude"],
+      constitution: { planGate: true },
+      planGate: {
+        planReviewer: "architect",
+        codeReviewer: null,
+        cli: 42,
+      },
+      routing: [{ path: "src/**", role: "dev" }],
+      agents: [
+        { name: "dev", description: 'rol aciklamasi', targets: ["claude", "codex"], model: "sonnet" },
+        { name: "architect", description: 'rol aciklamasi', targets: ["codex"], model: "opus", writesCode: false },
+      ],
+    },
+    "nesne olmalı"
   );
 
   // V9 — the owner may inherit coverage from targetsDefault.
