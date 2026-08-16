@@ -33,6 +33,7 @@ Generated dosyalar **elle değiştirilmez**; kaynak burasıdır.
 | `planGate` | `object` | Koşullu | Kapı sahipleri. **Yalnız `constitution.planGate: true` iken bulunur**; kapalıyken varlığı manifest'i geçersiz kılar. |
 | `planGate.planReviewer` | `string \| null` | Evet (nesne varsa) | Planı denetleyen agent'ın adı, ya da `null` (kapı 1 atlanır). Kod yazmayan bir agent olmalı. |
 | `planGate.codeReviewer` | `string \| null` | Evet (nesne varsa) | Biten işin kodunu denetleyen agent'ın adı, ya da `null` (kapı 3 yoktur). Kod yazmayan bir agent olmalı. |
+| `planGate.cli` | `object` | Hayır | Ekosistem → **yürütülebilir dosya yolu**. Yalnız CLI'ı `PATH`'te olmayan bir yere kuranlar için. Anahtarlar `claude`/`codex`/`opencode`, değerler dolu string. Argümanlar override edilemez — serbest kabuk komutu üretilen konfigürasyona keyfi komut yerleştirmek olurdu. |
 | `focus` | `string[]` | Hayır | Projenin kalite odakları (checkbox ile seçilir). Değerler: `performance`, `code-design`, `ui-ux`, `accessibility`, `security`, `testing`. Reviewer denetim eksenlerini + kısıtları besler. Bkz. `quality-dimensions.md`. |
 | `routing` | `object[]` | Hayır | Path-based zorunlu routing tablosu. Her satır bir kod yolunu bir role bağlar. Bkz. `routing.md`. |
 | `routing[].path` | `string` | Evet (satır içinde) | Glob yolu (örn. `apps/**/main/src/**`). Segment ya düz metin, ya `*` (tek segment), ya `**` (sıfır ya da daha çok segment) olur. Segment içi kısmi joker (`src/*.ts`, `docs/a*`) ve `.`/`..` **kabul edilmez** — routing dizin sahipliği atar, dosya filtresi değil. Ardışık `**` yazılmaz (`docs/**/**`), ve joker içermeyen bir yol (`docs`) o dizinin **alt ağacı** demektir — `docs/**` ile aynıdır; iki yol kısmen çakışırsa en özgül eşleşmenin kazananı olmaz ve manifest reddedilir. |
@@ -119,6 +120,8 @@ Generated dosyalar **elle değiştirilmez**; kaynak burasıdır.
   bulunmasını da zorunlu kılar. Kapı sahibinin **executor'ların ekosistemlerini
   kapsaması** artık gerekmiyor — ulaşılamayan sahip harici CLI çağrısıyla çalıştırılır
   (bkz. `templates/work-plan-skill.md`, *Başka ekosistemdeki kapı sahibi*).
+- `planGate.cli` (verildiyse) nesne olmalı; anahtarları `claude|codex|opencode`,
+  değerleri dolu string. Yalnız yürütülebilir yol; argüman kurgusu araçta sabittir.
 
 ---
 

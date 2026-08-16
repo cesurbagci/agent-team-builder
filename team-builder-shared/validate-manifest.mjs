@@ -125,6 +125,28 @@ function validatePlanGate(doc, errors, agentsByName) {
       continue;
     }
   }
+
+  // Only the executable path is overridable — never the arguments. A free-form
+  // shell command in the manifest would put arbitrary command execution into
+  // generated config, which is exactly the risk the fixed mapping avoids.
+  if ("cli" in gate) {
+    const cli = gate.cli;
+    if (cli === null || typeof cli !== "object" || Array.isArray(cli)) {
+      errors.push("planGate.cli nesne olmalı (ekosistem → yürütülebilir yol)");
+    } else {
+      for (const [eco, value] of Object.entries(cli)) {
+        if (!TARGETS.includes(eco)) {
+          errors.push(
+            `planGate.cli geçersiz ekosistem "${eco}" (claude|codex|opencode)`
+          );
+          continue;
+        }
+        if (typeof value !== "string" || value.trim() === "") {
+          errors.push(`planGate.cli.${eco} dolu bir yol olmalı`);
+        }
+      }
+    }
+  }
 }
 
 export function validate(doc) {
@@ -1072,6 +1094,63 @@ if (process.argv.includes("--selftest")) {
       },
     ],
   });
+
+  // V8b — cli override accepts a path per ecosystem.
+  expectAccept("V8b cli override", {
+    targetsDefault: ["claude"],
+    constitution: { planGate: true },
+    planGate: {
+      planReviewer: "architect",
+      codeReviewer: null,
+      cli: { codex: "/opt/homebrew/bin/codex" },
+    },
+    routing: [{ path: "src/**", role: "dev" }],
+    agents: [
+      { name: "dev", description: 'rol aciklamasi', targets: ["claude", "codex"], model: "sonnet" },
+      { name: "architect", description: 'rol aciklamasi', targets: ["codex"], model: "opus", writesCode: false },
+    ],
+  });
+
+  // V8c — an unknown ecosystem key is a typo, not a new target.
+  expectReject(
+    "V8c cli override unknown ecosystem",
+    {
+      targetsDefault: ["claude"],
+      constitution: { planGate: true },
+      planGate: {
+        planReviewer: "architect",
+        codeReviewer: null,
+        cli: { gpt: "/usr/bin/gpt" },
+      },
+      routing: [{ path: "src/**", role: "dev" }],
+      agents: [
+        { name: "dev", description: 'rol aciklamasi', targets: ["claude", "codex"], model: "sonnet" },
+        { name: "architect", description: 'rol aciklamasi', targets: ["codex"], model: "opus", writesCode: false },
+      ],
+    },
+    "planGate.cli"
+  );
+
+  // V8d — an empty path would run the ecosystem name from PATH while looking
+  // deliberate; a blank override is a mistake, not a default.
+  expectReject(
+    "V8d cli override empty path",
+    {
+      targetsDefault: ["claude"],
+      constitution: { planGate: true },
+      planGate: {
+        planReviewer: "architect",
+        codeReviewer: null,
+        cli: { codex: "  " },
+      },
+      routing: [{ path: "src/**", role: "dev" }],
+      agents: [
+        { name: "dev", description: 'rol aciklamasi', targets: ["claude", "codex"], model: "sonnet" },
+        { name: "architect", description: 'rol aciklamasi', targets: ["codex"], model: "opus", writesCode: false },
+      ],
+    },
+    "planGate.cli"
+  );
 
   // V9 — the owner may inherit coverage from targetsDefault.
   // Both sandbox values ride along here: a rule that rejected the real roster
