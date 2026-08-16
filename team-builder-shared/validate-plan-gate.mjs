@@ -31,6 +31,11 @@ export const BY_GRAMMAR_TOKENS = [
   'user/<agent-adı>',
 ]
 
+// The verdict block is the only contract binding a foreign CLI's output. It is
+// never generated into a project by name, so if the skill stops printing it the
+// protocol silently disappears.
+export const VERDICT_MARKERS = ['verdict', '/verdict']
+
 export const PROGRESS_SENTINEL = '<!-- progress:not-started -->'
 export const CANCEL_NOTE_TAG = '<!-- note:cancelled -->'
 
@@ -259,6 +264,13 @@ export async function validatePlanGateArtifacts(rootDir) {
         )
       }
     }
+    for (const marker of VERDICT_MARKERS) {
+      if (!skillTpl.includes(`<!-- ${marker} -->`)) {
+        errors.push(
+          `templates/work-plan-skill.md does not document marker <!-- ${marker} -->`
+        )
+      }
+    }
   }
 
   // A file literally named SKILL.md under team-builder-shared/ would be picked
@@ -359,6 +371,7 @@ const GOOD_SKILL = [
   PROGRESS_SENTINEL,
   CANCEL_NOTE_TAG,
   ...BY_GRAMMAR_TOKENS,
+  ...VERDICT_MARKERS.map(m => `<!-- ${m} -->`),
   '',
 ].join('\n')
 
@@ -591,6 +604,14 @@ async function runSelftest() {
       'does not document by-value form user/<agent-adı>',
       'a shipped skill that dropped the user waiver form',
       () => fs.writeFile(skillPath, GOOD_SKILL.replace('user/<agent-adı>', 'user'))
+    )
+    // The cross-ecosystem call is runtime-only: nothing is generated for it, so
+    // the shipped skill is the sole place the protocol exists. Drop the verdict
+    // block and a project's agents have no contract to hold a foreign CLI to.
+    await expectError(
+      'does not document marker <!-- /verdict -->',
+      'a shipped skill missing the verdict close marker',
+      () => fs.writeFile(skillPath, GOOD_SKILL.replace('<!-- /verdict -->', ''))
     )
 
     // --- stray SKILL.md ------------------------------------------------------
