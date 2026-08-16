@@ -317,7 +317,9 @@ ekosisteminde çalıştırırsın. Kapı 1 ve kapı 3 için dizi aynıdır.
    | `opencode` | `opencode run --agent <ad>` |
 
    - **Prompt stdin'den gider**, argüman olarak değil: rol + planın tamamı kolayca
-     işletim sisteminin argüman sınırını aşar ve tırnak hatası üretir.
+     işletim sisteminin argüman sınırını aşar ve tırnak hatası üretir. Süreç **kabuk
+     olmadan**, doğrudan `argv` dizisiyle başlatılır — plan metni bir kabuk komutuna
+     enjekte edilmez, kabuk enjeksiyonu diye bir yüzey kalmaz.
    - **Sandbox her zaman salt-okunur** — sahibin `sandbox_mode`'una **bakma**.
      `writesCode: false` dosya sistemi izni değildir; doküman sahibi bir rol meşru
      biçimde `workspace-write` olabilir. Denetim çağrısı hiçbir şey yazmaz.
@@ -340,46 +342,74 @@ reasons:
 <!-- /verdict -->
 ```
 
+Bunu **yalnız bir kez, çıktının sonunda** üretmesini iste; tekrarlamasın. Düşünme ya da
+özet metni yazması sorun değil — blok **dışındaki** metin zaten yok sayılır (aşağıya
+bak) — ama sözleşmeyi ikinci kez tekrarlarsa (ör. talimatı özetlerken) bu iki blok
+sayılır ve ayrıştırma hatasına yol açar.
+
 Ayrıştırma kuralları:
 
-- İşaretler **kendi satırlarında ve tam**. stdout'ta tam bir açılış ve tam bir kapanış,
-  bu sırayla. Sıfır, ikiden çok, ya da ters sıra → hata.
+- İşaretler **kendi satırlarında ve tam eşleşmeli** (baş/son boşluk dışında başka
+  karakter yok). stdout'ta tam bir açılış ve tam bir kapanış, bu sırayla. Sayılan
+  **işaretlerdir, blok değil**: `<!-- verdict -->` tam bir kez, `<!-- /verdict -->` tam
+  bir kez görünmeli. Biri hiç yoksa, biri birden çok kez geçiyorsa (tekrarlanmış iki tam
+  blok dahil), ya da kapanış açılıştan önce geliyorsa → hata.
 - Blok içinde **yalnız bu üç alan**. Bilinmeyen alan, tekrarlanan alan, eksik alan → hata.
 - `verdict` yalnız `approved` ya da `rejected`. `skipped` hedeften **gelmez** — onu
   yalnız sen yazarsın.
 - Blok **dışındaki** metni yok say; modeller düşünme/özet metni yazar.
-- `reasons`: `rejected` ise boş olamaz. `approved` ise kayda **`[]`** yazarsın — hedef
-  madde yazmışsa onları at.
+- `reasons`: `approved` için hedefin bloğunda **boş dizi** (`reasons: []`) kabul edilen
+  biçimdir — alan **eksik değildir**, değeri boştur; kayda yine **`[]`** yazarsın, hedef
+  madde yazmışsa onları at. `rejected` için boş olamaz — boşsa **→ hata**: kaydı yazma,
+  gerekçe uydurma.
 - `by` alanını **sen** doldurursun, hedef değil: kimi çağırdığını sen biliyorsun.
-  Hedefin kendi kimliğini beyan etmesine izin verme.
+  Hedefin kendi kimliğini beyan etmesine izin verme. Değer `<denetimin çalıştığı
+  ekosistem>/<sahibin adı>`dır — yani 2. adımda seçtiğin **hedef ekosistem**, **senin
+  oturumunun ekosistemi değil**. **Bu, "Hangi ekosistemdesin?" bölümündeki kuralın
+  istisnasıdır:** o kural denetim kaydının ekosistemini skill'in okunduğu yoldan (senin
+  ekosisteminden) çözer; çapraz çağrıda kayda giren ekosistem **senin değil, çağrının
+  fiilen çalıştığı** ekosistemdir. Karıştırırsan `planReviewPassed`'ın ilk satırı hiç
+  sağlanmaz — plan `draft/`'tan çıkamaz.
 
 ### Sonuç üç sınıftan biridir
 
 | Sınıf | Ne zaman | Ne yaparsın |
 |---|---|---|
 | Taşıma hatası | CLI yok/`PATH`'te değil, yetkisiz, zaman aşımı, çıkış kodu ≠ 0 | **Kayıt yazma.** Geçerli bir blok gelmiş olsa bile yok say — sağlıklı bitmemiş süreçten çıkan blok güvenilmez. |
-| Protokol hatası | Blok yok, birden çok, ya da şemaya uymuyor | **Kayıt yazma.** |
+| Protokol hatası | Blok yok, birden çok, şemaya uymuyor, ya da hedefte rol tanımı dosyası (3. adım) bulunamadı | **Kayıt yazma.** |
 | Verdict | Geçerli blok, sağlıklı çıkış | Kaydı yaz. |
 
 **Hata `rejected` değildir.** Ulaşılamayan bir kapıyı "reddetti" saymak planı gereksiz
 düzeltme döngüsüne sokar; ayrıştırma hatasını "onayladı" saymak sessiz onaydır.
 
-`reviewed_revision` diskteki `revision` ile aynı değilse **kaydı yazma** — plan denetim
-sırasında değişmiş demektir, denetimi tekrarla.
+**Rol tanımı bulunamaması taşıma hatası değildir** (CLI hiç çağrılmaz, 3. adımda
+biter) — protokol hatası gibi ele alınır: aşağıdaki "Tekrar dene" seçeneği bu durumda
+genelde anlamlı değildir, dosya yerinde olmadıkça aynı çağrı yine bulamaz.
+
+**Verdict sınıfının ek koşulu:** blok geçerli olsa bile `reviewed_revision` diskteki
+`revision`'a eşit değilse **kaydı yazma** — plan denetim sırasında değişmiş demektir.
+Bu durum aşağıdaki *Hata hâlinde kullanıcıya ne sorarsın* akışına **girmez**; seçenek
+sunulmadan denetim doğrudan tekrarlanır, tıpkı kapı 1 ve kapı 3'ün aynı-ekosistem
+davranışında olduğu gibi.
 
 ### Hata hâlinde kullanıcıya ne sorarsın
 
-Kayıt yazılmaz, plan bulunduğu klasörde kalır. Kullanıcıya bu üç seçeneği bu sırayla sun:
+Kayıt yazılmaz, plan bulunduğu klasörde kalır — **1. ve 2. seçenekte**. Kullanıcıya bu
+üç seçeneği bu sırayla sun:
 
 1. **Tekrar dene** — taşıma hatalarında anlamlı; protokol hatasında genelde değil.
 2. **`<sahip>`'i `<başka ekosistem>`'de çalıştır** — yalnız sahibin **etkin
    hedeflerinden** ve rol tanımı dosyası **gerçekten var** olanları listele. Böyle bir
    ekosistem yoksa bu maddeyi **hiç gösterme**. Agent adı uydurma; öneri manifest'ten
    türer.
-3. **Bu kapıyı atla** — kullanıcıdan **gerekçe iste**, sonra:
+3. **Bu kapıyı atla** — **tek istisna budur: bu seçenek kaydı yazar.** Kullanıcıdan
+   **gerekçe iste**, sonra:
    `{ by: user/<sahibin adı>, at: <bugün>, revision: <plan.revision>,
    verdict: skipped, reasons: [<kullanıcının gerekçesi>] }`.
-   Gerekçe vermezse kapıyı **atlama**.
+   Kaydı kapı 1'deysen `reviews.plan-review`'a, kapı 3'teysen `reviews.code-review`'a
+   ekle. Gerekçe vermezse kapıyı **atlama**. Yazıldıktan sonra kapı akışı **normal
+   şekilde sürer** — kapı 1'de `planReviewPassed` artık ikinci satırından doğrudur,
+   kapı 3'te `done/`'a taşıma yetkisinin ikinci maddesi sağlanır.
 
 Kullanıcı seçim yapmadan bırakırsa hiçbir şey yazma; sonraki oturum kapıyı sağlanmamış
 görür ve baştan dener.
