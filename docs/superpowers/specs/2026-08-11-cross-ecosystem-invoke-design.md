@@ -309,7 +309,7 @@ dosyanın yolu** override edilebilir; argümanlar edilemez.
 |---|---|---|
 | `codex` | `codex exec --sandbox read-only -` | **stdin** |
 | `opencode` | `opencode run` | **stdin** |
-| `claude` | `claude -p --allowedTools Read,Grep,Glob` | **stdin** |
+| `claude` | `claude -p --permission-mode plan --disallowedTools Edit,Write,NotebookEdit,Bash` | **stdin** |
 
 **`--agent` hiçbir ekosistemde verilmez.** İlk taslak, destekleyen iki ekosistemde
 verilmesini öngörüyordu. Ölçüm bunun yanlış olduğunu gösterdi: `--agent`, hedefin kendi
@@ -322,8 +322,15 @@ kazandırmıyordu — kaldırmak tek kod yolunu da güçlendirir.
 **Prompt argüman değil, stdin.** Prompt rol tanımının **tamamını** ve plan dosyasının
 **tamamını** taşır — kolayca on binlerce karakter. Argüman olarak geçirmek işletim
 sisteminin argüman uzunluğu sınırına (`ARG_MAX`) ve tırnak/kaçış hatalarına açıktır.
-Süreç **kabuk olmadan** başlatılır (`argv` dizisiyle), yani kabuk enjeksiyonu diye bir
-yüzey kalmaz.
+
+**Mekanik:** prompt geçici bir dosyaya yazılır ve girdi oradan yönlendirilir
+(`… - < /tmp/<dosya>`). Plan metni **hiçbir zaman bir kabuk dizesinin içine konmaz** —
+ne `"$(cat …)"` ile argümana, ne `echo "$PROMPT" |` ile boruya. Plan kullanıcı
+içeriğidir ve `s:how` bölümü ters tırnak ya da `$(...)` taşıyan bir komut örneği
+içerebilir; çift tırnak içinde bunu çağıranın kabuğu çalıştırır. İlk taslak "süreç
+kabuk olmadan `argv` dizisiyle başlatılır" diyordu — çalışma zamanındaki taraf bir
+agent'tır ve elindeki tek süreç başlatma aracı kabuktur, yani o cümle var olmayan bir
+mekanizmayı tarif ediyordu.
 
 **Override neden yalnız yol:** manifest'e serbest kabuk komutu koymak, üretilen
 konfigürasyona keyfi komut yerleştirmek demektir — spec'in kendi tanımladığı riskin ta
@@ -341,7 +348,7 @@ yerde yanlış bir güvenlik iddiasıdır.
 | Ekosistem | Mekanizma | Gücü |
 |---|---|---|
 | `codex` | `--sandbox read-only` | **İşletim sistemi düzeyinde.** Yazma denemesi başarısız olur. |
-| `claude` | `--allowedTools Read Grep Glob` | **İzin listesi.** Yazma araçları hiç verilmez; liste kapalı olduğu için sonradan eklenen bir araç da otomatik dışarıda kalır. |
+| `claude` | `--permission-mode plan` + `--disallowedTools` | **Daraltma, kapatma değil.** `--allowedTools` eklemeli çalışır (reddetme ayrı bayrak) ve çağrı proje kökünde koştuğu için projenin kendi izin ayarları da yürürlüktedir. |
 | `opencode` | — | **Yok.** `opencode run`'da salt-okunur bayrağı bulunmuyor; tersi var (`--dangerously-skip-permissions`). |
 
 OpenCode'daki boşluk kapatılamıyor, bu yüzden **azaltılıyor ve açıkça yazılıyor**:

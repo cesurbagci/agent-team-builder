@@ -180,7 +180,8 @@ codex exec --sandbox read-only -
 ```
 
 - Prompt **stdin**'den gider (`-`): rol tanımı + planın tamamı argüman sınırını aşar.
-  Süreç kabuk olmadan, `argv` dizisiyle başlatılır.
+  Prompt geçici bir dosyaya yazılıp `- < /tmp/<dosya>` ile yönlendirilir; plan metni
+  hiçbir zaman bir kabuk dizesine konmaz.
 - Sandbox **her zaman `read-only`** — agent'ın `sandbox_mode`'una bakılmaz. `writesCode:
   false` dosya sistemi izni değildir; bir doküman sahibi meşru biçimde
   `workspace-write` olabilir ve o izinle çağrılırsa `.agent-work/`'e yazabilir.

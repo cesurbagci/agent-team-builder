@@ -484,7 +484,7 @@ değişikliği görmemiştir.
 | `at` | Kayıt tarihi |
 | `revision` | Kaydın verildiği andaki `plan.revision` (her kapı için yazılır; **yalnız plan review'da yetki belirler**) |
 | `verdict` | Üç değerden biri |
-| `reasons` | **Her zaman dizi.** `rejected` ve `skipped` + `by: user/<agent-adı>` boş olamaz; `approved` ve `skipped` + `by: system` boş olabilir |
+| `reasons` | **Her zaman dizi.** `rejected` ve `skipped` + `by: user/<agent-adı>` boş olamaz; `approved` ve `skipped` + `by: system` **`[]` olmalı** — denetleyici gerekçe yazsa bile kayda geçmez |
 
 **Kayıtlar asla silinmez.** Reddedilen kapının kaydı durur; sonraki kayıt onu geçersiz kılar.
 
@@ -767,6 +767,7 @@ eklenmez.
 | N24 | Dosya adındaki slug kurala uymuyor (büyük harf, boşluk, Türkçe karakter) | Reddedilir |
 | N25 | Dosya adında slug hiç yok (`20260802-01.md`) | Reddedilir |
 | N26 | `user/<ad>` feragati var ama kapı sahibi sonradan değişti | Yüklem **yanlış** — feragat de onay gibi düşer, kapı yeni sahiple geçilir |
+| N27 | `approved` kaydında `reasons` boş değil | Reddedilir — onayın gerekçesi kayda geçmez |
 
 ## Kararlar
 

@@ -134,7 +134,8 @@ komutla çağırır:
 opencode run
 ```
 
-- Prompt **stdin**'den gider. Süreç kabuk olmadan, `argv` dizisiyle başlatılır.
+- Prompt **stdin**'den gider: geçici bir dosyaya yazılıp yönlendirilir; plan metni
+  hiçbir zaman bir kabuk dizesine konmaz.
 - **`--agent` verilmez.** Rol prompt'a gömülür — üç ekosistemde tek kod yolu, tek hata
   biçimi. `--agent` vermek burada özellikle tehlikelidir: agent'ın kendi
   konfigürasyonunu yükler, dolayısıyla `permission.edit`'ini de. Yukarıdaki

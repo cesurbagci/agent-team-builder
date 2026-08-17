@@ -438,7 +438,7 @@ ekosisteminde çalıştırırsın. Kapı 1 ve kapı 3 için dizi aynıdır.
 
    | Ekosistem | Komut |
    |---|---|
-   | `claude` | `claude -p --allowedTools Read,Grep,Glob` |
+   | `claude` | `claude -p --permission-mode plan --disallowedTools Edit,Write,NotebookEdit,Bash` |
    | `codex` | `codex exec --sandbox read-only -` |
    | `opencode` | `opencode run` |
 

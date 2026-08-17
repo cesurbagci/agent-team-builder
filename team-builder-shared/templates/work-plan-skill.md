@@ -317,11 +317,15 @@ ekosisteminde çalıştırırsın. Kapı 1 ve kapı 3 için dizi aynıdır.
      okuyabilir ama hangi değişikliğin bu plana ait olduğunu göremez — çalışma ağacı
      zaten kirliyse ya da birden çok plan sürüyorsa okumak yanıltır. Kapı 1'de bu bölüm
      yoktur (henüz kod yok). Şunu koy:
-     - **Değişen dosyaların listesi**: `git status --short` çıktısını planın `paths`
-       alanına göre daralt. `paths` her planda zorunludur, yani bu bilgi her zaman elde
-       edilebilir. Daraltmanın sebebi 3. maddedeki uyarının kendisidir — çalışma ağacı
-       başka işlerin değişikliklerini de taşıyabilir ve denetleyiciye onları göstermek
-       yanıltır.
+     - **Değişen dosyaların listesi.** İşin bir kısmı commit'lenmiş olabilir, o yüzden
+       **iki kaynağı birleştir**: temel referansı biliyorsan
+       `git diff --name-only <temel>..HEAD`, her hâlde `git status --short`. Yalnız
+       birine bakarsan liste boş çıkar — commit'lenmiş işte `git status` boştur ve
+       denetleyici **hiçbir şey görmeden onaylar**. Sonucu planın `paths` alanına göre
+       daralt (`paths` her planda zorunludur). Daraltmanın sebebi bir üstteki uyarının
+       kendisidir: çalışma ağacı başka işlerin değişikliklerini de taşıyabilir.
+       Birleşik liste boşsa **kapı 3'ü çalıştırma** — denetlenecek bir şey yok demektir;
+       dur ve kullanıcıya sor.
      - **Temel referans** — işin başladığı commit — **biliyorsan**. Plan dosyasında
        böyle bir alan **yoktur**; işi sen başlattıysan bilirsin, başka bir oturum
        başlattıysa bilmeyebilirsin. Bilmiyorsan **uydurma**: prompt'ta "temel referans
@@ -332,14 +336,19 @@ ekosisteminde çalıştırırsın. Kapı 1 ve kapı 3 için dizi aynıdır.
 
    | Ekosistem | Komut |
    |---|---|
-   | `claude` | `claude -p --allowedTools Read,Grep,Glob` |
+   | `claude` | `claude -p --permission-mode plan --disallowedTools Edit,Write,NotebookEdit,Bash` |
    | `codex` | `codex exec --sandbox read-only -` |
    | `opencode` | `opencode run` |
 
-   - **Prompt stdin'den gider**, argüman olarak değil: rol + planın tamamı kolayca
-     işletim sisteminin argüman sınırını aşar ve tırnak hatası üretir. Süreç **kabuk
-     olmadan**, doğrudan `argv` dizisiyle başlatılır — plan metni bir kabuk komutuna
-     enjekte edilmez, kabuk enjeksiyonu diye bir yüzey kalmaz.
+   - **Prompt stdin'den gider, argüman olarak değil.** Rol + planın tamamı kolayca
+     işletim sisteminin argüman sınırını aşar. Mekaniği şudur: prompt'u **geçici bir
+     dosyaya yaz**, sonra girdiyi o dosyadan yönlendir —
+     `codex exec --sandbox read-only - < /tmp/<dosya>`.
+     **Plan metnini bir kabuk dizesinin içine koyma** — ne `"$(cat …)"` ile argümana, ne
+     `echo "$PROMPT" |` ile boruya. Plan metni kullanıcı içeriğidir ve `s:how` bölümü
+     pekâlâ ters tırnak ya da `$(...)` taşıyan bir komut örneği içerebilir; çift tırnak
+     içinde bunu **senin** kabuğun çalıştırır. Dosyaya yazıp yönlendirmek bu yüzeyi
+     tümüyle kaldırır.
      Bir CLI sürümü stdin'i okumazsa çağrı boş prompt'la koşar ve ya hata koduyla ya da
      ayrıştırılamayan çıktıyla döner — yani **taşıma ya da protokol hatası** olarak
      yakalanır ve kullanıcı seçenekleri görür. Sessizce yanlış bir verdict üretmez.
@@ -354,8 +363,12 @@ ekosisteminde çalıştırırsın. Kapı 1 ve kapı 3 için dizi aynıdır.
      değildir; doküman sahibi bir rol meşru biçimde `workspace-write` olabilir. Denetim
      çağrısı hiçbir şey yazmaz, o yüzden izin rolden değil çağrı türünden gelir.
    - **Salt-okunurluğu üç CLI eşit zorlamıyor; bunu bilerek çalış.** `codex` işletim
-     sistemi düzeyinde engeller. `claude`'da `--allowedTools` kapalı bir izin listesidir
-     — yazma araçları hiç verilmez. **`opencode`'da salt-okunur bayrağı yoktur**; orada
+     sistemi düzeyinde engeller — tek gerçek mekanik güvence odur. `claude`'da
+     `--permission-mode plan` düzenlemeyi kapatır ve `--disallowedTools` yazma
+     araçlarını reddeder; ama bu bir **daraltmadır, kapatma değil** — `--allowedTools`
+     eklemeli çalışır (adı "izin verilecekler", reddedilecekler ayrı bayraktır) ve çağrı
+     proje kökünde koştuğu için projenin kendi izin ayarları da yürürlüktedir.
+     **`opencode`'da salt-okunur bayrağı yoktur**; orada
      koruma mekanik değil sözleşmeseldir: `--agent` verilmediği için izin verici rol
      konfigürasyonu yüklenmez ve *"`.agent-work/` altına yalnız sen yazarsın"* kuralı
      geçerlidir. Bu, **kaydın bütünlüğünü** korur; hedefin depoya hiç dokunamayacağını
