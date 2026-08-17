@@ -1,7 +1,7 @@
 # Tasarım: Çapraz Ekosistem Agent Çağırma (`agent-invoke`) — kapsam B
 
 - **Tarih:** 2026-08-11
-- **Durum:** Karşıt inceleme sonrası revize edildi — kullanıcı onayı ve uygulama planı bekliyor
+- **Durum:** Uygulandı — `docs/superpowers/plans/2026-08-11-cross-ecosystem-invoke.md`
 - **Kapsam:** Plan kapısı çekirdeğinin (`2026-08-02-plan-gate-design.md`) **B** alt sistemi
 
 > **Revizyon notu.** İlk taslak karşıt incelemeden geçti; üç blocker çıktı ve kaynakta
