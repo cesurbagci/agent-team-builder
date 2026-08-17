@@ -340,6 +340,9 @@ ekosisteminde çalıştırırsın. Kapı 1 ve kapı 3 için dizi aynıdır.
      işletim sisteminin argüman sınırını aşar ve tırnak hatası üretir. Süreç **kabuk
      olmadan**, doğrudan `argv` dizisiyle başlatılır — plan metni bir kabuk komutuna
      enjekte edilmez, kabuk enjeksiyonu diye bir yüzey kalmaz.
+     Bir CLI sürümü stdin'i okumazsa çağrı boş prompt'la koşar ve ya hata koduyla ya da
+     ayrıştırılamayan çıktıyla döner — yani **taşıma ya da protokol hatası** olarak
+     yakalanır ve kullanıcı seçenekleri görür. Sessizce yanlış bir verdict üretmez.
    - **`--agent` verme.** Rolü zaten prompt'a gömüyorsun; `--agent` bunun üstüne hedefin
      kendi konfigürasyonunu, dolayısıyla **izinlerini** yükler. OpenCode'da
      `permission.edit` doğrudan agent konfigürasyonundan gelir ve doküman sahibi bir rol
@@ -389,8 +392,14 @@ Ayrıştırma kuralları:
   bir kez görünmeli. Biri hiç yoksa, biri birden çok kez geçiyorsa (tekrarlanmış iki tam
   blok dahil), ya da kapanış açılıştan önce geliyorsa → hata.
 - Blok içinde **yalnız bu üç alan**. Bilinmeyen alan, tekrarlanan alan, eksik alan → hata.
-- `verdict` yalnız `approved` ya da `rejected`. `skipped` hedeften **gelmez** — onu
-  yalnız sen yazarsın.
+  **Alan sırası serbesttir** — üçü de varsa hangi sırada yazıldığı önemli değil. Sıraya
+  bakarsan aynı çıktı iki ayrıştırıcıda iki karar verir.
+- `verdict` yalnız `approved` ya da `rejected`, **birebir küçük harf**. `Approved`,
+  `APPROVED` gibi varyantlar → hata; değerleri normalize etme, tolerans kuralı yoksa
+  tolerans yoktur. `skipped` hedeften **gelmez** — onu yalnız sen yazarsın.
+- `reasons` maddelerini hedef **iki biçimde** yazabilir ve ikisi de geçerlidir: alt
+  satırlarda `- <madde>` listesi, ya da tek satırda `[<madde>, <madde>]`. İçerik aynıysa
+  biçim fark etmez.
 - Blok **dışındaki** metni yok say; modeller düşünme/özet metni yazar.
 - `reasons`: `approved` için hedefin bloğunda **boş dizi** (`reasons: []`) kabul edilen
   biçimdir — alan **eksik değildir**, değeri boştur. Alan var ama altında hiç madde yoksa
