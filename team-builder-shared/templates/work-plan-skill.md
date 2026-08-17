@@ -13,6 +13,12 @@ Bu dosya plan kapısının **tek otoritesidir**: kapının bütün kuralları bu
 kural için başka bir belgeye bakman gerekmez. Projenin kendi dosyalarını (manifest,
 routing tablosu, `TEMPLATE.md`, ADR'ler) elbette okursun — onlar kural değil, veridir.
 
+**Veriyi nereden okursun.** Manifest `.agent-source/manifest.json`'dır; routing tablosu
+da onun içindedir (`routing`). Kapı sahipleri manifest'te `planGate.planReviewer` ve
+`planGate.codeReviewer` alanlarındadır; değer bir agent adı ya da `null`'dır. Bu iki
+alanı **her kapıda yeniden oku** — sahip değişmiş olabilir ve yüklemlerin tamamı
+**güncel** sahibe göre hesaplanır.
+
 ## Önce: hangi mod?
 
 | Kullanıcı ne diyor | Mod |
@@ -265,7 +271,9 @@ o iş için kural atlanır.
    değişen dosyalar) da eklersin.
    - `reviewed_revision` diskteki `revision` ile aynı değilse **kaydı yazma** — plan
      denetim sırasında değişmiş demektir, denetimi tekrarla. Bayat bir kayıt `done/`'a
-     taşıma yetkisi verir; kapı 1'de olduğu gibi burada da geçersizdir.
+     taşıma yetkisi **vermez** — kapı 1'de olduğu gibi burada da geçersizdir. `done/`
+     arşivdir ve geri dönüşü yoktur; bayat bir onayla oraya taşımak, denetlenmemiş işi
+     kalıcı olarak denetlenmiş göstermek demektir.
    - Sonucu `reviews.code-review`'a şemaya göre kaydet. `rejected` ise `reasons` boş
      olamaz, gerekçeyi `s:review-notes`'a da yaz ve iş `in-progress/`'te kalır.
    Denetleyici tanımlı değilse `{ by: system, at: <bugün>, revision: <plan.revision>,
@@ -305,10 +313,17 @@ ekosisteminde çalıştırırsın. Kapı 1 ve kapı 3 için dizi aynıdır.
    `.opencode/agents/<ad>.md`. Dosya yoksa bu bir hatadır (aşağıya bak).
 4. Prompt'u kur: **rol tanımının tamamı** + **plan dosyasının tamamı** + aşağıdaki çıktı
    sözleşmesi.
-   - **Kapı 3'te ayrıca** uygulama farkını ekle: planın açıldığı temel referans ve
-     değişen dosyaların listesi. Taze bir denetleyici süreci depoyu okuyabilir ama hangi
-     değişikliğin bu plana ait olduğunu göremez — çalışma ağacı zaten kirliyse ya da
-     birden çok plan sürüyorsa okumak yanıltır. Kapı 1'de bu bölüm yoktur.
+   - **Kapı 3'te ayrıca** uygulama farkını ekle. Taze bir denetleyici süreci depoyu
+     okuyabilir ama hangi değişikliğin bu plana ait olduğunu göremez — çalışma ağacı
+     zaten kirliyse ya da birden çok plan sürüyorsa okumak yanıltır. Kapı 1'de bu bölüm
+     yoktur (henüz kod yok). Şunu koy:
+     - **Değişen dosyaların listesi**, planın `paths` alanına göre daraltılmış. `paths`
+       her planda zorunludur, yani bu bilgi her zaman elde edilebilir.
+     - **Temel referans** — işin başladığı commit — **biliyorsan**. Plan dosyasında
+       böyle bir alan **yoktur**; işi sen başlattıysan bilirsin, başka bir oturum
+       başlattıysa bilmeyebilirsin. Bilmiyorsan **uydurma**: prompt'ta "temel referans
+       bilinmiyor, değişen dosya listesi plandan daraltılmıştır" diye yaz. Denetleyici
+       neyi görmediğini bilerek karar versin.
 5. CLI'ı **proje kökünde** çalıştır. Hedefin depoyu okuması gerekir: kapı 1'in reddetme
    ölçütlerinden biri "yaklaşım mevcut bir ADR'ye aykırı"dır.
 
@@ -397,7 +412,7 @@ Ayrıştırma kuralları:
 |---|---|---|
 | Taşıma hatası | CLI yok/`PATH`'te değil, yetkisiz, zaman aşımı, çıkış kodu ≠ 0 | **Kayıt yazma.** Geçerli bir blok gelmiş olsa bile yok say — sağlıklı bitmemiş süreçten çıkan blok güvenilmez. |
 | Protokol hatası | Blok yok, birden çok, şemaya uymuyor, ya da hedefte rol tanımı dosyası (3. adım) bulunamadı | **Kayıt yazma.** |
-| Verdict | Geçerli blok, sağlıklı çıkış | Kaydı yaz. |
+| Verdict | Geçerli blok, sağlıklı çıkış | Kaydı yaz, sonra **çağıran kapının akışına dön** — kapı 1'de plan yazma dizisinin 4. adımına, kapı 3'te işi bitirme dizisine. Bu bölüm çağrıyı kurar, kapıyı yönetmez. |
 
 **Hata `rejected` değildir.** Ulaşılamayan bir kapıyı "reddetti" saymak planı gereksiz
 düzeltme döngüsüne sokar; ayrıştırma hatasını "onayladı" saymak sessiz onaydır.
@@ -420,13 +435,17 @@ Kullanıcıya bu üç seçeneği bu sırayla sun:
 
 1. **Tekrar dene** — taşıma hatalarında anlamlı; protokol hatasında genelde değil.
 2. **`<sahip>`'i `<başka ekosistem>`'de çalıştır** — yalnız sahibin **etkin
-   hedeflerinden** ve rol tanımı dosyası **gerçekten var** olanları listele. Böyle bir
-   ekosistem yoksa bu maddeyi **hiç gösterme**. Agent adı uydurma; öneri manifest'ten
-   türer.
+   hedeflerinden**, rol tanımı dosyası **gerçekten var** olanları ve **az önce
+   başarısız olan ekosistem dışındakileri** listele. Geriye ekosistem kalmıyorsa bu
+   maddeyi **hiç gösterme** — aynı hedefi tekrar önermek 1. seçeneğin kopyasıdır.
+   Agent adı uydurma; öneri manifest'ten türer.
 3. **Bu kapıyı atla** — **tek istisna budur: bu seçenek kaydı yazar.** Kullanıcıdan
    **gerekçe iste**, sonra:
    `{ by: user/<sahibin adı>, at: <bugün>, revision: <plan.revision>,
    verdict: skipped, reasons: [<kullanıcının gerekçesi>] }`.
+   Gerekçeyi **olduğu gibi tek bir madde** olarak yaz — kendi cümlelerine bölme, özetleme
+   ya da yeniden ifade etme. Kayıt kullanıcının kendi ifadesini taşımalı; sonradan okuyan
+   kapının neden atlandığını senin yorumundan değil kaynağından öğrenir.
    Kaydı kapı 1'deysen `reviews.plan-review`'a, kapı 3'teysen `reviews.code-review`'a
    ekle. Gerekçe vermezse kapıyı **atlama**. Yazıldıktan sonra kapı akışı **normal
    şekilde sürer** — kapı 1'de `planReviewPassed` artık ikinci satırından doğrudur,
