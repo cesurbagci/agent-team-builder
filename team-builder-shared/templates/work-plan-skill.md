@@ -13,7 +13,7 @@ Bu dosya plan kapısının **tek otoritesidir**: kapının bütün kuralları bu
 kural için başka bir belgeye bakman gerekmez. Projenin kendi dosyalarını (manifest,
 routing tablosu, `TEMPLATE.md`, ADR'ler) elbette okursun — onlar kural değil, veridir.
 
-**Veriyi nereden okursun.** Manifest `.agent-source/manifest.json`'dır; routing tablosu
+**Veriyi nereden okursun.** Manifest `.agent-source/agents/manifest.json`'dır; routing tablosu
 da onun içindedir (`routing`). Kapı sahipleri manifest'te `planGate.planReviewer` ve
 `planGate.codeReviewer` alanlarındadır; değer bir agent adı ya da `null`'dır. Bu iki
 alanı **her kapıda yeniden oku** — sahip değişmiş olabilir ve yüklemlerin tamamı
@@ -317,8 +317,11 @@ ekosisteminde çalıştırırsın. Kapı 1 ve kapı 3 için dizi aynıdır.
      okuyabilir ama hangi değişikliğin bu plana ait olduğunu göremez — çalışma ağacı
      zaten kirliyse ya da birden çok plan sürüyorsa okumak yanıltır. Kapı 1'de bu bölüm
      yoktur (henüz kod yok). Şunu koy:
-     - **Değişen dosyaların listesi**, planın `paths` alanına göre daraltılmış. `paths`
-       her planda zorunludur, yani bu bilgi her zaman elde edilebilir.
+     - **Değişen dosyaların listesi**: `git status --short` çıktısını planın `paths`
+       alanına göre daralt. `paths` her planda zorunludur, yani bu bilgi her zaman elde
+       edilebilir. Daraltmanın sebebi 3. maddedeki uyarının kendisidir — çalışma ağacı
+       başka işlerin değişikliklerini de taşıyabilir ve denetleyiciye onları göstermek
+       yanıltır.
      - **Temel referans** — işin başladığı commit — **biliyorsan**. Plan dosyasında
        böyle bir alan **yoktur**; işi sen başlattıysan bilirsin, başka bir oturum
        başlattıysa bilmeyebilirsin. Bilmiyorsan **uydurma**: prompt'ta "temel referans
