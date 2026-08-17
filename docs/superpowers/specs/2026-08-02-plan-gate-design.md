@@ -277,7 +277,9 @@ yapılamayacağı durumu kaçırır.
 
 - Ekosistem: `claude` | `codex` | `opencode`.
 - İlk `/` ayraçtır; agent adları slug kuralı gereği `/` içeremez.
-- `skipped` kayıtlarında `by` değeri özel sabit **`system`**'dir (ekosistem taşımaz).
+- `skipped` kayıtlarında `by` değeri iki özel biçimden biridir: sabit **`system`** ya da
+  **`user/<agent-adı>`** (ikisi de ekosistem taşımaz). Çıplak `user` geçersizdir —
+  feragat bir sahibe bağlıdır, sahip değişirse düşer.
 
 Çalışma anında `work-plan` üç şeyi birden denetler:
 
@@ -472,17 +474,17 @@ değişikliği görmemiştir.
 ### Denetim kaydı şeması (normatif)
 
 ```yaml
-{ by: <ekosistem>/<agent-adı> | system, at: <YYYY-MM-DD>, revision: <n>,
+{ by: <ekosistem>/<agent-adı> | system | user/<agent-adı>, at: <YYYY-MM-DD>, revision: <n>,
   verdict: approved | rejected | skipped, reasons: [<madde>, ...] }
 ```
 
 | Alan | Kural |
 |---|---|
-| `by` | Denetleyen agent; `skipped` kayıtlarında `system` |
+| `by` | Denetleyen agent; `skipped` kayıtlarında `system` ya da `user/<agent-adı>` |
 | `at` | Kayıt tarihi |
 | `revision` | Kaydın verildiği andaki `plan.revision` (her kapı için yazılır; **yalnız plan review'da yetki belirler**) |
 | `verdict` | Üç değerden biri |
-| `reasons` | **Her zaman dizi.** `rejected` ise boş olamaz; `approved`/`skipped` için boş olabilir |
+| `reasons` | **Her zaman dizi.** `rejected` ve `skipped` + `by: user/<agent-adı>` boş olamaz; `approved` ve `skipped` + `by: system` boş olabilir |
 
 **Kayıtlar asla silinmez.** Reddedilen kapının kaydı durur; sonraki kayıt onu geçersiz kılar.
 
@@ -515,8 +517,10 @@ Kapı 1 ile kapı 3'ün doğası farklıdır ve **tek bir kural ikisini birden t
 Plan dosyasına bakarak hesaplanır, dosyayla birlikte taşınır ve **çağıran oturumdan
 bağımsızdır**.
 
-Karşılaştırılacak sahip kimliği **planın kendi `executor` ekosisteminden** kurulur:
-`<executor.ecosystem>/<planReviewer>`. `currentEcosystem` bu hesaba **girmez**.
+Karşılaştırılacak **ad** manifest'teki güncel `planReviewer`'dan gelir. **Ekosistem**
+denetimin fiilen çalıştığı yerdir ve sahibin etkin hedeflerinden biri olmalıdır —
+denetleyici projenin başka bir ekosisteminde üretilmiş olabilir ve harici CLI çağrısıyla
+orada koşar. `currentEcosystem` bu hesaba **girmez**.
 
 > **Neden.** Plan dosyaları commit edilip paylaşılıyor. Kimlik çağıran oturumdan
 > türetilseydi, Codex oturumunda onaylanmış bir planı OpenCode oturumu açtığında kimlik
@@ -527,13 +531,14 @@ Karşılaştırılacak sahip kimliği **planın kendi `executor` ekosisteminden*
 > `executor.ecosystem === currentEcosystem` — yani "bu oturumda bu işi ben yürütebilir
 > miyim". Bu ayrı bir sorudur ve dosyaya yazılmaz.
 
-| `planReviewer` | Koşul |
-|---|---|
-| Bir agent adı | `reviews.plan-review` son kaydı `approved`, `kayıt.revision === plan.revision`, **ve** `kayıt.by` güncel çözümlenmiş sahiple aynı |
-| `null` | Son kayıt `skipped`, `kayıt.revision === plan.revision`, **ve** sahip hâlâ `null` |
+| `planReviewer` | Son kayıt | `kayıt.by` |
+|---|---|---|
+| Bir agent adı | `approved` | `<denetimin ekosistemi>/<güncel sahip>` — ekosistem sahibin etkin hedeflerinden biri |
+| Bir agent adı | `skipped` | `user/<güncel sahip>` — kullanıcı feragati |
+| `null` | `skipped` | `system`, sahip hâlâ `null` |
 
-`by` karşılaştırması şart: kapı sahibi sonradan değiştirilirse eski denetleyicinin onayı
-geçerli kalmamalıdır.
+Üçünde de `kayıt.revision === plan.revision`. Ad karşılaştırması **güncel** sahibe
+karşıdır: sahip değişirse onay da feragat de düşer.
 
 **`null` durumunda da `revision` eşitliği aranır.** İlk taslak atlamayı revizyondan muaf
 tutuyordu, ama bu sınır tablosuyla çelişiyordu: "her planlama değişikliği
@@ -741,8 +746,9 @@ eklenmez.
 | N11 | `id` biçimi bozuk (`2026-8-1`, `abc`, sıra yok) | Reddedilir |
 | N12 | Dosya adı `id` ile uyuşmuyor (`20260802-01-x.md` içinde `id: 20260803-02`) | Reddedilir |
 | N13 | Denetim kaydında `at` yok ya da `YYYY-MM-DD` değil | Reddedilir |
-| N14 | `skipped` kaydında `by` değeri `system` değil | Reddedilir |
+| N14 | `skipped` kaydında `by` değeri `system` ya da `user/<agent-adı>` değil (çıplak `user` dahil) | Reddedilir |
 | N15 | `approved`/`rejected` kaydında `by` değeri `system` | Reddedilir |
+| N15b | `approved`/`rejected` kaydında `by` değeri `user/` ile başlıyor | Reddedilir |
 | N16 | `rejected` kaydında `reasons` boş dizi | Reddedilir |
 | N17 | İptal geçişinde `s:review-notes`'ta yalnız eski notlar var, yeni iptal kaydı yok | Reddedilir |
 | N18 | Denetim kaydında `by` biçimi bozuk (`architect`, `claude/`, `//x`) | Reddedilir |
@@ -791,3 +797,8 @@ eklenmez.
 | 19 | Tüm insan-okur çıktılar `docLanguage`'de üretilir | Sihirbazın dil sözleşmesi |
 | 20 | Preset açma/kapama proje-yükseltme skill'ine ait | `sync` yeni kaynak yaratmıyor |
 | 21 | Çapraz ekosistem ayrı spec | Verdict protokolü başlı başına iş |
+
+> **Kapandı (2026-08-11).** Çapraz ekosistem çağrısı ayrı bir spec'te tasarlandı ve
+> uygulandı: `docs/superpowers/specs/2026-08-11-cross-ecosystem-invoke-design.md`.
+> O spec bu çekirdeği iki yerde revize eder — N14 (`by: user/<ad>` kabul edilir) ve
+> `planReviewPassed` tablosu (üçüncü satır: kullanıcı feragati).
