@@ -549,10 +549,15 @@ kaydı düşülür — ucuz bir işlem ve kural tek parça kalır.
 
 `in-progress/ → done/` hareketini yetkilendirir ve **saklanmaz**:
 
-| `codeReviewer` | Koşul |
-|---|---|
-| Bir agent adı | O hareketten hemen önce çalıştırılan kod review'ın sonucu `approved`, kaydın `revision`'ı planın `revision`'ına eşit **ve** `kayıt.by` güncel denetleyiciyle aynı |
-| `null` | Kapı yoktur, ama hareket serbest değildir: `skipped` kaydı düşülür ve son kayıt `skipped`, `revision` eşit **ve** `codeReviewer` **hâlâ** `null` olmalıdır |
+| `codeReviewer` | Son kayıt | Ek koşul |
+|---|---|---|
+| Bir agent adı | `approved` | Kaydın `revision`'ı planın `revision`'ına eşit **ve** `kayıt.by` güncel denetleyiciyle aynı |
+| Bir agent adı | `skipped` | `kayıt.by` = `user/<güncel denetleyici adı>` — kapıya ulaşılamadı, kullanıcı feragat etti; `revision` eşit |
+| `null` | `skipped` | Kapı yoktur, ama hareket serbest değildir: `skipped` kaydı düşülür, `kayıt.by` = `system`, `revision` eşit **ve** `codeReviewer` **hâlâ** `null` olmalıdır |
+
+Üç satır da `planReviewPassed`'ın karşılığıdır: kapı 1 ve kapı 3 **aynı ölçüyü** kullanır.
+Ad karşılaştırması güncel denetleyiciye karşıdır; denetleyici değişirse hem onay hem
+feragat düşer.
 
 > **Neden `null` de koşulludur.** "Her zaman yetkili" demek, kapı sonradan açıldığında
 > (`codeReviewer: null` → bir ad) eski `skipped` kaydının hâlâ `done/`'a taşıma yetkisi
@@ -720,12 +725,14 @@ eklenmez.
 | R33 | `s:questions` bölümü değişir | `revision` artar, `planReviewPassed` bozulur |
 | R34 | Aynı gün 99 plan varken 100.'sü açılır | `id` `-100` olur, hata verilmez |
 | R35 | `in-progress/`'teki iş iptal edilir | `done/`'a taşınır; `outcome: cancelled` **ve** `s:review-notes`'a yeni `<!-- note:cancelled -->` kaydı eklenir; kod review çalıştırılmaz |
-| R36 | Plan Codex oturumunda onaylandı, OpenCode oturumunda açılır | `planReviewPassed` **doğru kalır** — kimlik `executor` ekosisteminden kurulur |
+| R36 | Plan Codex oturumunda onaylandı, OpenCode oturumunda açılır | `planReviewPassed` **doğru kalır** — ad manifest'teki güncel sahipten gelir, ekosistem ise denetimin çalıştığı yerdir; ikisi de çağıran oturuma bağlı değildir |
 | R37 | `.agents/skills/`'ten çağrı, hedefler yalnız `codex` | `currentEcosystem` = `codex`, soru sorulmaz |
 | R38 | `.agents/skills/`'ten çağrı, hedefler `codex` ve `opencode` | Skill **durur ve sorar** |
 | R39 | `.agents/skills/`'ten çağrı, ne `codex` ne `opencode` hedefli | **Dur** — bu konumdan çağrı desteklenmiyor |
 | R40 | `draft/`'a geri dönmüş yarım iş yeniden onaylanır | `approved/`'a taşınır; `s:progress` **korunur**, sentinel geri konmaz |
 | R41 | Geri dönmüş iş havuzdan tekrar seçilir | `in-progress/`'e geçer; mevcut ilerleme **korunup güncellenir**, sıfırlanmaz |
+| R42 | Kapı 1 sahibine ulaşılamadı, kullanıcı gerekçeyle atladı | `user/<sahip>` + `skipped` kaydı yazılır; `planReviewPassed` **doğru**, plan ilerleyebilir |
+| R43 | Kapı 3 sahibine ulaşılamadı, kullanıcı gerekçeyle atladı | `user/<sahip>` + `skipped` kaydı yazılır; `doneAuthorized` **doğru**, iş `done/`'a taşınabilir |
 
 **Değişmez savunmaları (negatif senaryolar):**
 
@@ -759,6 +766,7 @@ eklenmez.
 | N23 | `inbox/` kaydında `source` grameri bozuk (`agent:`, `Agent:X`, boş) | Reddedilir |
 | N24 | Dosya adındaki slug kurala uymuyor (büyük harf, boşluk, Türkçe karakter) | Reddedilir |
 | N25 | Dosya adında slug hiç yok (`20260802-01.md`) | Reddedilir |
+| N26 | `user/<ad>` feragati var ama kapı sahibi sonradan değişti | Yüklem **yanlış** — feragat de onay gibi düşer, kapı yeni sahiple geçilir |
 
 ## Kararlar
 
@@ -787,7 +795,7 @@ eklenmez.
 | 15g | `currentEcosystem` skill konumundan; `.agents/` altında `{codex,opencode}` kesişiminden | `.agents/skills` koşulsuz üretiliyor, tek-hedef varsayımı yanlış sonuç verir |
 | 15h | İptal, yeni ve etiketli bir gerekçe kaydı ister | "Bölüm boş değil" kontrolünü eski bir not da geçer |
 | 15i | Architect yoksa `docs/` yasağı ve architect atıfları **tüm** prose kaynaklarında kalkar | Aksi halde `docs/` sahipsizken yasak sürer |
-| 15j | `planReviewPassed` kimliği `executor` ekosisteminden kurulur, çağıran oturumdan değil | Plan dosyaları paylaşılıyor; kalıcı yüklem geçici bağlama bağlanamaz |
+| 15j | `planReviewPassed`'ın karşılaştırdığı **ad** manifest'teki güncel sahipten, **ekosistem** denetimin fiilen çalıştığı yerden gelir; çağıran oturumdan değil | Plan dosyaları paylaşılıyor; kalıcı yüklem geçici bağlama bağlanamaz. **Revize (2026-08-11):** ilk hâli ekosistemi `executor`'dan kuruyordu; çapraz ekosistem denetimi bunu imkânsız kıldı — denetleyici tanım gereği başka bir ekosistemde koşar |
 | 15k | `inbox/` anahtar listesi kapalı; `source` grameri tanımlı | Açık uçlu şema doğrulanamaz |
 | 15l | Slug okunabilirlik içindir, tekilliği `id` sağlar | Kayıpsız türetme zorunluluğu gereksiz kısıt olurdu |
 | 15m | Architect yoksa danışma hedefi kullanıcıdır | Danışma zincirinin ucu boşta kalmamalı |
