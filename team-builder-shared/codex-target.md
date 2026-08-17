@@ -42,8 +42,12 @@ Her codex hedefli agent için bir TOML üretilir. Üst satıra "bu dosya `.agent
 | `nickname_candidates` | `agents[].nickname_candidates` | Kullanıcı dostu takma adlar. |
 | `developer_instructions` | manifest + project'ten **derlenir** | Çok satırlı `"""..."""` blok. Aşağıdaki template. |
 
-> Claude'a özgü frontmatter alanları (`tools`, `model`, `memory`, `color`) Codex TOML'una
+> Claude'a özgü frontmatter alanları (`tools`, `memory`, `color`) Codex TOML'una
 > **yazılmaz**. Codex tarafı bunları konfigürasyon olarak yorumlamaz.
+>
+> **`model` bu listede değildir** — o Codex TOML'una **yazılır** (`sync-agent-config.mjs`
+> `model = "..."` satırını üretir ve kendi selftest'i bunu doğrular). Yukarıdaki alan
+> tablosunda satırı bulunmaması bir eksikliktir, kural değil.
 
 ### `developer_instructions` template'i
 

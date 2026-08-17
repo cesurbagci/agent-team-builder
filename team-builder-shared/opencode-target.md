@@ -149,4 +149,5 @@ opencode run
   için izin verici rol konfigürasyonu yüklenmez, çekirdeğin *"`.agent-work/` altına
   yalnız sen yazarsın"* kuralı geçerlidir ve kaydı yalnız çağıran yazar. Bu, **kaydın
   bütünlüğünü** korur; hedefin depoya hiç dokunamayacağını garanti etmez.
-- Manifest'te `planGate.cli.opencode` varsa `opencode` yerine o yol kullanılır.
+- Manifest'te `planGate.cli.opencode` varsa `opencode` yerine o yol kullanılır;
+  **argümanlar değişmez** — override yalnız çalıştırılabilir dosyanın yoludur.
