@@ -174,8 +174,11 @@ kapı sahibi*).
 Bir planın `executor` alanını **her okuduğunda** — yalnız plan yazarken değil, havuzdan
 seçerken ve yarım işi devam ettirirken de — üçünü birden doğrula:
 
-1. Ad gerçek bir agent ve **uygun executor'lardan** biri: routing tablosunda geçiyor ve
-   kod yazıyor.
+1. Ad gerçek bir agent ve **uygun executor'lardan** biri: manifest'in `routing`
+   tablosunda bir satırın `role`'ü olarak geçiyor **ve** kod yazıyor. "Kod yazıyor"
+   demek, agent'ın `writesCode` alanının `false` **olmaması** demektir — alan hiç
+   verilmemişse agent **kod yazar** sayılır. Yalnız açıkça `writesCode: false` yazan
+   agent'lar executor olamaz.
 2. `executor`'ın ekosistemi o agent'ın **etkin hedeflerinde** var.
 3. O ekosistem **senin oturumunun ekosistemi**.
 
