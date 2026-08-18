@@ -1899,11 +1899,18 @@ async function runSelftest() {
     )
     const warnings = []
     const originalWarn = console.warn
+    const originalLog = console.log
     console.warn = (...a) => warnings.push(a.join(' '))
+    // generate() is called directly rather than through silentGenerate: quiet
+    // mode makes warn a no-op, so a quiet run could never observe the warning
+    // this case exists to check. Log is silenced separately to keep selftest
+    // output clean, which is what quiet mode would otherwise have done.
+    console.log = () => {}
     try {
       await generate({ root: fixtureRoot, checkOnly: false })
     } finally {
       console.warn = originalWarn
+      console.log = originalLog
     }
     assert(
       warnings.some(w => w.includes(INSTRUCTIONS_REF)),
