@@ -151,8 +151,20 @@ cevabı olur.
 
 **Projeye özel cevap isteyen preset'ler açılırken sorulur.** `noWorkaround`'un workaround
 desen listesi, `codeDocSync`'in kod→doküman tablosu ve `planGate`'in denetleyicileri
-projeye özeldir; yükseltme bunları `constitution.md`'deki soru kalıplarıyla sorar ve
-cevabı hem manifest'e hem render edilen bloğa yazar.
+projeye özeldir; yükseltme bunları `constitution.md`'deki soru kalıplarıyla sorar.
+
+**Cevabın nereye yazıldığı preset'e göre değişir** ve bu, şemada gerçekten ne olduğuna
+bakılarak belirlenir:
+
+| Preset | Manifest | Blok |
+|---|---|---|
+| `codeDocSync` | `codeDocSync[]` kök alanı | tablo oradan render edilir |
+| `planGate` | `planGate.planReviewer` / `codeReviewer` | adlar oradan gelir |
+| `noWorkaround` | **yok** — yalnız `constitution.noWorkaround` boolean'ı | **listenin tek evi blok** |
+
+`noWorkaround` için manifest'e alan **uydurulmaz**: hiçbir şey onu okumaz, doğrulayıcının
+kök anahtar allowlist'i olmadığı için hata da vermez, ve her oturum başka bir ad seçtiği
+için projeler arasında sessizce ayrışır.
 
 ## E3 — Preset açma/kapama
 

@@ -74,7 +74,15 @@ alan adı ya da "glob" gibi jargon gösterme.
 - `codeDocSync` → kod→doküman satırları. **Boş liste geçerlidir**; kullanıcı
   istemiyorsa `[]` yaz ve bloğun son cümlesi bunu zaten açıklıyor.
 
-Cevabı **hem manifest'e hem render edilen bloğa** yaz. İkisi ayrışırsa blok yalan söyler.
+**Cevap nereye yazılır — ikisi farklı:**
+
+- `codeDocSync` → **hem manifest'e hem bloğa.** Manifest'te `codeDocSync[]` diye bir kök
+  alan vardır ve tablo ondan render edilir; ikisi ayrışırsa blok yalan söyler.
+- `noWorkaround` → **yalnız bloğa.** Manifest'te desen listesi için bir alan **yoktur**;
+  `constitution.noWorkaround` sadece açık/kapalı boolean'ıdır. Manifest'e bir alan
+  **uydurma** — hiçbir şey onu okumaz, doğrulayıcı da yakalamaz, ve her oturum başka bir
+  ad seçtiği için projeler arasında sessizce ayrışır. Listenin evi bloktur; preset'i
+  sonradan yeniden render edersen mevcut bloktan okursun.
 
 ## Zaten açık/kapalı olan
 
