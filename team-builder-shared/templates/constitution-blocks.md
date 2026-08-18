@@ -3,9 +3,10 @@
 > Paylaşılan referans. `team-builder-setup` kurulumda, `team-builder-upgrade` preset
 > açarken **aynı** bloğu buradan render eder. Metnin tek kaynağı burasıdır.
 >
-> **Verbatim kopyalanmaz.** Bloklar `docLanguage`'e çevrilir ve `<...>` yer tutucuları
-> projenin cevaplarıyla doldurulur. `templates/plan.md` ve `templates/work-plan-skill.md`
-> ile aynı disiplin.
+> **Verbatim kopyalanmaz.** Bloklar `docLanguage`'e çevrilir — `templates/plan.md` ve
+> `templates/work-plan-skill.md` ile aynı disiplin — ve `<...>` yer tutucuları render
+> anında projenin cevaplarıyla doldurulur; bu ikinci yarısı `templates/plan.md`'ye
+> benzer, `work-plan-skill.md` yer tutucu taşımaz.
 >
 > **İşaretler çevrilmez.** Başlıklar `docLanguage`'e çevrilir, bu yüzden hiçbir kural
 > başlığa bakamaz — blok sınırları sabit HTML yorumlarıyla bulunur.
@@ -23,12 +24,13 @@ Kapalı preset'in bloğu **bulunmaz**; blok varlığı preset'in açık olduğu 
 <architect varsa: architect'e danışılır / architect yoksa: kullanıcıya sorulur>.
 
 Reddedilen desenler:
-<workaround desen listesi — her satır bir madde>
+<workaround desen listesi — her madde `- ` ile başlayan kendi satırında>
 <!-- /c:noWorkaround -->
 ```
 
-**Yer tutucular:** `architect` dalı manifest'te `architect` rolü var mı diye bakılarak
-seçilir. Desen listesi kullanıcıya sorulur (`constitution.md` KARAR 1).
+**Yer tutucular:** `architect` dalı, manifest'in `agents[]` dizisinde **adı
+`architect` olan** bir agent var mı diye bakılarak seçilir (`agents[].name` — şemada
+`role` diye bir alan yoktur). Desen listesi kullanıcıya sorulur (`constitution.md` KARAR 1).
 
 ## `c:codeDocSync`
 
@@ -69,13 +71,17 @@ da yansıtır; buradaki blok projenin insan-okur açıklamasıdır.
 <!-- c:languageStandard -->
 ## Dil ve yorum standardı
 
-Kod, yorum ve commit mesajları için proje standardı: <docLanguage>. Bir dosyanın
-mevcut dili standarttan farklıysa o dosyada **mevcut dile uyulur** — tek dosya içinde
-dil karıştırılmaz.
+- Doküman, yorum metni ve kullanıcıya cevap: **<docLanguage>**.
+- Kod artefaktları — fonksiyon, değişken, dosya adı, commit mesajı, JSDoc/TSDoc
+  tag'leri: **İngilizce**.
+- Yorumun metni <docLanguage>, tag'leri İngilizce. **Karışık dil kabul edilmez.**
 <!-- /c:languageStandard -->
 ```
 
-**Yer tutucular:** `<docLanguage>` manifest'ten.
+**Yer tutucular:** `<docLanguage>` manifest'ten. Generator bu preset'i manifest'ten
+ayrıca okuyup her agent dosyasına da yansıtır (`agent-md-rich.md` → `## Dil Kuralları`);
+buradaki blok projenin insan-okur açıklamasıdır. **İkisi aynı şeyi söylemeli** — kod
+İngilizce, doküman/yorum `docLanguage`.
 
 ## `c:planGate`
 
