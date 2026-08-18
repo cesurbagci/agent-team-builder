@@ -63,10 +63,11 @@ Setup ve yükseltmenin aynı metni render edebilmesi için önce ortak kaynağı
 > Paylaşılan referans. `team-builder-setup` kurulumda, `team-builder-upgrade` preset
 > açarken **aynı** bloğu buradan render eder. Metnin tek kaynağı burasıdır.
 >
-> **Verbatim kopyalanmaz.** Bloklar `docLanguage`'e çevrilir — `templates/plan.md` ve
-> `templates/work-plan-skill.md` ile aynı disiplin — ve `<...>` yer tutucuları render
-> anında projenin cevaplarıyla doldurulur; bu ikinci yarısı `templates/plan.md`'ye
-> benzer, `work-plan-skill.md` yer tutucu taşımaz.
+> **Verbatim kopyalanmaz.** Bloklar `docLanguage`'e çevrilir; `templates/plan.md` ve
+> `templates/work-plan-skill.md` ile aynı disiplin.
+>
+> **`<...>` yer tutucuları** render anında projenin cevaplarıyla doldurulur. Bu,
+> `templates/plan.md`'nin yaptığının aynısıdır; `work-plan-skill.md` yer tutucu taşımaz.
 >
 > **İşaretler çevrilmez.** Başlıklar `docLanguage`'e çevrilir, bu yüzden hiçbir kural
 > başlığa bakamaz — blok sınırları sabit HTML yorumlarıyla bulunur.
@@ -149,8 +150,8 @@ buradaki blok projenin insan-okur açıklamasıdır. **İkisi aynı şeyi söyle
 <!-- c:planGate -->
 ## Plan kapısı
 
-Kod yazılmadan önce plan yazılır, denetlenir ve **kullanıcı onaylar**. Kullanıcı onayı
-atlanamaz. Prosedürün tamamı `work-plan` skill'indedir.
+Kod yazılmadan önce plan yazılır, **(denetleyici tanımlıysa)** denetlenir ve **kullanıcı
+onaylar**. Kullanıcı onayı atlanamaz. Prosedürün tamamı `work-plan` skill'indedir.
 
 - Plan denetleyicisi: <planReviewer ya da "yok">
 - Kod denetleyicisi: <codeReviewer ya da "yok">
