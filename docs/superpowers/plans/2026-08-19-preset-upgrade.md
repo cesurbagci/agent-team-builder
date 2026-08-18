@@ -33,7 +33,9 @@
 | `team-builder-shared/canonical-source.md` | `instructions.md`'nin kaynak haritasındaki yeri | 2 |
 | `team-builder-shared/routing.md` | Routing tablosunun artık `instructions.md`'ye yazıldığı | 3 |
 | `team-builder-shared/codex-target.md` | §5: `AGENTS.md` referans taşır, içerik `instructions.md`'de | 3 |
-| `team-builder-shared/opencode-target.md` | `instructions` dizisinin ilk elemanı | 3 |
+| `team-builder-shared/opencode-target.md` | `instructions` dizisinin ilk elemanı + AGENTS.md kaynağı satırı | 3 |
+| `team-builder-shared/architecture-docs.md` | Mimari kuralların artık `instructions.md`'ye işlendiği | 3 |
+| `team-builder-shared/topologies.md` | `CLAUDE.md` notunun yalnız referans olduğu | 3 |
 | `team-builder-shared/sync-pipeline.md` | Referans uyarısı ve stale temizliği sözleşmesi | 2 |
 | `team-builder-setup/SKILL.md` | Yeni yapıyı üretir: `instructions.md` + referanslı hedef kaynakları + işaretli bloklar | 3 |
 | `team-builder-upgrade/SKILL.md` | **YENİ** — dördüncü skill. Türetilen/metin preset'leri (4), `planGate` (5), göç (6). | 4, 5, 6 |

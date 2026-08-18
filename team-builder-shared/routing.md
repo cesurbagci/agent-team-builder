@@ -9,11 +9,13 @@ v2 governance modelinin çekirdeği **kod-yolu → zorunlu rol** tablosudur. Gen
 "consults" listesi tek başına yeterli değildir; her kod değişikliği görevinde
 **hangi yolun hangi role gittiği** açıkça tanımlanır. Bu tablo iki yere yazılır:
 
-1. **CLAUDE.md / AGENTS.md** — okunabilir governance bölümü (insan + agent için).
+1. **`.agent-source/project/instructions.md`** — okunabilir governance bölümü (insan +
+   agent için). Routing **ortak** metindir; hedefe özgü dosyalara (`project/CLAUDE.md`,
+   `project/AGENTS.md`) yazılmaz — onlar `instructions.md`'ye referans verir.
 2. **manifest.routing[]** — makine-okunur kaynak (`{ "path": "<glob>", "role": "<agent-name>" }`).
 
-İkisi `sync-agent-config.mjs` ile aynı kaynaktan (`.agent-source/`) üretilir, böylece
-drift olmaz: `project/CLAUDE.md`'deki tablo ile `manifest.routing` elle ayrı tutulmaz.
+İkisi aynı kaynaktan (`.agent-source/`) gelir, böylece drift olmaz: `instructions.md`'deki
+tablo ile `manifest.routing` elle ayrı tutulmaz.
 
 ## Standart satır (koşullu)
 
@@ -60,7 +62,7 @@ drift olmaz: `project/CLAUDE.md`'deki tablo ile `manifest.routing` elle ayrı tu
   **Architect yoksa danışma hedefi kullanıcıdır** — zincirin ucu boşta kalmaz, belirsizlik
   kullanıcıya taşınır.
 
-Bu üç madde CLAUDE.md/AGENTS.md'nin routing bölümüne **birebir** (genelleştirilmiş
+Bu üç madde `instructions.md`'nin routing bölümüne **birebir** (genelleştirilmiş
 proje adlarıyla) yazılır. "YASAK" ve "bypass = ihlal" ifadeleri yumuşatılmaz.
 **Tek istisna üçüncü maddedir:** architect takımda yoksa danışma hedefi "architect"
 yerine "kullanıcı" yazılır. Var olmayan bir role birebir atıf yapmak, birebirliği korumak
@@ -76,7 +78,7 @@ değerlendirilir; bir dosya birden fazla satıra uyarsa en dar glob kazanır.
 en özgül eşleşme kesişimde bir sahip seçemez; doğrulayıcı böyle bir tabloyu reddeder.
 Yollardan birini ötekinin altına al ya da tamamen ayır.
 
-> **Bu cümle tablonun yanına, CLAUDE.md/AGENTS.md'ye de yazılır.** Tablo çakışan satırlar
+> **Bu cümle tablonun yanına, `instructions.md`'ye de yazılır.** Tablo çakışan satırlar
 > taşır (`docs/**` ve `docs/guides/**` gibi) ve çözüm kuralı olmadan hangi rolün sahip
 > olduğu okunamaz. Kural burada kalırsa projeye gitmez: bu dosya sihirbazın rehberidir,
 > projeye kurulmaz. Tabloyu yazarken çözüm kuralını da yaz.
@@ -135,6 +137,6 @@ Bu kurallar projeye özel routing satırlarıyla **çelişmez, onları tamamlar*
 ## Üretim özeti
 
 - Kaynak: `manifest.routing[]` (`.agent-source/agents/manifest.json`).
-- Generated hedefler: `CLAUDE.md` + (Codex ise) `AGENTS.md` governance bölümü.
+- Yazıldığı yer: `.agent-source/project/instructions.md`'nin routing bölümü (hedefe özgü dosyalara değil).
 - Doğrulama: `validate-manifest.mjs` — `path` ve `role` dolu, `role` ∈ agent adları.
 - Senkron: `sync-agent-config.mjs` her iki çıktıyı tek kaynaktan üretir (drift yok).

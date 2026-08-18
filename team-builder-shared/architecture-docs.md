@@ -2,7 +2,7 @@
 
 > v1'in basit `docs/architecture/{adr,constraints,design}` yapısını,
 > **domain-bazlı zengin ağaca** genişletir.
-> **Architect varsa yalnız o yazar** ve dosya konumu kuralı architect agent md'sine + CLAUDE.md'ye işlenir. **Architect yoksa** ağaç yine üretilir ama özel sahibi olmaz: mimari kararı kullanıcı verir, dokümanı değişikliği yapan rol yazar.
+> **Architect varsa yalnız o yazar** ve dosya konumu kuralı architect agent md'sine + `project/instructions.md`'ye işlenir. **Architect yoksa** ağaç yine üretilir ama özel sahibi olmaz: mimari kararı kullanıcı verir, dokümanı değişikliği yapan rol yazar.
 
 ## arch-root Seçimi
 
@@ -18,7 +18,7 @@ Aşağıda `<arch-root>` bu seçimi temsil eder.
 - **per-module:** central'a ek olarak her modül kendi dokümanını tutar:
   `modules/<name>/docs/{README.md, api.md, kararlar/}`. Modül listesi SORULMAZ; ADR'ler
   yazıldıkça organik oluşur. Seçilen kural, dokümantasyonu sahiplenen rolün md'sine
-  yazılır; öyle bir rol yoksa CLAUDE.md/AGENTS.md'nin doküman bölümüne.
+  yazılır; öyle bir rol yoksa `project/instructions.md`'nin doküman bölümüne.
 
 ---
 
@@ -115,4 +115,4 @@ Sihirbaz, onaylanan domain'lere göre üretir:
 5. layout=per-module ise her modülün ilk dokümanı şablondan organik kopyalanır (ADR yazıldıkça).
 
 Bu kuralların tamamı (architect varsa yalnız o yazar; ADR konum kuralı; registry kod-doc senkron disiplini)
-architect agent md'sine ve CLAUDE.md'ye işlenir.
+architect agent md'sine ve `project/instructions.md`'ye işlenir.

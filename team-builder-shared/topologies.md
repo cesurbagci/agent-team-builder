@@ -33,7 +33,7 @@
 |---|---|---|
 | `.claude/agents/<name>.md` | Üretilir (lead-raporlama dili) | Üretilir (peer-mesajlaşma dili) |
 | `.claude/settings.json` env flag | **gerekmez** | `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` + `teammateMode` — **setup tarafından merge edilir** (generator değil; mevcut anahtarlar korunur) |
-| `CLAUDE.md` notu | normal routing/danışma | + "Takımı başlatma" notu (doğal dille team kurma örneği) |
+| `CLAUDE.md` notu | yalnız `instructions.md` referansı | referans + "Takımı başlatma" notu (doğal dille team kurma örneği) |
 | `~/.claude/teams/`, `~/.claude/tasks/` | yok | Claude runtime'da otomatik üretir; biz dokunmayız |
 
 > **Not:** `settings.json` enablement'ı canonical→generated `sync` kapsamında DEĞİLDİR (tek seferlik proje aç/kapa ayarı; `sync-agent-config.mjs` settings.json'a dokunmaz). Topolojinin agent davranışına yansıması, agent md'lerin "İletişim" bölümüne (kaynakta) yazılır ve normal generate ile taşınır.

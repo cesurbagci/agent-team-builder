@@ -21,7 +21,7 @@ Codex ile **paylaşılır** — codex **veya** opencode hedefi varsa üretilir.
 
 | Üretilen dosya | Kaynak | Sayı |
 |---|---|---|
-| `AGENTS.md` | `.agent-source/project/AGENTS.md` (dil, routing, code-doc sync, anayasa) | Tek |
+| `AGENTS.md` | `.agent-source/project/AGENTS.md` — **yalnız referans** + Codex/OpenCode'a özgü olan. Ortak metin (dil, routing, code-doc sync, anayasa) `project/instructions.md`'dedir. | Tek |
 | `opencode.json` | `.agent-source/project/opencode.json` (verbatim — JSON header taşımaz) | Tek |
 | `.opencode/team.md` | `.agent-source/project/opencode-team.md` + roster | Tek |
 | `.opencode/agents/<name>.md` | manifest `agents[]` + `.agent-source/agents/<name>.md` gövdesi | Agent başına |
