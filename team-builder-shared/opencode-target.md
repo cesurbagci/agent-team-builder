@@ -84,12 +84,15 @@ Minimal team config. Generator **verbatim** kopyalar.
 ```json
 {
   "$schema": "https://opencode.ai/config.json",
-  "instructions": ["AGENTS.md", "docs/mimari/**/*.md"],
+  "instructions": [".agent-source/project/instructions.md", "AGENTS.md", "docs/mimari/**/*.md"],
   "permission": { "edit": "allow", "bash": "ask" }
 }
 ```
 
-- `instructions`: OpenCode'un her oturumda yüklediği kural dosyaları (AGENTS.md + mimari docs).
+- `instructions`: OpenCode'un her oturumda yüklediği kural dosyaları. **İlk eleman
+  `.agent-source/project/instructions.md` olmalı** — ortak talimat kaynağıdır
+  (routing, kod-doküman, anayasa, mimari kaynaklar) ve `AGENTS.md` ona referans verir.
+  Ardından `AGENTS.md` ve mimari doküman glob'u gelir.
 - `permission`: takım geneli varsayılan (agent md `permission`'ı override eder).
 
 ---
