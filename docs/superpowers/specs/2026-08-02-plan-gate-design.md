@@ -1,7 +1,7 @@
 # Tasarım: Plan Kapısı ve İş Havuzu (`planGate`) — çekirdek
 
 - **Tarih:** 2026-08-02 (baştan yazım: 2026-08-07, 5. review turundan sonra)
-- **Durum:** Onaylandı — uygulama planı bekliyor
+- **Durum:** Uygulandı
 - **Kapsam:** 5. anayasa preseti olarak plan kapısı + iş havuzu, **tek ekosistem içinde**
 
 > **Yazım notu.** Beş Codex review turu (11, 13, 10, 9, 10 bulgu). İlk dört turda spec
@@ -23,13 +23,19 @@ kayboluyor.
 |---|---|---|
 | **A** | Plan kapısı — plan yazımı, denetim, kullanıcı onayı | **Bu spec** |
 | **D** | Havuz — onaylanmış işlerin birikmesi ve seçilerek işletilmesi | **Bu spec** |
-| **B** | Çapraz ekosistem çağırma + verdict protokolü | Ayrı spec |
+| **B** | Çapraz ekosistem çağırma + verdict protokolü | **Uygulandı** — `2026-08-11-cross-ecosystem-invoke-design.md` |
 | **C** | Inbox'ın dış sisteme (Jira vb.) bağlanması | Ayrı spec |
 | **E** | Preset'i kurulum sonrası açma/kapama | Proje-yükseltme skill'i |
 
 Bu spec **tek ekosistem içinde** çalışır: denetleyiciler projenin kendi agent'larıdır ve
 **aynı oturumda**, o ekosistemin kendi agent çağırma mekanizmasıyla çalıştırılır. Harici
 CLI çağrısı yoktur.
+
+> **Bu kısıt B ile kalktı (2026-08-11).** Kapı sahibi oturumun ekosisteminde
+> üretilmemişse harici CLI çağrısıyla kendi ekosisteminde çalıştırılır. Bu spec'in geri
+> kalanı aynen geçerlidir; değişen yalnız denetleyiciye *nasıl* ulaşıldığıdır. Çağrı
+> dizisi, verdict protokolü ve hata hâli
+> `2026-08-11-cross-ecosystem-invoke-design.md`'dedir.
 
 > `manifest.topology` (`subagent` / `native`) **yalnız Claude hedefi içindir**
 > (`manifest-schema.md:22`). Bu yüzden spec topolojiye referans vermez; çağrı kuralı

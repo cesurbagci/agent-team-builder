@@ -1,7 +1,7 @@
 # Tasarım: Generated Dosya Defteri (rapor-only)
 
 - **Tarih:** 2026-08-03
-- **Durum:** Onaylandı — uygulama planı bekliyor
+- **Durum:** Uygulandı
 - **Kapsam:** `sync`'in dosya silmesini tamamen durdurmak; bunun yerine ürettiklerinin defterini tutup bayatlayanları raporlamak
 
 ## Problem
