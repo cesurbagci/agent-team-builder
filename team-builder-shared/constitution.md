@@ -38,7 +38,8 @@ giden metin şablondan render edilir. `team-builder-setup` kurulumda, `team-buil
 preset açarken **aynı** şablonu kullanır.
 
 Açık olan her preset, ilgili agent md gövdelerine (`agent-md-rich.md` kalıbı) ve
-CLAUDE.md/AGENTS.md'ye gömülür. İlk dördünün `default` değeri `true`, KARAR 5'inki
+`project/instructions.md`'ye işaretli blok olarak gömülür (bkz. *Projeye yazılan
+metin*). İlk dördünün `default` değeri `true`, KARAR 5'inki
 `false`'tur; kullanıcı toggle ile değiştirirse o preset ona göre yansır.
 
 ---
@@ -207,5 +208,6 @@ projeye kurulan `work-plan` skill'indedir.
    - KARAR 3 → ek satır gerektirmez
    - KARAR 5 → iki kapı sahibi (yukarıda)
 3. Sonuçları `manifest.constitution` (+ `codeDocSync[]`) alanlarına yaz.
-4. Açık presetleri ilgili agent md gövdelerine ve CLAUDE.md/AGENTS.md'ye gömül
-   (reviewer'da otomatik Kritik kuralları, her agent'ta memory disiplini, dil bölümü).
+4. Açık presetleri ilgili agent md gövdelerine ve `project/instructions.md`'ye
+   işaretli blok olarak gömül (reviewer'da otomatik Kritik kuralları, her agent'ta
+   memory disiplini, dil bölümü). Kapalı preset'in bloğu **yazılmaz**.

@@ -18,7 +18,7 @@ dosyalar elle değiştirilmez; kaynak `.agent-source/`'tur. Drift `--check` ile 
 
 | Üretilen dosya | Kaynak | Sayı |
 |---|---|---|
-| `AGENTS.md` | `.agent-source/project/*` (dil, routing, code-doc sync, anayasa) | Tek |
+| `AGENTS.md` | `.agent-source/project/AGENTS.md` — **yalnız referans** + Codex/OpenCode'a özgü olan. Ortak metin (dil, routing, code-doc sync, anayasa) `project/instructions.md`'dedir. | Tek |
 | `.codex/config.toml` | manifest (sandbox + multi-agent) | Tek |
 | `.codex/team.md` | `.agent-source/project/codex-team.md` + roster | Tek |
 | `.codex/agents/<name>.toml` | manifest `agents[]` (codex hedefli her agent) | Agent başına |
@@ -141,8 +141,18 @@ multi_agent = true
 
 ## 5. `AGENTS.md` (Codex root talimatı)
 
-Claude tarafındaki `CLAUDE.md`'nin Codex karşılığı; `.agent-source/project/*`'tan üretilir.
-İçerir (anayasa presetlerine ve manifest'e göre):
+Claude tarafındaki `CLAUDE.md`'nin Codex karşılığı; `.agent-source/project/AGENTS.md`'den
+verbatim üretilir.
+
+**İçeriğin çoğu artık burada değil.** Ortak talimat metni
+`.agent-source/project/instructions.md`'de yaşar ve `AGENTS.md` ona **referans verir**:
+
+```
+Bütün proje kuralları @.agent-source/project/instructions.md dosyasındadır. Önce onu oku.
+```
+
+Aşağıdaki liste, projenin bu bölümlerinin **nerede olduğunu** gösterir — hepsi
+`instructions.md`'dedir, `AGENTS.md`'ye kopyalanmaz:
 
 - **Temel kural + dil:** kullanıcıya `docLanguage`, kod/dosya/commit İngilizce, yorum
   `docLanguage` metin + İngilizce tag, shell'de `rtk`, aramada `rg`.
@@ -154,6 +164,10 @@ Claude tarafındaki `CLAUDE.md`'nin Codex karşılığı; `.agent-source/project
 - **Zorunlu Routing tablosu:** `routing[]` → `<yol> → <rol>`; "tabloyu bypass = mimari ihlal".
 - **Kod-Doküman Senkronizasyonu tablosu:** `codeDocSync[]` → `<kod> → <doküman>`.
 - **Mimari kaynaklar + test/doğrulama** komutları.
+
+`AGENTS.md`'de yalnız **Codex/OpenCode'a özgü** olan kalır; bugün böyle bir içerik
+yoktur, yani dosya referans satırından ibarettir. Kullanıcının sonradan ekleyeceği şey
+için açık durur.
 
 `AGENTS.md`'deki agent'ın kendi rolü (root talimatın hangi agent gözünden yazıldığı) ana
 Codex ajanının orkestratör rolüdür; ayrıntılı rol talimatları agent-definitions'tadır.

@@ -104,8 +104,10 @@ Yol→rol satırları **jenerik varsayılmaz**. Sihirbaz şu akışı izler:
    `frontend-developer`, `modules/**` → `extension-developer`).
 3. **Kullanıcı onayı:** kullanıcı taslağı onaylar, düzeltir veya satır ekler/siler.
    Hiçbir satır kullanıcı onayı olmadan kesinleşmez.
-4. **Yazım:** onaylanan tablo hem `project/CLAUDE.md` (ve hedef Codex ise
-   `project/AGENTS.md`) governance bölümüne **hem de** `manifest.routing[]`'e yazılır.
+4. **Yazım:** onaylanan tablo hem `project/instructions.md`'nin routing bölümüne
+   **hem de** `manifest.routing[]`'e yazılır. Routing **ortak** metindir; hedefe özgü
+   dosyalara (`project/CLAUDE.md`, `project/AGENTS.md`) yazılmaz — onlar
+   `instructions.md`'ye referans verir.
 
 `manifest.routing[].role` değerleri manifest'teki bir `agents[].name` olmalıdır
 (`validate-manifest.mjs` bunu doğrular). Tanımsız role işaret eden routing satırı
