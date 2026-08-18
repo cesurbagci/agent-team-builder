@@ -151,16 +151,21 @@ verbatim üretilir.
 Bütün proje kuralları @.agent-source/project/instructions.md dosyasındadır. Önce onu oku.
 ```
 
-Aşağıdaki liste, projenin bu bölümlerinin **nerede olduğunu** gösterir — hepsi
-`instructions.md`'dedir, `AGENTS.md`'ye kopyalanmaz:
+Aşağıdaki liste, eskiden `AGENTS.md`'de olan bölümlerin **şimdi nerede olduğunu**
+gösterir. Hiçbiri `AGENTS.md`'ye kopyalanmaz — ama hepsi de `instructions.md`'ye
+gitmez; **ortak** olanlar oraya gider, ekosisteme özgü olanların başka evi vardır:
 
 - **Temel kural + dil:** kullanıcıya `docLanguage`, kod/dosya/commit İngilizce, yorum
   `docLanguage` metin + İngilizce tag, shell'de `rtk`, aramada `rg`.
-- **Senkronizasyon disiplini:** generated dosya listesi + "elle değiştirme, `.agent-source/`
-  güncelle → `sync:agents` → `check:agents` drift".
+- **Senkronizasyon disiplini:** generated dosya listesi + "elle değiştirme,
+  `.agent-source/` güncelle → `sync:agents` → `check:agents` drift".
+  → **`.agent-source/README.md`** (kaynak ağacını sürdürenlere hitap eder,
+  üretilen dosyayı okuyan agent'a değil).
 - **Agent memory disiplini:** tek canonical alan `.agent-memory/`.
 - **Codex team politikası:** sub-agent / role emulation; hangi iş hangi
-  `.codex/agent-definitions/<name>.md` okunur.
+  `.codex/agent-definitions/<name>.md` okunur. → **`.codex/team.md`** (§4). Ortak
+  `instructions.md`'ye **yazılmaz**: Codex'e özgüdür ve o dosyayı Claude-only ya da
+  OpenCode-only bir proje de okur — orada `.codex/` diye bir dizin yoktur.
 - **Zorunlu Routing tablosu:** `routing[]` → `<yol> → <rol>`; "tabloyu bypass = mimari ihlal".
 - **Kod-Doküman Senkronizasyonu tablosu:** `codeDocSync[]` → `<kod> → <doküman>`.
 - **Mimari kaynaklar + test/doğrulama** komutları.
@@ -169,8 +174,9 @@ Aşağıdaki liste, projenin bu bölümlerinin **nerede olduğunu** gösterir �
 yoktur, yani dosya referans satırından ibarettir. Kullanıcının sonradan ekleyeceği şey
 için açık durur.
 
-`AGENTS.md`'deki agent'ın kendi rolü (root talimatın hangi agent gözünden yazıldığı) ana
-Codex ajanının orkestratör rolüdür; ayrıntılı rol talimatları agent-definitions'tadır.
+Ana Codex ajanı orkestratör rolündedir; ayrıntılı rol talimatları
+`.codex/agent-definitions/<name>.md`'dedir. `AGENTS.md`'ye bu yüzden bir rol önsözü de
+yazılmaz — dosya referans satırından ibarettir.
 
 ---
 

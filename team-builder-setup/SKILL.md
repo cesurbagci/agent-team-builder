@@ -37,6 +37,7 @@ Akışa başlamadan önce şu dosyaların var olduğunu doğrula. Yoksa kullanı
 - `~/.claude/skills/team-builder-shared/plan-gate.md` — plan kapısı kurulum sözleşmesi (KARAR 5 açıksa).
 - `~/.claude/skills/team-builder-shared/templates/plan.md` — plan dosyası şablonu.
 - `~/.claude/skills/team-builder-shared/templates/work-plan-skill.md` — projeye kurulacak `work-plan` skill'inin şablonu.
+- `~/.claude/skills/team-builder-shared/templates/constitution-blocks.md` — anayasa preset'lerinin işaretli blok şablonu (Adım 8a `instructions.md`'yi bundan render eder).
 - `~/.claude/skills/team-builder-shared/quality-dimensions.md` — kalite odakları (checkbox) → kısıt + reviewer eksenleri.
 - `~/.claude/skills/team-builder-shared/templates/` — mimari doküman standardı + ADR/kısıt/tasarım şablonları (`doc-standard.md`).
 - `~/.claude/skills/team-builder-shared/architecture-docs.md` — mimari doküman ağacı (arch-root + layout) + MADR.
