@@ -56,6 +56,7 @@ GENERATED'dır**; elle düzenlenmez, kaynaktan üretilir.
 | `agents/<role>.md` | `.codex/agent-definitions/<role>.md` | agent `targets` içinde `codex` varsa (verbatim kopya) |
 | `agents/manifest.json` | `.codex/agents/<role>.toml` | `codex` target'lı agent'lar için (metadata + `developer_instructions`) |
 | `agents/<role>.md` + manifest | `.opencode/agents/<role>.md` | agent `targets` içinde `opencode` varsa (OpenCode frontmatter + kaynak gövde) |
+| `project/instructions.md` | *(kopyalanmaz — hedefler referans verir)* | Her zaman |
 | `project/CLAUDE.md` | `CLAUDE.md` | Claude hedefi seçiliyse |
 | `project/AGENTS.md` | `AGENTS.md` | Codex **veya** OpenCode hedefi seçiliyse |
 | `project/codex-config.toml` | `.codex/config.toml` | Codex hedefi seçiliyse |
@@ -65,6 +66,11 @@ GENERATED'dır**; elle düzenlenmez, kaynaktan üretilir.
 | `project/opencode-team.md` | `.opencode/team.md` | OpenCode hedefi seçiliyse |
 | `skills/<skill>/SKILL.md` | `.agents/skills/` (her zaman — Codex ve OpenCode ikisi de okur) + Claude hedefi varsa `.claude/skills/` + OpenCode hedefi varsa `.opencode/skills/` | varsa |
 | *(kaynak yok — sync'in kendi ürettiği)* | `.agent-source/generated-files.json` | bu turda üretilen tüm generated yollar **artı** önceki defterde olup hâlâ diskte duran yollar (birleşim) |
+
+> **`instructions.md` üretilen dosya değildir.** `.agent-source/project/` altında yaşar
+> ve `CLAUDE.md`/`AGENTS.md` ona referans verir; `opencode.json` `instructions` dizisine
+> ekler. Kopyalanmadığı için ledger'a girmez ve drift kontrolüne konu olmaz — ama
+> **referansın kendisi** denetlenir (`sync-pipeline.md`).
 
 - `agents/<role>.md`'nin hangi hedeflere gideceği o agent'ın **`targets`** alanına
   bağlıdır (yoksa kök `targetsDefault`): örn. `["claude"]`, `["opencode"]`,

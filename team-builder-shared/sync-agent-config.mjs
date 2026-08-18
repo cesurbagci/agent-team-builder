@@ -42,6 +42,11 @@ const GENERATED_HEADER = '# This file is generated from .agent-source. Run sync.
 const LEDGER_RELATIVE = path.join('.agent-source', 'generated-files.json')
 const VALID_TARGETS = new Set(['claude', 'codex', 'opencode'])
 
+// The shared instruction file lives in the canonical source and is referenced —
+// never copied. If a source file loses this reference the generated target still
+// looks valid and drift check stays clean, so nothing else would ever notice.
+export const INSTRUCTIONS_REF = '.agent-source/project/instructions.md'
+
 // Fallback map when an opencode-targeted agent has no explicit `opencode_model`.
 // The wizard normally asks for and stores a provider/model string per agent, so
 // this is a best-effort backstop only — adjust to the provider you actually use.
@@ -427,6 +432,27 @@ function renderCodexAgentToml(agent, manifest, projectName) {
 // sync phases
 // ---------------------------------------------------------------------------
 
+// Deliberately a warning, not a ctx.mismatch: mismatches fail --check, and the
+// project owner decided a missing reference must not block generation. The
+// offer to restore it belongs to the interactive skills, not here.
+async function warnMissingInstructionsRef(ctx, manifest, warn) {
+  const checks = []
+  if (projectHasClaude(manifest)) checks.push('CLAUDE.md')
+  if (projectHasCodex(manifest) || projectHasOpencode(manifest)) checks.push('AGENTS.md')
+
+  for (const name of checks) {
+    const source = ctx.resolveSource('project', name)
+    if (!(await pathExists(source))) continue
+    const body = await readText(source)
+    if (!body.includes(INSTRUCTIONS_REF)) {
+      warn(
+        `! .agent-source/project/${name} does not reference ${INSTRUCTIONS_REF} — ` +
+          'the project loses its shared governance text. Add the reference back.'
+      )
+    }
+  }
+}
+
 async function syncProjectFiles(ctx, manifest) {
   // Project files are templated/compiled generated outputs → prepend header.
   const withHeader = source => GENERATED_HEADER + source
@@ -691,6 +717,7 @@ async function generate({ root, checkOnly, quiet = false }) {
 
   const projectName = path.basename(ctx.resolvedRoot)
 
+  await warnMissingInstructionsRef(ctx, manifest, warn)
   await syncProjectFiles(ctx, manifest)
   await syncAgents(ctx, manifest, projectName)
   await syncSkills(ctx, manifest)
@@ -896,9 +923,9 @@ async function runSelftest() {
   const developerBody = '---\nname: developer\ndescription: Kod yazar.\nmodel: sonnet\n---\n\n# Developer\n\nKod yazar.\n'
   await fs.writeFile(path.join(sourceRoot, 'agents', 'developer.md'), developerBody)
 
-  const claudeMd = '# CLAUDE\n\nProje talimati.\n'
+  const claudeMd = `# CLAUDE\n\n@${INSTRUCTIONS_REF}\n\nProje talimati.\n`
   await fs.writeFile(path.join(sourceRoot, 'project', 'CLAUDE.md'), claudeMd)
-  const agentsMd = '# AGENTS\n\nCodex/OpenCode talimati.\n'
+  const agentsMd = `# AGENTS\n\nButun proje kurallari @${INSTRUCTIONS_REF} dosyasindadir.\n`
   await fs.writeFile(path.join(sourceRoot, 'project', 'AGENTS.md'), agentsMd)
 
   const opencodeJson =
@@ -1860,6 +1887,33 @@ async function runSelftest() {
     !s2Ledger.includes('.agent-work'),
     'S2: the ledger must not claim ownership of .agent-work/'
   )
+
+  // A source file that lost its instructions reference still generates a valid
+  // looking target and passes drift check — the project silently loses all of
+  // its governance. The warning is the only thing standing between the user and
+  // that outcome, so it has its own case.
+  {
+    await fs.writeFile(
+      path.join(sourceRoot, 'project', 'CLAUDE.md'),
+      '# CLAUDE\n\nProje talimati.\n'
+    )
+    const warnings = []
+    const originalWarn = console.warn
+    console.warn = (...a) => warnings.push(a.join(' '))
+    try {
+      await generate({ root: fixtureRoot, checkOnly: false })
+    } finally {
+      console.warn = originalWarn
+    }
+    assert(
+      warnings.some(w => w.includes(INSTRUCTIONS_REF)),
+      `expected a warning naming ${INSTRUCTIONS_REF}, got: ${warnings.join(' | ') || '(none)'}`
+    )
+    await fs.writeFile(
+      path.join(sourceRoot, 'project', 'CLAUDE.md'),
+      `# CLAUDE\n\n@${INSTRUCTIONS_REF}\n\nProje talimati.\n`
+    )
+  }
 
   // Cleanup.
   await fs.rm(fixtureRoot, { recursive: true, force: true })

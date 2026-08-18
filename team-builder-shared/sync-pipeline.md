@@ -159,3 +159,18 @@ düşer ve bir daha hiç görünmez — `--check` yeşil yanarken dosya diskte k
 - Manifest'te `targets` boş dizi veya geçersiz hedef (`claude`/`codex`/`opencode` dışı)
   içeriyorsa generator hata fırlatır.
 - Üst seviye hata yakalanır, `process.exitCode = 1` ile sonlanır.
+
+## 10. Ortak talimat referansı
+
+Hedeflenen her ekosistemin kaynak dosyası `.agent-source/project/instructions.md`
+referansını taşımalıdır: Claude için `project/CLAUDE.md`, Codex ya da OpenCode için
+`project/AGENTS.md`.
+
+Referans eksikse `sync` **uyarır ve devam eder** — reddetmez. Gerekçe: dosya kullanıcının
+kendi kaynağıdır ve tek satır yüzünden üretimi durdurmak orantısız olur. Ama sessiz de
+kalınamaz: üretilen dosya geçerli görünür, drift kontrolü temiz döner ve proje bütün
+governance metnini kaybetmiş olur.
+
+Uyarı **`ctx.mismatches`'e girmez** — oraya girseydi `--check` düşerdi, yani reddetmiş
+olurduk. Bunun bedeli: yalnız `--check` çalıştıran bir CI eksik referansı görmez.
+Bilinçli bir tercihtir; eklemeyi teklif etmek etkileşimli skill'lerin işidir.
