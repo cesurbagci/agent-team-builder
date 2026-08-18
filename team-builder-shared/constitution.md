@@ -19,6 +19,24 @@ Anayasa alanları `manifest.constitution`'a yazılır:
 "constitution": { "noWorkaround": true, "codeDocSync": true, "perAgentMemory": true, "languageStandard": true, "planGate": false }
 ```
 
+### Projeye yazılan metin
+
+Her preset'in **projeye yazılan** metni `templates/constitution-blocks.md`'dedir ve
+`.agent-source/project/instructions.md` içine işaretli blok olarak konur:
+
+| Preset | İşaret |
+|---|---|
+| `noWorkaround` | `<!-- c:noWorkaround -->` |
+| `codeDocSync` | `<!-- c:codeDocSync -->` |
+| `perAgentMemory` | `<!-- c:perAgentMemory -->` |
+| `languageStandard` | `<!-- c:languageStandard -->` |
+| `planGate` | `<!-- c:planGate -->` |
+
+**Bu dosya sihirbaz talimatıdır, projeye yazılan metin değil.** Aşağıdaki KARAR
+bölümleri preset'in ne olduğunu ve kullanıcıya nasıl sorulacağını anlatır; projeye
+giden metin şablondan render edilir. `team-builder-setup` kurulumda, `team-builder-upgrade`
+preset açarken **aynı** şablonu kullanır.
+
 Açık olan her preset, ilgili agent md gövdelerine (`agent-md-rich.md` kalıbı) ve
 CLAUDE.md/AGENTS.md'ye gömülür. İlk dördünün `default` değeri `true`, KARAR 5'inki
 `false`'tur; kullanıcı toggle ile değiştirirse o preset ona göre yansır.
