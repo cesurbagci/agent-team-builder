@@ -32,8 +32,9 @@ kaynağın `.agent-source/` olduğunu görür.
 │                                   #   sandbox_mode, nickname_candidates[], routing, codeDocSync,
 │                                   #   constitution, extra_instructions[]
 ├── project/
-│   ├── CLAUDE.md                   # Claude proje talimatı kaynağı
-│   ├── AGENTS.md                   # Codex/OpenCode proje talimatı kaynağı (Codex veya OpenCode hedefi)
+│   ├── instructions.md             # ORTAK talimat kaynağı — kopyalanmaz, hedefler referans verir
+│   ├── CLAUDE.md                   # Claude'a özgü + instructions.md referansı
+│   ├── AGENTS.md                   # Codex/OpenCode'a özgü + instructions.md referansı
 │   ├── codex-config.toml           # → .codex/config.toml      (Codex hedefi seçiliyse)
 │   ├── codex-team.md               # → .codex/team.md          (Codex hedefi seçiliyse)
 │   ├── migration-map.md            # → .codex/migration-map.md (Codex hedefi seçiliyse)
