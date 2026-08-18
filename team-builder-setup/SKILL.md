@@ -252,10 +252,30 @@ Tüm cevaplar toplandı; şimdi kaynağı yaz, doğrula ve generate et. Sırayla
 - `.agent-source/agents/manifest.json` — kök alanlar (`targetsDefault`, `topology`, `docLanguage`, `architectureDocs`, `constitution`, `focus[]`, `routing[]`, `codeDocSync[]`, `lead`) + `agents[]`; `~/.claude/skills/team-builder-shared/manifest-schema.md` şemasına birebir uygun.
 - **Kalite odaklarından kısıt dosyaları** (Adım 7A, `quality-dimensions.md`): seçili boyutlardan somut olanlar için `docs/<arch-root>/constraints/<konu>.md`'yi `templates/constraint.md` standardıyla üret — örn. `code-design` → `file-size.md` (max satır eşiğiyle), `security` → `secrets.md`, `testing` → `coverage.md`.
 - `.agent-source/agents/<name>.md` — her üye için zengin rol talimatı (`~/.claude/skills/team-builder-shared/agent-md-rich.md` kalıbı, docLanguage dilinde). **`İletişim` bölümü topolojiye göre yazılır** (`subagent` → lead'e raporla; `native` → peer-to-peer mesajlaş — `topologies.md`).
-- **Claude hedefi seçildiyse:** `.agent-source/project/CLAUDE.md` — Claude proje talimatı kaynağı (routing + code-doc sync + anayasa + mimari kaynaklar dahil). Routing bölümüne tabloyla birlikte **çözüm kuralını** da yaz: "bir dosya birden fazla satıra uyarsa **en özgül (en dar) yol kazanır**". Tablo çakışan satırlar taşır (`docs/**` ve `docs/guides/**` gibi); kural yazılmazsa hangi rolün sahip olduğu okunamaz ve `routing.md` projeye kurulmadığı için başka yerden öğrenilemez. Claude seçilmediyse bu dosyayı **YAZMA** (generator zaten üretmez). **`topology: native` ise** ek bir "Takımı başlatma" bölümü ekle: takımın doğal dille nasıl kurulacağına dair kısa örnek (örn. "X, Y, Z rolleriyle bir agent takımı oluştur") ve teammate'lerin peer-to-peer koordine olduğu notu.
-- Codex **veya** OpenCode hedefi seçildiyse: `.agent-source/project/AGENTS.md` (ikisi de native okur). Routing bölümüne **çözüm kuralını** burada da yaz — aynı gerekçeyle.
+- **Her zaman:** `.agent-source/project/instructions.md` — **ortak talimat kaynağı.**
+  Routing tablosu (+ çözüm kuralı: "bir dosya birden fazla satıra uyarsa **en özgül (en
+  dar) yol kazanır**"), kod-doküman satırları, mimari kaynaklar ve **açık olan her
+  anayasa preset'inin işaretli bloğu**. Bloklar
+  `~/.claude/skills/team-builder-shared/templates/constitution-blocks.md`'den render
+  edilir — verbatim kopyalanmaz, `docLanguage`'e çevrilir ve yer tutucular projenin
+  cevaplarıyla doldurulur. **Kapalı preset'in bloğu yazılmaz.**
+- **Claude hedefi seçildiyse:** `.agent-source/project/CLAUDE.md` — **ilk satırı
+  referans olmalı:** `@.agent-source/project/instructions.md`. Altına yalnız Claude'a
+  özgü olan gelir: **`topology: native` ise** "Takımı başlatma" bölümü (takımın doğal
+  dille nasıl kurulacağına dair kısa örnek + teammate'lerin peer-to-peer koordine
+  olduğu notu). Claude seçilmediyse bu dosyayı **YAZMA**.
+- **Codex veya OpenCode hedefi seçildiyse:** `.agent-source/project/AGENTS.md` — referans
+  satırını taşır: `Bütün proje kuralları @.agent-source/project/instructions.md
+  dosyasındadır. Önce onu oku.` Bugün bu ekosistemlere özgü başka içerik yoktur, yani
+  dosya kısadır; kullanıcının sonradan ekleyeceği şey için açık durur.
 - Codex hedefi seçildiyse ayrıca: `.agent-source/project/codex-config.toml`, `.agent-source/project/codex-team.md` (`~/.claude/skills/team-builder-shared/codex-target.md`).
-- OpenCode hedefi seçildiyse ayrıca: `.agent-source/project/opencode.json` (**yalnız geçerli şema anahtarları**: `$schema` + `instructions` [AGENTS.md + mimari docs] + `permission` default'ları — **`"//"` gibi not anahtarı EKLEME**, OpenCode şemayı katı doğrular ve `Unrecognized key` ile başlamaz) ve `.agent-source/project/opencode-team.md` (`~/.claude/skills/team-builder-shared/opencode-target.md`).
+- OpenCode hedefi seçildiyse ayrıca: `.agent-source/project/opencode.json` (**yalnız geçerli şema anahtarları**: `$schema` + `instructions` + `permission` default'ları — **`"//"` gibi not anahtarı EKLEME**, OpenCode şemayı katı doğrular ve `Unrecognized key` ile başlamaz; `instructions` dizisinin **ilk** elemanı `.agent-source/project/instructions.md` olmalı, ardından `AGENTS.md` ve mimari doküman glob'u gelir) ve `.agent-source/project/opencode-team.md` (`~/.claude/skills/team-builder-shared/opencode-target.md`).
+
+> **Referans satırı zorunludur.** Kullanıcı onu silerse proje bütün governance metnini
+> **sessizce** kaybeder — üretilen dosya geçerli görünür ve drift kontrolü temiz döner.
+> `sync` bunu uyarı olarak yakalar ama reddetmez; o yüzden ilk yazımda doğru koymak
+> önemlidir.
+
 - `.agent-source/skills/<skill>/SKILL.md` — repo skill kaynakları (varsa).
 - `.agent-source/README.md` — "generated'ı elleme; burayı güncelle + sync çalıştır" notu.
 - **Plan kapısı açıksa** (`constitution.planGate: true`) şunları da üret — hepsi
