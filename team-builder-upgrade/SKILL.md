@@ -112,8 +112,15 @@ açma ve kapatma ayrı ayrı anlatılır.
 
    **Projede hiç `writesCode: false` agent yoksa** kapı açılamaz. Tekrar tekrar sorma:
    durumu söyle ve iki seçenek sun — kullanıcı `null` denetleyiciyle devam etsin (kapı
-   açılır ama o kapı atlanır), ya da önce `team-builder-setup` ile kod yazmayan bir rol
-   eklesin. Rol eklemek bu skill'in işi **değildir**.
+   açılır ama o kapı atlanır), ya da kod yazmayan bir rolü **elle** eklesin: önce
+   `.agent-source/agents/manifest.json`'daki `agents[]`'e `writesCode: false` olan yeni
+   bir girdi (`manifest-schema.md`'deki zorunlu alanlarla), sonra karşılığında
+   `.agent-source/agents/<name>.md` rol talimatını yaz, sonra `sync` çalıştır. Bu sırayla:
+   önce manifest, sonra md, sonra sync — ters sıra `sync`'in daha yazılmamış bir role
+   atıf bulmasına yol açar. **`team-builder-setup`'a yönlendirme** — zaten kurulu bir
+   projede o skill Adım 1'de **DEVAM ETME** der ve var olmayan `/team-builder-add` ile
+   `/team-builder-edit` komutlarına yönlendirir; rol eklemek bu skill'in de işi
+   **değildir**, yukarıdaki elle-düzenleme tek yoldur.
 2. **Manifest'i yaz:** `constitution.planGate: true` **ve** kök `planGate` nesnesi
    (`planReviewer`, `codeReviewer` — ikisi de zorunlu, değer ad ya da `null`).
 3. **Bloğu ekle:** `<!-- c:planGate -->` … `<!-- /c:planGate -->`, şablondan render
@@ -123,7 +130,12 @@ açma ve kapatma ayrı ayrı anlatılır.
    `docLanguage`'e çevrilerek. **İşaretler çevrilmez.**
 5. **İskeleti kur:** `.agent-work/` altında `README.md`, `TEMPLATE.md` (bu da
    `templates/plan.md`'den render edilir) ve beş klasör: `inbox/ draft/ approved/
-   in-progress/ done/`.
+   in-progress/ done/`. **`TEMPLATE.md`'yi render ederken** şablon Türkçe referanstır;
+   verbatim kopyalama, `docLanguage` dilinde yeniden yaz — ama beş `<!-- s:* -->` işareti
+   (`s:what`, `s:how`, `s:questions`, `s:review-notes`, `s:progress`) ve
+   `<!-- progress:not-started -->` sentinel'i **birebir korunur** (çeviriden
+   bağımsızdırlar). Bunları çevirirsen ya da normalize edersen `work-plan` skill'i
+   `.agent-work/` içindeki hiçbir planı okuyamaz.
 6. **`sync` çalıştır** — skill ekosistem dizinlerine yansır.
 
 **`.agent-work/` zaten varsa ÜZERİNE YAZMA.** Önceki bir açma-kapama turundan kalmış
@@ -170,14 +182,18 @@ işletmeye çalışır.
    **Bu noktada `--check` çalıştırma ve kimseye çalıştırtma.** Kaynağı bilerek sildin,
    yani drift **beklenen** durumdur ve `--check` 1 ile döner. `team-builder-sync`
    "sync'ten sonra `--check` temiz olmalı" der — o kural normal senkron içindir, kapatma
-   akışında geçerli değildir. 5. adımı bitirdikten sonra `--check` yine temiz döner.
+   akışının bu noktasında **henüz** geçerli değildir; 6. adımdaki ikinci `sync`'e kadar.
 5. **`sync`'in `(stale)` diye raporladığı hedeflerden yalnız `work-plan` yolunda
    olanları sil.** `.agents/skills/work-plan/` **her projede** çıkar (o kopya ekosistem
    koşulsuz üretilir); `.claude/skills/work-plan/` ve `.opencode/skills/work-plan/` ise
    ilgili ekosistem hedefleniyorsa. **Listedeki başka yollara dokunma** — aynı koşuda
    ilgisiz bir stale girdi de raporlanmış olabilir ve onu silmek bu işlemin
    duyurulmamış bir yan etkisi olur.
-6. **Silinenleri kullanıcıya listele**
+6. **`sync`'i tekrar çalıştır** (düz `sync`, `--check` değil). Check modu ledger'ı hiç
+   yazmaz; 5. adımda dosyaları elle sildikten sonra ledger hâlâ o yolları listeler, yani
+   şimdi `--check` çalıştırsan yine 1 ile dönerdi. Bu ikinci düz `sync` ledger'ı diskteki
+   gerçek duruma göre yeniden yazar — **ancak bundan sonra** `--check` temiz döner.
+7. **Silinenleri kullanıcıya listele.**
 
 ### Sıra önemlidir
 
@@ -204,9 +220,15 @@ Preset çeviremezsin — önce göç.
 2. **Diverjansı kontrol et.** Önce **kaç dosya var** ona bak — tek ekosistemli bir
    projede yalnız biri bulunur ve bu normaldir, çakışma değil.
    - **Tek dosya varsa** → karşılaştıracak bir şey yok, o dosyanın içeriğiyle devam et.
-   - **İkisi de varsa** → `project/CLAUDE.md` ile `project/AGENTS.md` bugün kopya olmalı,
-     ama kullanıcı birini elle düzenlemiş olabilir. Karşılaştır:
-   - **Aynıysa** → devam.
+   - **İkisi de varsa** → `project/CLAUDE.md` ile `project/AGENTS.md` **birebir kopya
+     olmak zorunda değildir.** Bölünmeden önceki eski projelerde üç bölüm ekosisteme
+     özgüdür ve yapısal olarak yalnızca birinde bulunur — bu **beklenen** bir fark,
+     kullanıcıya sorulacak bir çakışma değildir (bkz. 3. adımdaki liste ve
+     `codex-target.md:144-175`): Claude'un `topology: native` "Takımı başlatma" bölümü
+     yalnız `CLAUDE.md`'de; "Senkronizasyon disiplini" ve "Codex team politikası"
+     bölümleri yalnız `AGENTS.md`'de (Codex hedefliyse). Karşılaştırmadan **önce** bu üç
+     bölümü ayıkla, **kalan** metni karşılaştır:
+   - **Aynıysa** → devam (ayıklanan bölümler 3. ve 5. adımda kendi hedeflerine gider).
    - **Farklıysa** → **DUR.** Farkı göster ve sor: "Bu iki dosya ayrışmış. Hangisi
      ortak metin olsun?" Sessizce birini kazandırma — kullanıcının yazdığı metni
      kaybetmek demektir. Kullanıcı seçmezse **hiçbir şey değişmez** — göç başlamaz,
@@ -214,9 +236,16 @@ Preset çeviremezsin — önce göç.
      geçerlidir.
 
 3. **`instructions.md`'yi oluştur.** Seçilen dosyanın içeriğini al. Ekosisteme özgü
-   olduğunu bildiğin bölümleri **çıkar** — bugün bu yalnız Claude'un `topology: native`
-   durumundaki "Takımı başlatma" bölümüdür; onu bir kenara koy, 5. adımda geri
-   yazacaksın.
+   olduğunu bildiğin bölümleri **çıkar ve kenara koy** — bugün üç tane var
+   (`codex-target.md:144-175`'teki eşleşmeye göre), gerisi ortak metindir:
+   - Claude'un `topology: native` durumundaki "Takımı başlatma" bölümü → 5. adımda
+     `CLAUDE.md`'ye geri yazılır.
+   - "Senkronizasyon disiplini" bölümü (generated dosya listesi + elle değiştirme
+     uyarısı) → `.agent-source/README.md`'ye ait; o dosya zaten bunu içerir, atabilirsin.
+   - "Codex team politikası" bölümü (sub-agent / role emulation; hangi iş hangi
+     `.codex/agent-definitions/<name>.md` okunur) → Codex hedefliyse 5. adımda
+     `.agent-source/project/codex-team.md`'ye yazılır (`.codex/team.md` bu kaynaktan
+     üretilir). Codex hedefli değilse bu bölüm zaten yoktur.
 
 4. **İşaretleri blok blok onaylat.** Her preset için, manifest'te **açık** olanları
    sırayla:
@@ -247,6 +276,10 @@ Preset çeviremezsin — önce göç.
      dosyasındadır. Önce onu oku.`
    - `project/opencode.json` → `instructions` dizisinin **başına**
      `.agent-source/project/instructions.md` ekle
+   - **Codex hedefliyse ve 3. adımda "Codex team politikası" bölümünü ayırdıysan:**
+     `.agent-source/project/codex-team.md`'yi kontrol et — bu içeriği taşımıyorsa
+     ayırdığın metni oraya ekle. Zaten taşıyorsa (çoğu zaman öyledir, çünkü dosya bu
+     projede zaten vardı) hiçbir şey yapma.
 
    Yalnız hedeflenen ekosistemlerin dosyalarıyla ilgilen. Tek ekosistemli bir projede
    (ör. yalnız OpenCode) `CLAUDE.md` zaten yoktur.

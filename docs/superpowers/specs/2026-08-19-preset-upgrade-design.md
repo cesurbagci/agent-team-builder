@@ -254,10 +254,19 @@ Göç **tek seferliktir** ve git ile geri alınabilir; skill bunu söyler.
 | Kural | Nerede | Davranış |
 |---|---|---|
 | Hedeflenen her ekosistemin kaynak dosyası `instructions.md` referansını taşımalı | `sync` öncesi | **Uyar + eklemeyi teklif et** |
-| `instructions.md` açık preset'lerin işaret çiftlerini taşımalı | artefakt doğrulaması | Eksikse bildir |
+| `instructions.md` açık preset'lerin işaret çiftlerini taşımalı | artefakt doğrulaması | **Yapılmadı** — aşağıya bak |
 
-İkincisi `validate-plan-gate.mjs`'nin işaret denetimi kalıbının aynısıdır ve aynı
-gerekçeyle mekaniktir: eksilmesi sessiz olan şey makineyle zorlanır.
+**İkincisi inşa edilmedi.** `instructions.md` bir **proje** dosyasıdır, bu repoda örneği
+yok; `validate-plan-gate.mjs` yalnız bu reponun kendi şablonlarını (`templates/plan.md`,
+`templates/work-plan-skill.md`) denetler — bir projeye kurulmuş `instructions.md`'yi
+değil. Projedeki işaretleri mekanik denetlemek, o projeye kurulan **ayrı bir
+doğrulayıcı** gerektirir; bu spec'in kapsamı dışında kalan ayrı bir iş
+(`docs/superpowers/plans/2026-08-19-preset-upgrade.md:1074`). Bugün onun yerini
+`team-builder-upgrade/SKILL.md`'nin "Ortak akış" 7. adımı (*Doğrula ve raporla*) tutuyor:
+preset her açılıp kapatıldığında model `instructions.md`'yi elle tarayıp beklenen işaret
+çiftinin var/yok olduğunu kontrol eder. Mekanik değil — ama bugün var olan tek denetim
+budur, ve bu yüzden aşağıdaki değişecekler tablosunda bu satıra karşılık bir `.mjs`
+değişikliği **yoktur**.
 
 **Mevcut kurallar korunur.** `constitution.planGate` ile kök `planGate` nesnesinin
 varlık/yokluk eşleşmesi, kapı sahiplerinin `writesCode: false` olması, hedeflenen her

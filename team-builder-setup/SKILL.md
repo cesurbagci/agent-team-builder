@@ -227,12 +227,16 @@ atama.
 **Her cevaptan sonra state'i yaz** (`answers.planGate` altına tek tek) — kullanıcı iki
 sorunun ortasında çıkarsa resume'da cevapladığı soru yeniden sorulmaz.
 
-**Erişilebilirlik kontrolü.** Seçilen kapı sahibi, kod yazan ve routing'de geçen tüm
-rollerin hedeflediği **her** ekosistemde üretiliyor olmalı. Değilse kullanıcıya sade dille
-söyle ("Bu rol yalnız Claude'da üretiliyor ama işleri yapacak roller Codex'te de var —
-denetleyiciyi oraya da eklememiz gerekiyor") ve ya rolün hedeflerini genişlet ya da başka
-bir sahip seçtir. Bu kural Adım 8b'de `validate()` tarafından da denetlenir; **kullanıcıyı
-doğrulama hatasıyla karşılaştırmadan burada çöz.**
+**Erişilebilirlik kontrolü.** Hedeflenen **her** ekosistemde kod yazan ve routing'de
+geçen en az bir agent (uygun executor) bulunmalı. Eksikse kullanıcıya sade dille söyle
+("Codex'te işleri yapacak bir rol yok, kapı orada işleyemez") ve routing'i ya da
+hedefleri tamamlat. **Kapı sahibinin kendisinin** bu executor'ların ekosistemlerini
+kapsaması **gerekmez** — sahip çağıran oturumun ekosisteminde üretilmemişse harici bir
+CLI çağrısıyla kendi ekosisteminde çalıştırılır (`templates/work-plan-skill.md`'nin
+*Başka ekosistemdeki kapı sahibi* bölümü); bunu kullanıcıya çözülmesi gereken bir sorun
+gibi sunma. Adım 8b'de `validate()` bu **executor** kapsamasını denetler
+(`plan-gate.md:140-145`), kapı sahibinin kapsamasını değil; **kullanıcıyı doğrulama
+hatasıyla karşılaştırmadan burada çöz.**
 
 Açık kalan her kural için **projeye özel satırları** sor (sadece açık olanlar için):
 - Workaround yasağı açıksa → varsa projeye özel yasak desenleri eklet (çekirdek liste hazır).
