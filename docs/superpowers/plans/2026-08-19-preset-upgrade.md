@@ -727,16 +727,23 @@ işletmeye çalışır.
    (hangi ekosistemler hedefliyse)
 4. Silinenleri kullanıcıya listele
 
-**Manifest'ten `planGate` nesnesini de sil.** `constitution.planGate: false` iken kök
-`planGate` nesnesinin varlığı manifest'i **geçersiz** kılar — doğrulayıcı reddeder.
+**Manifest'te iki şey birden değişir:** `constitution.planGate: false` **ve** kök
+`planGate` nesnesinin silinmesi. Yalnız birini yapmak manifest'i geçersiz kılar —
+doğrulayıcı iki yönlü denetliyor: nesne varken preset kapalıysa da, preset açıkken nesne
+yokken de reddediyor.
 
 **Bloğu çıkar:** `<!-- c:planGate -->` … `<!-- /c:planGate -->`.
 
 ### Sıra önemlidir
 
-Manifest'i **önce** yaz, `sync`'i **sonra** çalıştır. Ters sırada `sync` eski manifest'le
-koşar ve sildiğin kaynağı geri üretmez ama stale raporu da vermez — temizlenecek hedefi
-göremezsin.
+Kaynağı silme adımı `sync`'ten **önce** gelmeli. Kaynak hâlâ diskteyken `sync` çalışırsa
+`work-plan`'ı olduğu gibi yeniden yansıtır, hiçbir şeyi stale işaretlemez ve
+konfigürasyonun zaten güncel olduğunu bildirir — temizlenecek hedef görünmez.
+
+> **Not (uygulama sırasında ölçüldü):** ilk taslak "manifest'i önce yaz, yoksa stale
+> raporu gelmez" diyordu. Bu **yanlış** — kaynak silinmişse manifest hiç dokunulmamış
+> olsa bile `sync` mirror'ları doğru şekilde `(stale)` raporluyor. Belirleyici olan
+> manifest sırası değil, kaynağın silinmiş olması.
 ````
 
 - [ ] **Step 2: Doğrulayıcıları çalıştır**
