@@ -152,9 +152,12 @@ açılır/kapanır.
 - **reviewer:** yorum kalite denetimini yapar (public export'ta JSDoc yok = Kritik;
   eski implementasyon anekdotu = Uyarı gibi).
 
-**PROJEYE ÖZEL → kullanıcıya sorulur:** yorum standardı detayları (örn. process/runtime
-tag'leri, `@example` zorunluluğu, ESLint plugin entegrasyonu). Dil kuralları
-`docLanguage`'den otomatik türer; yorum üslubu detayları sorulabilir.
+**Projeye özel soru YOKTUR.** Bu preset düz bir aç/kapa'dır: dil kuralları
+`docLanguage`'den türer, üslup listesi yukarıda sabittir. Bir zamanlar burada "yorum
+standardı detayları kullanıcıya sorulur" yazıyordu; hiçbir yer o cevabı istemiyor,
+`templates/constitution-blocks.md`'deki blokta `<docLanguage>` dışında yer tutucu yok, ve
+ne setup ne yükseltme böyle bir soru soruyor. Projeye özel cevap isteyen preset'ler
+yalnız `noWorkaround` ve `codeDocSync`'tir.
 
 ## KARAR 5 — Plan kapısı  (`planGate`) · DEFAULT KAPALI
 

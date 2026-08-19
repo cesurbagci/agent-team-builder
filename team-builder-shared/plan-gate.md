@@ -12,7 +12,8 @@
 ├── README.md   TEMPLATE.md
 ├── inbox/   draft/   approved/   in-progress/   done/
 
-.agent-source/skills/work-plan/SKILL.md   ← generated; ekosistem skill dizinlerine mirror
+.agent-source/skills/work-plan/SKILL.md   ← canonical kaynak; sync ekosistem skill
+                                            dizinlerine mirror'lar (mirror'lar generated)
 ```
 
 - `TEMPLATE.md` ← `templates/plan.md`
@@ -21,6 +22,11 @@
   referanstır, verbatim kopyalanmaz.
 - `.agent-work/` **generated değildir**: `sync` onu üretmez, drift kontrolüne sokmaz,
   generated-file ledger'ı sahiplenmez. Setup boş iskeleti bir kez kurar.
+- Skill dosyasının kendisi de generated değildir. Setup onu şablondan **bir kez** render
+  eder ve o andan sonra `.agent-source/` ağacının sıradan bir parçasıdır; `sync` onu
+  okur ve ekosistem dizinlerine yansıtır. Generated olan **mirror'lardır**.
+  (`.agent-source/` içindeki tek generated dosya `generated-files.json`'dır —
+  `canonical-source.md`.)
 
 ## Makine işaretleri
 

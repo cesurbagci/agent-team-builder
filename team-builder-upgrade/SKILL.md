@@ -36,6 +36,11 @@ Hangi preset olursa olsun sıra aynıdır:
    bu adım **zorunludur**.
 4. **Onay al.** Onaysız hiçbir dosya değişmez.
 5. **Uygula:** manifest → `instructions.md` bloğu → (varsa) artefakt.
+   Manifest'i yazdıktan **hemen sonra**, bloğa ve artefakta geçmeden
+   `node ~/.claude/skills/team-builder-shared/validate-manifest.mjs` koştur. Geçersizse
+   **dur ve düzelt**. Setup aynı denetimi üretimden **önce** yapar; burada da öyle olmalı
+   — geçersiz bir manifest'le ilerlersen 6. adımdaki `sync` onu üretilen dosyalara da
+   taşır ve geri alınacak iş büyür.
 6. **`sync` çalıştır.** `team-builder-sync` skill'ini çağır ya da doğrudan
    `node ~/.claude/skills/team-builder-shared/sync-agent-config.mjs` koştur.
 7. **Doğrula ve raporla.** Doğrulama şu ikisidir:
@@ -115,9 +120,10 @@ açma ve kapatma ayrı ayrı anlatılır.
    yani seçilemez. Kullanıcı kod yazan bir rol seçerse söyle ve tekrar sor —
    doğrulayıcı zaten reddeder, ama hatayı sihirbaz aşamasında yakalamak daha iyidir.
 
-   **Projede hiç `writesCode: false` agent yoksa** kapı açılamaz. Tekrar tekrar sorma:
-   durumu söyle ve iki seçenek sun — kullanıcı `null` denetleyiciyle devam etsin (kapı
-   açılır ama o kapı atlanır), ya da kod yazmayan bir rolü **elle** eklesin: önce
+   **Projede hiç `writesCode: false` agent yoksa** o denetime sahip atanamaz. Preset yine
+   de açılabilir — atanamayan şey sahiptir, preset değil. Tekrar tekrar sorma: durumu
+   söyle ve iki seçenek sun — kullanıcı `null` denetleyiciyle devam etsin (preset açılır,
+   sahipsiz kalan denetim her işte atlanır), ya da kod yazmayan bir rolü **elle** eklesin: önce
    `.agent-source/agents/manifest.json`'daki `agents[]`'e `writesCode: false` olan yeni
    bir girdi (`manifest-schema.md`'deki zorunlu alanlarla), sonra karşılığında
    `.agent-source/agents/<name>.md` rol talimatını yaz, sonra `sync` çalıştır. Bu sırayla:
@@ -144,8 +150,10 @@ açma ve kapatma ayrı ayrı anlatılır.
 6. **`sync` çalıştır** — skill ekosistem dizinlerine yansır.
 
 **`.agent-work/` zaten varsa ÜZERİNE YAZMA.** Önceki bir açma-kapama turundan kalmış
-olabilir ve içinde planlar durur. Mevcut iskeleti kullan, yalnız **eksik** klasörleri
-ekle. `TEMPLATE.md` varsa dokunma.
+olabilir ve içinde planlar durur. Kural tek cümle: **eksik olanı ekle, var olana
+dokunma** — klasörler için de, `README.md` ve `TEMPLATE.md` için de. Bu dosyaların ikisi
+de `.agent-work/` altındadır, yani kullanıcının verisidir; ilk turdan sonra düzenlenmiş
+olabilirler ve yeniden render etmek o düzenlemeyi sessizce siler.
 
 ### Kapatırken — veri korunur, konfigürasyon temizlenir
 
