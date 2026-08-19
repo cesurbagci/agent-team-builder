@@ -352,6 +352,10 @@ ekosisteminde çalıştırırsın. Kapı 1 ve kapı 3 için dizi aynıdır.
      pekâlâ ters tırnak ya da `$(...)` taşıyan bir komut örneği içerebilir; çift tırnak
      içinde bunu **senin** kabuğun çalıştırır. Dosyaya yazıp yönlendirmek bu yüzeyi
      tümüyle kaldırır.
+     **`--disallowedTools` variadic bir bayraktır** — arkasına prompt'u argüman olarak
+     koyarsan onu da tool adı sanıp yutar (`Permission deny rule "..." matches no known
+     tool`) ve izin listesi sessizce bozulur. Prompt'u yukarıdaki gibi dosyadan
+     yönlendirdiğin sürece sorun yok; bayrağın arkasına hiçbir şey ekleme.
      Bir CLI sürümü stdin'i okumazsa çağrı boş prompt'la koşar ve ya hata koduyla ya da
      ayrıştırılamayan çıktıyla döner — yani **taşıma ya da protokol hatası** olarak
      yakalanır ve kullanıcı seçenekleri görür. Sessizce yanlış bir verdict üretmez.

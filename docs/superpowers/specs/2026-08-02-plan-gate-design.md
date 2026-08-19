@@ -25,7 +25,7 @@ kayboluyor.
 | **D** | Havuz — onaylanmış işlerin birikmesi ve seçilerek işletilmesi | **Bu spec** |
 | **B** | Çapraz ekosistem çağırma + verdict protokolü | **Uygulandı** — `2026-08-11-cross-ecosystem-invoke-design.md` |
 | **C** | Inbox'ın dış sisteme (Jira vb.) bağlanması | Ayrı spec |
-| **E** | Preset'i kurulum sonrası açma/kapama | Proje-yükseltme skill'i |
+| **E** | Preset'i kurulum sonrası açma/kapama | **Uygulandı** — `2026-08-19-preset-upgrade-design.md` |
 
 Bu spec **tek ekosistem içinde** çalışır: denetleyiciler projenin kendi agent'larıdır ve
 **aynı oturumda**, o ekosistemin kendi agent çağırma mekanizmasıyla çalıştırılır. Harici
@@ -812,6 +812,13 @@ eklenmez.
 | 19 | Tüm insan-okur çıktılar `docLanguage`'de üretilir | Sihirbazın dil sözleşmesi |
 | 20 | Preset açma/kapama proje-yükseltme skill'ine ait | `sync` yeni kaynak yaratmıyor |
 | 21 | Çapraz ekosistem ayrı spec | Verdict protokolü başlı başına iş |
+
+> **KARAR 20 kapandı (2026-08-19).** Proje-yükseltme skill'i tasarlandı ve
+> uygulandı: `docs/superpowers/specs/2026-08-19-preset-upgrade-design.md` →
+> `team-builder-upgrade`. O spec ortak talimat metnini
+> `.agent-source/project/instructions.md`'ye taşır ve beş preset'i işaretli bloklarla
+> çevrilebilir kılar. `sync`'in *"yeni kaynak yaratmaz"* kuralı **korunur** — yeni
+> kaynağı yükseltme skill'i yaratır, generator değil.
 
 > **Kapandı (2026-08-11).** Çapraz ekosistem çağrısı ayrı bir spec'te tasarlandı ve
 > uygulandı: `docs/superpowers/specs/2026-08-11-cross-ecosystem-invoke-design.md`.
