@@ -89,6 +89,76 @@ alan adı ya da "glob" gibi jargon gösterme.
 Kullanıcı zaten açık bir preset'i açmak isterse **işlem yapma**, durumu söyle. Aynısı
 kapalıyı kapatmak için de geçerli.
 
+## Plan kapısı (`planGate`)
+
+Öbür dört preset yalnız metin yazar; bu, projede **dosya ve dizin üretir**. O yüzden
+açma ve kapatma ayrı ayrı anlatılır.
+
+### Açarken
+
+1. **Denetleyicileri sor.** `constitution.md` KARAR 5'in soru kalıbını kullan:
+   - plan denetleyicisi: bir agent adı ya da "yok"
+   - kod denetleyicisi: bir agent adı ya da "yok"
+
+   Seçilen agent **kod yazmayan** bir agent olmalı (`writesCode: false`). Kullanıcı kod
+   yazan bir rol seçerse söyle ve tekrar sor — doğrulayıcı zaten reddeder, ama hatayı
+   sihirbaz aşamasında yakalamak daha iyidir.
+2. **Manifest'i yaz:** `constitution.planGate: true` **ve** kök `planGate` nesnesi
+   (`planReviewer`, `codeReviewer` — ikisi de zorunlu, değer ad ya da `null`).
+3. **Bloğu ekle:** `<!-- c:planGate -->` … `<!-- /c:planGate -->`, şablondan render
+   edilmiş, denetleyici adları doldurulmuş.
+4. **Skill kaynağını üret:** `.agent-source/skills/work-plan/SKILL.md` —
+   `~/.claude/skills/team-builder-shared/templates/work-plan-skill.md`'den,
+   `docLanguage`'e çevrilerek. **İşaretler çevrilmez.**
+5. **İskeleti kur:** `.agent-work/` altında `README.md`, `TEMPLATE.md` (bu da
+   `templates/plan.md`'den render edilir) ve beş klasör: `inbox/ draft/ approved/
+   in-progress/ done/`.
+6. **`sync` çalıştır** — skill ekosistem dizinlerine yansır.
+
+**`.agent-work/` zaten varsa ÜZERİNE YAZMA.** Önceki bir açma-kapama turundan kalmış
+olabilir ve içinde planlar durur. Mevcut iskeleti kullan, yalnız **eksik** klasörleri
+ekle. `TEMPLATE.md` varsa dokunma.
+
+### Kapatırken — veri korunur, konfigürasyon temizlenir
+
+İki farklı şey var ve **ayrı davranırlar**.
+
+**`.agent-work/` kullanıcı verisidir. Hiçbir şey silinmez.** Önce say, sonra sor:
+
+```
+inbox: 2   draft: 1   approved: 3   in-progress: 1   done: 7
+```
+
+> "3 onaylı, 1 süren iş artık izlenmeyecek. Dosyalar `.agent-work/` altında duruyor ve
+> silinmiyor. Devam edilsin mi?"
+
+Kullanıcı onaylamazsa **hiçbir şey değişmez** — manifest de dahil.
+
+**`work-plan` skill'i konfigürasyondur ve silinir.** Bırakılırsa
+`.claude/skills/work-plan/` yerinde kalır ve o skill'in ilk cümlesi *"Bu projede plan
+kapısı açıktır"*. Proje kendi durumu hakkında yalan söyler; bir agent kapalı bir kapıyı
+işletmeye çalışır.
+
+`sync` bunu tek başına çözmez — ledger stale hedefi **raporlar ama silmez**. Sıra:
+
+1. **Manifest'i güncelle:** `constitution.planGate: false` yaz ve kök `planGate`
+   nesnesini sil. Nesne kalır da bayrak kapanırsa manifest **geçersiz** olur —
+   doğrulayıcı reddeder.
+2. **Bloğu çıkar:** `<!-- c:planGate -->` … `<!-- /c:planGate -->`.
+3. **Kaynağı sil:** `.agent-source/skills/work-plan/`
+4. **`sync` çalıştır**
+5. **`sync`'in `(stale)` diye raporladığı hedefleri sil** — tipik olarak
+   `.agents/skills/work-plan/`, `.claude/skills/work-plan/`, `.opencode/skills/work-plan/`
+   (hangi ekosistemler hedefliyse)
+6. **Silinenleri kullanıcıya listele**
+
+### Sıra önemlidir
+
+Adım 3 (kaynağı sil) adım 4'ten (`sync`) **önce** gelmeli. Kaynak hâlâ diskteyken `sync`
+çalışırsa `work-plan`'ı olduğu gibi yeniden yansıtır, hiçbir şeyi stale işaretlemez ve
+konfigürasyonun zaten güncel olduğunu bildirir — adım 5'te temizlenecek hiçbir hedef
+görünmez.
+
 ## Referans eksikse
 
 `sync` çalıştırdığında `.agent-source/project/CLAUDE.md` ya da `AGENTS.md`'nin ortak
