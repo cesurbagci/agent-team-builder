@@ -284,23 +284,28 @@ o iş için kural atlanır.
 2. Kalıcı bir mimari karar çıktıysa ADR yazılmalı: projede mimarlık rolü **varsa** ona
    yazdır, **yoksa** kullanıcıya sor. Sonucu `adr:` alanına bağla — bunu **taşımadan
    önce** yap; `done/` arşivdir, oraya girdikten sonra dosya değişmez.
-3. **`done/`'a taşıma yetkisi:** son `code-review` kaydı **ve** `kayıt.revision ===
-   plan.revision` şartı birlikte sağlanmalı — `planReviewPassed`'daki ile aynı ölçü:
-   - denetleyici bir ad taşıyorsa: son kayıt `approved`, `kayıt.revision` planın
-     `revision`'ına eşit **ve** `kayıt.by` **güncel** denetleyiciyle aynı — ekosistem
-     kısmı denetleyicinin etkin hedeflerinden biri olmalı. Denetleyici sonradan
-     değiştiyse eski sahibin onayı yetki vermez — kapı 3'ü yeni sahiple çalıştır
-     (`planReviewPassed` kapı 1 için aynı şeyi yapar);
-   - denetleyici bir ad taşıyor ve kapıya ulaşılamadıysa: son kayıt `skipped`,
-     `kayıt.revision` eşit **ve** `kayıt.by` = `user/<güncel denetleyici adı>`. Sahip
-     değişmişse bu feragat de düşer;
-   - denetleyici tanımsızsa: son kayıt `skipped`, `kayıt.revision` eşit, `kayıt.by` =
-     `system` **ve** denetleyici **hâlâ** tanımsız. Sonradan bir kod denetleyicisi
-     tanımlandıysa eski `skipped` kaydı yetki vermez; kapı 3'ü çalıştır.
+3. **`done/`'a taşıma yetkisi.** Yetkiyi veren kaydın içeriği değil — **kaydı bu turda,
+   1. adımda senin yazmış olman**. Diskte hazır duran bir `code-review` kaydı, bu turun
+   ürünü değilse geçmiştir: ne derse desin yetki vermez. Onu okuyup "hâlâ geçerli mi"
+   diye sınama — 1. adıma dön ve kapı 3'ü çalıştır.
+   Bu turda yazdığın kaydın biçimi şu üçünden biri olmalı:
+   - denetleyici bir ad taşıyorsa: kayıt `approved` **ve** `kayıt.by` **güncel**
+     denetleyiciyle aynı — ekosistem kısmı denetleyicinin etkin hedeflerinden biri
+     olmalı;
+   - denetleyici bir ad taşıyor ve kapıya ulaşılamadıysa: kayıt `skipped` **ve**
+     `kayıt.by` = `user/<güncel denetleyici adı>`;
+   - denetleyici tanımsızsa: kayıt `skipped`, `kayıt.by` = `system` **ve** denetleyici
+     **hâlâ** tanımsız.
+   Üçünde de `kayıt.revision === plan.revision` olmalı. Bu bir **tutarlılık
+   kontrolüdür**, yetkinin kaynağı değil: 1. adım uyuşmayan bir kaydı zaten yazmaz.
    Denetleyici tanımsızken kullanıcıdan **ek onay isteme** — kapı 3 yoktur, iş doğrudan
    biter.
-4. **Kod denetimi onayı tek seferliktir.** İş `done/`'a gitmeden kesilirse, devam
-   edildiğinde denetimi **yeniden** çalıştır — eski kayıt geçmiştir, yetki vermez.
+4. **Neden "bu turda" şartı var.** Kod yazmak `revision`'ı arttırmaz ve hiçbir alan işin
+   kesildiğini kaydetmez. Yani "önceki turun onayından sonra kod değişti mi" sorusunu
+   dosyaya bakarak **yanıtlayamazsın** — hiçbir alan onu ele vermez. Bu yüzden ölçüt,
+   yanıtlanabilen tek soru olan "bu kaydı bu turda ben mi yazdım" sorusudur. Yanlış
+   yanıt, denetlenmemiş kodu geri dönüşü olmayan `done/` arşivine denetlenmiş olarak
+   sokar; bu akışın telafisi olmayan tek hatasıdır.
 
 ## Başka ekosistemdeki kapı sahibi
 

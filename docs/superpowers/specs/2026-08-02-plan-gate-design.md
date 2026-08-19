@@ -553,17 +553,33 @@ kaydı düşülür — ucuz bir işlem ve kural tek parça kalır.
 
 ### `doneAuthorized` — anlık
 
-`in-progress/ → done/` hareketini yetkilendirir ve **saklanmaz**:
+`in-progress/ → done/` hareketini yetkilendirir ve **saklanmaz**.
 
-| `codeReviewer` | Son kayıt | Ek koşul |
+**Yetkiyi veren, kaydın içeriği değil — kaydı bu turun yazmış olmasıdır.** Yüklem yalnız
+kapı 3'ü az önce çalıştırmış turda değerlendirilir ve baktığı kayıt **o turun yazdığı**
+kayıttır. Başka bir turdan kalan kayıt geçmiştir: ne derse desin yetki vermez, "hâlâ
+geçerli mi" diye sınanmaz.
+
+Bu şart yüklemi **değerlendirilebilir** kılan şeydir. Kod yazmak `revision`'ı arttırmaz ve
+hiçbir alan kesintiyi kaydetmez; bu yüzden "bu onay hâlâ geçerli mi" sorusu dosyaya
+bakarak **yanıtlanamaz**. Yanıtlanabilen tek soru "bu kaydı bu turda ben mi yazdım"
+sorusudur.
+
+Kayıt bu turun ürünüyse, biçimi şunlardan biri olmalıdır:
+
+| `codeReviewer` | Bu turun kaydı | Ek koşul |
 |---|---|---|
-| Bir agent adı | `approved` | Kaydın `revision`'ı planın `revision`'ına eşit **ve** `kayıt.by` güncel denetleyiciyle aynı |
-| Bir agent adı | `skipped` | `kayıt.by` = `user/<güncel denetleyici adı>` — kapıya ulaşılamadı, kullanıcı feragat etti; `revision` eşit |
-| `null` | `skipped` | Kapı yoktur, ama hareket serbest değildir: `skipped` kaydı düşülür, `kayıt.by` = `system`, `revision` eşit **ve** `codeReviewer` **hâlâ** `null` olmalıdır |
+| Bir agent adı | `approved` | `kayıt.by` güncel denetleyiciyle aynı |
+| Bir agent adı | `skipped` | `kayıt.by` = `user/<güncel denetleyici adı>` — kapıya ulaşılamadı, kullanıcı feragat etti |
+| `null` | `skipped` | Kapı yoktur, ama hareket serbest değildir: `skipped` kaydı düşülür, `kayıt.by` = `system` **ve** `codeReviewer` **hâlâ** `null` olmalıdır |
 
-Üç satır da `planReviewPassed`'ın karşılığıdır: kapı 1 ve kapı 3 **aynı ölçüyü** kullanır.
-Ad karşılaştırması güncel denetleyiciye karşıdır; denetleyici değişirse hem onay hem
-feragat düşer.
+Üçünde de `kayıt.revision === plan.revision`. Bu bir **tutarlılık kontrolüdür**, yetkinin
+kaynağı değil: kapı 3 zaten `reviewed_revision` diskteki `revision`'la uyuşmayan bir kaydı
+hiç yazmaz. Eşitliğin **tek başına** yetki verdiğini okumak, bu bölümün kapattığı hatadır.
+
+Ad karşılaştırmasında kapı 1 ve kapı 3 **aynı ölçüyü** kullanır: karşılaştırma güncel
+denetleyiciye karşıdır, denetleyici değişirse hem onay hem feragat düşer. **Kalıcılıkta
+ise ayrılırlar** ve ayrılmaları gerekir — gerekçesi bu bölümün sonundadır.
 
 > **Neden `null` de koşulludur.** "Her zaman yetkili" demek, kapı sonradan açıldığında
 > (`codeReviewer: null` → bir ad) eski `skipped` kaydının hâlâ `done/`'a taşıma yetkisi
@@ -774,6 +790,7 @@ eklenmez.
 | N25 | Dosya adında slug hiç yok (`20260802-01.md`) | Reddedilir |
 | N26 | `user/<ad>` feragati var ama kapı sahibi sonradan değişti | Yüklem **yanlış** — feragat de onay gibi düşer, kapı yeni sahiple geçilir |
 | N27 | `approved` kaydında `reasons` boş değil | Reddedilir — onayın gerekçesi kayda geçmez |
+| N28 | `in-progress/`'te plan, güncel `revision`'da `approved` kod denetim kaydı taşıyor ama bu tur kapı 3'ü çalıştırmadı; `done/`'a taşıma denenir | Reddedilir — kayıt bu turun ürünü değil, yetki vermez; kapı 3 yeniden çalışır |
 
 ## Kararlar
 

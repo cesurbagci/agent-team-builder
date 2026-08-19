@@ -106,8 +106,9 @@ olmalıdır; denetleyici projenin başka bir ekosisteminde üretilmiş olabilir.
 karşıdır: sahip değişirse onay da feragat de düşer.
 
 **`doneAuthorized` — anlık.** `in-progress/ → done/` hareketini yetkilendirir, saklanmaz;
-bu yüzden dosyaya bakarak doğrulanamaz ve klasör değişmezi değildir. **Yalnız başarılı
-tamamlamayı korur** — iptal ayrı bir geçiştir. Yüklemin nasıl elde edildiği runtime
+bu yüzden dosyaya bakarak doğrulanamaz ve klasör değişmezi değildir. Yetkiyi veren, kaydın
+içeriği değil **kaydı o turun yazmış olmasıdır**; önceki bir turdan kalan kayıt ne derse
+desin yetki vermez. **Yalnız başarılı tamamlamayı korur** — iptal ayrı bir geçiştir. Yüklemin nasıl elde edildiği runtime
 kuralıdır ve skill'e aittir.
 
 ## Klasör değişmezleri
@@ -153,10 +154,13 @@ Bu doğrulamaların kod tarafı `validate-manifest.mjs`'e aittir (ayrı iş).
 nasıl davrandığını ölçüyor. Bu yüzden kabul **elle yürütülen senaryolarla** yapılır ve
 senaryo listesi tasarım dokümanındadır:
 
-- **R1–R41** — yaşam döngüsünün her geçişi (plan yazımı, kapı onayı/reddi, revizyon
-  bayatlaması, havuz seçimi, yarım iş devamı, iptal, ekosistem çözümlemesi)
-- **N1–N25** — değişmez savunmaları (geçersiz klasör hareketi, bozuk kayıt şeması, kapalı
-  inbox anahtar listesi, dosya adı/`id` uyumsuzluğu)
+- **`R` senaryoları** — yaşam döngüsünün her geçişi (plan yazımı, kapı onayı/reddi,
+  revizyon bayatlaması, havuz seçimi, yarım iş devamı, iptal, ekosistem çözümlemesi)
+- **`N` senaryoları** — değişmez savunmaları (geçersiz klasör hareketi, bozuk kayıt şeması,
+  kapalı inbox anahtar listesi, dosya adı/`id` uyumsuzluğu)
+
+Aralıklar burada **sayı olarak yazılmaz**: liste büyüdükçe bayatlar ve bayat bir aralık
+son senaryoları sessizce kabulün dışında bırakır.
 
 Kaynak: `docs/superpowers/specs/2026-08-02-plan-gate-design.md`. Liste burada
 **tekrarlanmaz** — iki yerde tutmak drift üretir; skill değiştiğinde tek yer güncellenir.
