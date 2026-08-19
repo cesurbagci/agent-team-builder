@@ -1,7 +1,7 @@
 # Tasarım: Preset Yükseltme (`team-builder-upgrade`) — kapsam E
 
 - **Tarih:** 2026-08-19
-- **Durum:** Tasarlandı — kullanıcı onayı ve uygulama planı bekliyor
+- **Durum:** Uygulandı — `docs/superpowers/plans/2026-08-19-preset-upgrade.md`
 - **Kapsam:** Plan kapısı çekirdeğinin (`2026-08-02-plan-gate-design.md`) **E** alt sistemi
 
 > Çekirdek spec, KARAR 20 ile bu işi ayrı bir yere bıraktı: *"Preset açma/kapama
