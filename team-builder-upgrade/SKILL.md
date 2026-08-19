@@ -1,6 +1,6 @@
 ---
 name: team-builder-upgrade
-description: Kurulmuş bir projede anayasa preset'lerini (geçici çözüm yok, kod-doküman senkronizasyonu, rol başına hafıza, dil standardı, plan kapısı) açar veya kapatır; plan kapısının artefaktlarını kurar ya da bırakır; eski yapıdaki projeleri tek talimat dosyasına göç ettirir. Tetikleyiciler — "plan kapısını aç", "preset aç", "preset kapat", "anayasa değiştir", "takımı yükselt". Yeni rol/routing/ekosistem eklemek için kullanma; o setup'ın işidir.
+description: Kurulmuş bir projede anayasa preset'lerini (geçici çözüm yok, kod-doküman senkronizasyonu, rol başına hafıza, dil standardı, plan kapısı) açar veya kapatır; plan kapısının artefaktlarını kurar ya da bırakır; eski yapıdaki projeleri tek talimat dosyasına göç ettirir. Tetikleyiciler — "plan kapısını aç", "preset aç", "preset kapat", "anayasa değiştir", "takımı yükselt", "talimatları tek dosyaya taşı", "projeyi yeni yapıya geçir". Yeni rol/routing/ekosistem eklemek için kullanma; o setup'ın işidir.
 ---
 
 # team-builder-upgrade
@@ -185,8 +185,11 @@ Preset çeviremezsin — önce göç.
    > `AGENTS.md`'yi referansa çeviriyorum — böylece preset'leri açıp kapatabilirim.
    > Değişiklikler git'te, geri alınabilir. Devam edeyim mi?"
 
-2. **Diverjansı kontrol et.** `project/CLAUDE.md` ile `project/AGENTS.md` bugün kopya
-   olmalı, ama kullanıcı birini elle düzenlemiş olabilir. Karşılaştır:
+2. **Diverjansı kontrol et.** Önce **kaç dosya var** ona bak — tek ekosistemli bir
+   projede yalnız biri bulunur ve bu normaldir, çakışma değil.
+   - **Tek dosya varsa** → karşılaştıracak bir şey yok, o dosyanın içeriğiyle devam et.
+   - **İkisi de varsa** → `project/CLAUDE.md` ile `project/AGENTS.md` bugün kopya olmalı,
+     ama kullanıcı birini elle düzenlemiş olabilir. Karşılaştır:
    - **Aynıysa** → devam.
    - **Farklıysa** → **DUR.** Farkı göster ve sor: "Bu iki dosya ayrışmış. Hangisi
      ortak metin olsun?" Sessizce birini kazandırma — kullanıcının yazdığı metni
@@ -197,7 +200,16 @@ Preset çeviremezsin — önce göç.
    durumundaki "Takımı başlatma" bölümüdür; onu bir kenara koy, 5. adımda geri
    yazacaksın.
 
-4. **İşaretleri blok blok onaylat.** Her preset için, manifest'te **açık** olanları sırayla:
+4. **İşaretleri blok blok onaylat.**
+
+   **`codeDocSync` bloğu ayrı bir kontrol ister.** Öbür preset'lerin metni serbest
+   prose'dur, ama bunun tablosu `manifest.codeDocSync[]`'ten render edilmiş olmalıdır —
+   bu dosyanın kendi kuralı: *"ikisi ayrışırsa blok yalan söyler"*. Eski projede tablo
+   elle düzenlenmiş olabilir. **Metni manifest ile karşılaştır:**
+   - Aynıysa → normal onay akışı.
+   - Farklıysa → **DUR** ve kullanıcıya farkı göster: hangisi doğru? Cevaba göre ya
+     manifest'i güncelle ya bloğu manifest'ten yeniden render et. Prose'u olduğu gibi
+     sarma — sardığın anda yalan kalıcılaşır ve hiçbir doğrulayıcı bunu yakalamaz. Her preset için, manifest'te **açık** olanları sırayla:
    > "`noWorkaround` metnin burada başlıyor gibi görünüyor:
    > *<ilk iki satır>* … *<son satır>*
    > İşaretleri buraya koyuyorum — doğru mu?"
@@ -223,15 +235,28 @@ Preset çeviremezsin — önce göç.
 6. **`sync` çalıştır** ve sonucu raporla: hangi bloklar işaretlendi, hangileri
    işaretsiz kaldı, hangi dosyalar referansa döndü.
 
-### `instructions.md` var ama işaretsiz
+### `instructions.md` var ama işaretsiz — ya da yarım işaretli
 
 Bu da göç sayılır — yalnız 4. adım çalışır. 2., 3. ve 5. adımlar atlanır.
+
+**Yarım işaretli dosya da buraya girer.** Önceki bir göç yarıda kesilmiş ya da bir blok
+bilerek işaretsiz bırakılmış olabilir. 4. adımı yalnız **işaretsiz kalan** açık
+preset'ler için çalıştır; zaten işaretli olanlara dokunma.
 
 ## Referans eksikse
 
 `sync` çalıştırdığında `.agent-source/project/CLAUDE.md` ya da `AGENTS.md`'nin ortak
-talimat referansını kaybettiğine dair uyarı görürsen, kullanıcıya **eklemeyi teklif
-et**. Kabul ederse satırı geri koy:
+talimat referansını kaybettiğine dair uyarı görürsen, **önce hangi durum olduğuna bak:**
+
+**`.agent-source/project/instructions.md` var mı?**
+
+- **Yoksa** → bu proje henüz göç etmemiştir; uyarı bir kayıp değil, eksik göçtür.
+  Referansı **ekleme** — eklersen var olmayan bir dosyayı gösteren bir satır üretirsin ve
+  `sync` onu canlı `CLAUDE.md`'ye kopyalar; `--check` bunu yakalamaz, çünkü yalnız
+  üretileni kaynakla karşılaştırır, referansın çözülüp çözülmediğine bakmaz. Bunun yerine
+  *Göç* bölümüne geç.
+- **Varsa** → referans gerçekten kaybolmuştur. Kullanıcıya **eklemeyi teklif et**. Kabul
+  ederse satırı geri koy:
 
 - `CLAUDE.md` → `@.agent-source/project/instructions.md`
 - `AGENTS.md` → `Bütün proje kuralları @.agent-source/project/instructions.md dosyasındadır. Önce onu oku.`

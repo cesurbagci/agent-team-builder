@@ -822,8 +822,10 @@ Preset çeviremezsin — önce göç.
    > `AGENTS.md`'yi referansa çeviriyorum — böylece preset'leri açıp kapatabilirim.
    > Değişiklikler git'te, geri alınabilir. Devam edeyim mi?"
 
-2. **Diverjansı kontrol et.** `project/CLAUDE.md` ile `project/AGENTS.md` bugün kopya
-   olmalı, ama kullanıcı birini elle düzenlemiş olabilir. Karşılaştır:
+2. **Diverjansı kontrol et.** Önce **kaç dosya var** ona bak — tek ekosistemli bir
+   projede yalnız biri bulunur ve bu normaldir, çakışma değil.
+   - **Tek dosya varsa** → karşılaştıracak bir şey yok, o dosyanın içeriğiyle devam et.
+   - **İkisi de varsa** → karşılaştır:
    - **Aynıysa** → devam.
    - **Farklıysa** → **DUR.** Farkı göster ve sor: "Bu iki dosya ayrışmış. Hangisi
      ortak metin olsun?" Sessizce birini kazandırma — kullanıcının yazdığı metni
