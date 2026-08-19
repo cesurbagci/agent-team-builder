@@ -170,6 +170,63 @@ Adım 3 (kaynağı sil) adım 4'ten (`sync`) **önce** gelmeli. Kaynak hâlâ di
 konfigürasyonun zaten güncel olduğunu bildirir — adım 5'te temizlenecek hiçbir hedef
 görünmez.
 
+## Göç — eski yapıdaki projeler
+
+`.agent-source/project/instructions.md` yoksa bu proje ortak talimat dosyasından önce
+kurulmuş demektir: metin `project/CLAUDE.md` ve `project/AGENTS.md` içinde, işaretsiz.
+Preset çeviremezsin — önce göç.
+
+**Göç tek seferliktir ve git ile geri alınabilir.** Kullanıcıya bunu söyle.
+
+### Sıra
+
+1. **Tespit et ve teklif et.**
+   > "Bu proje talimatları iki dosyada tutuyor. Tek dosyaya taşıyıp `CLAUDE.md` ve
+   > `AGENTS.md`'yi referansa çeviriyorum — böylece preset'leri açıp kapatabilirim.
+   > Değişiklikler git'te, geri alınabilir. Devam edeyim mi?"
+
+2. **Diverjansı kontrol et.** `project/CLAUDE.md` ile `project/AGENTS.md` bugün kopya
+   olmalı, ama kullanıcı birini elle düzenlemiş olabilir. Karşılaştır:
+   - **Aynıysa** → devam.
+   - **Farklıysa** → **DUR.** Farkı göster ve sor: "Bu iki dosya ayrışmış. Hangisi
+     ortak metin olsun?" Sessizce birini kazandırma — kullanıcının yazdığı metni
+     kaybetmek demektir.
+
+3. **`instructions.md`'yi oluştur.** Seçilen dosyanın içeriğini al. Ekosisteme özgü
+   olduğunu bildiğin bölümleri **çıkar** — bugün bu yalnız Claude'un `topology: native`
+   durumundaki "Takımı başlatma" bölümüdür; onu bir kenara koy, 5. adımda geri
+   yazacaksın.
+
+4. **İşaretleri blok blok onaylat.** Her preset için, manifest'te **açık** olanları sırayla:
+   > "`noWorkaround` metnin burada başlıyor gibi görünüyor:
+   > *<ilk iki satır>* … *<son satır>*
+   > İşaretleri buraya koyuyorum — doğru mu?"
+
+   - Onaylarsa işaretleri koy.
+   - **Ayırt edemezsen ya da kullanıcı hayır derse: işaretsiz bırak ve açıkça söyle.**
+     > "`codeDocSync` bloğunu ayırt edemedim; o preset'i çevirmek istersen önce
+     > işaretleri elle koyman gerekiyor."
+
+   **Yarım göç, yanlış göçten iyidir.** Tahminle işaret koyma.
+
+5. **Hedef kaynaklarını yeniden yaz.**
+   - `project/CLAUDE.md` → `@.agent-source/project/instructions.md` + (varsa) 3. adımda
+     kenara koyduğun native topoloji bölümü
+   - `project/AGENTS.md` → `Bütün proje kuralları @.agent-source/project/instructions.md
+     dosyasındadır. Önce onu oku.`
+   - `project/opencode.json` → `instructions` dizisinin **başına**
+     `.agent-source/project/instructions.md` ekle
+
+   Yalnız hedeflenen ekosistemlerin dosyalarıyla ilgilen. Tek ekosistemli bir projede
+   (ör. yalnız OpenCode) `CLAUDE.md` zaten yoktur.
+
+6. **`sync` çalıştır** ve sonucu raporla: hangi bloklar işaretlendi, hangileri
+   işaretsiz kaldı, hangi dosyalar referansa döndü.
+
+### `instructions.md` var ama işaretsiz
+
+Bu da göç sayılır — yalnız 4. adım çalışır. 2., 3. ve 5. adımlar atlanır.
+
 ## Referans eksikse
 
 `sync` çalıştırdığında `.agent-source/project/CLAUDE.md` ya da `AGENTS.md`'nin ortak
