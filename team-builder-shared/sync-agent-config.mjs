@@ -47,6 +47,19 @@ const VALID_TARGETS = new Set(['claude', 'codex', 'opencode'])
 // looks valid and drift check stays clean, so nothing else would ever notice.
 export const INSTRUCTIONS_REF = '.agent-source/project/instructions.md'
 
+// The five constitution presets, with the default that applies when the manifest
+// omits the key. The marker that wraps a preset's text in instructions.md is
+// mechanically `c:<key>` — so this one list drives the manifest field name, the
+// marker name, and the drift check below. Keep it in step with
+// validate-manifest.mjs's CONSTITUTION_FIELDS and constitution.md's table.
+export const CONSTITUTION_PRESETS = [
+  { key: 'noWorkaround', enabledByDefault: true },
+  { key: 'codeDocSync', enabledByDefault: true },
+  { key: 'perAgentMemory', enabledByDefault: true },
+  { key: 'languageStandard', enabledByDefault: true },
+  { key: 'planGate', enabledByDefault: false },
+]
+
 // Fallback map when an opencode-targeted agent has no explicit `opencode_model`.
 // The wizard normally asks for and stores a provider/model string per agent, so
 // this is a best-effort backstop only — adjust to the provider you actually use.
@@ -439,6 +452,11 @@ async function warnMissingInstructionsRef(ctx, manifest, warn) {
   const checks = []
   if (projectHasClaude(manifest)) checks.push('CLAUDE.md')
   if (projectHasCodex(manifest) || projectHasOpencode(manifest)) checks.push('AGENTS.md')
+  // opencode.json is config, not prose, but it carries the reference all the
+  // same: the first entry of its `instructions` array must be this path. Drop
+  // that entry and OpenCode loses the governance text exactly as a stripped
+  // AGENTS.md would, so the same substring test applies.
+  if (projectHasOpencode(manifest)) checks.push('opencode.json')
 
   for (const name of checks) {
     const source = ctx.resolveSource('project', name)
@@ -448,6 +466,80 @@ async function warnMissingInstructionsRef(ctx, manifest, warn) {
       warn(
         `! .agent-source/project/${name} does not reference ${INSTRUCTIONS_REF} — ` +
           'the project loses its shared governance text. Add the reference back.'
+      )
+    }
+  }
+}
+
+function countOccurrences(haystack, needle) {
+  let count = 0
+  let index = haystack.indexOf(needle)
+  while (index !== -1) {
+    count += 1
+    index = haystack.indexOf(needle, index + needle.length)
+  }
+  return count
+}
+
+// The markers in instructions.md are the only mechanical signal of which presets
+// are on — headings get translated to docLanguage, so nothing else in that file
+// can be read by a rule. A mismatch is silent in both directions: a preset the
+// manifest calls on whose block is absent is a rule no agent ever sees, and a
+// block left behind after the preset was turned off is a rule they keep obeying
+// although it is officially off.
+//
+// Broken pairs matter just as much. team-builder-upgrade adds and removes blocks
+// BY these markers, so an unclosed, inverted, or duplicated pair leaves the span
+// it would delete undefined — on the user's canonical source.
+//
+// A warning, not a ctx.mismatch, for the same reason as the reference check:
+// mismatches fail --check, and instructions.md is the project's file to own.
+async function warnConstitutionMarkerDrift(ctx, manifest, warn) {
+  const relative = `.agent-source/project/instructions.md`
+  const source = ctx.resolveSource('project', 'instructions.md')
+  if (!(await pathExists(source))) return
+
+  const body = await readText(source)
+  const constitution = manifest.constitution ?? {}
+
+  for (const { key, enabledByDefault } of CONSTITUTION_PRESETS) {
+    const enabled = constitution[key] ?? enabledByDefault
+    const open = `<!-- c:${key} -->`
+    const close = `<!-- /c:${key} -->`
+    const opens = countOccurrences(body, open)
+    const closes = countOccurrences(body, close)
+
+    if (opens === 0 && closes === 0) {
+      if (enabled) {
+        warn(
+          `! constitution.${key} is on but ${relative} carries no ${open} block — ` +
+            'agents never see that rule. Run team-builder-upgrade to add it.'
+        )
+      }
+      continue
+    }
+
+    if (!enabled) {
+      warn(
+        `! constitution.${key} is off but ${relative} still carries its block — ` +
+          'agents keep obeying a rule the manifest calls off. Run team-builder-upgrade ' +
+          'to remove it.'
+      )
+    }
+
+    if (opens !== 1 || closes !== 1) {
+      warn(
+        `! ${relative}: expected exactly one ${open} … ${close} pair, found ${opens} ` +
+          `opening and ${closes} closing. The block has no defined extent, so ` +
+          'upgrading this preset would edit the wrong span.'
+      )
+      continue
+    }
+
+    if (body.indexOf(close) < body.indexOf(open)) {
+      warn(
+        `! ${relative}: ${close} comes before ${open}. The block has no defined ` +
+          'extent, so upgrading this preset would edit the wrong span.'
       )
     }
   }
@@ -718,6 +810,7 @@ async function generate({ root, checkOnly, quiet = false }) {
   const projectName = path.basename(ctx.resolvedRoot)
 
   await warnMissingInstructionsRef(ctx, manifest, warn)
+  await warnConstitutionMarkerDrift(ctx, manifest, warn)
   await syncProjectFiles(ctx, manifest)
   await syncAgents(ctx, manifest, projectName)
   await syncSkills(ctx, manifest)
@@ -784,6 +877,26 @@ function assert(condition, message) {
 // Run generate() with quiet=true so selftest output stays clean.
 async function silentGenerate(options) {
   return generate({ ...options, quiet: true })
+}
+
+// Run generate() and collect what it warned. generate() is called directly
+// rather than through silentGenerate: quiet mode makes warn a no-op, so a quiet
+// run could never observe the warnings these cases exist to check. Log is
+// silenced separately to keep selftest output clean, which is what quiet mode
+// would otherwise have done.
+async function captureWarnings(root) {
+  const warnings = []
+  const originalWarn = console.warn
+  const originalLog = console.log
+  console.warn = (...a) => warnings.push(a.join(' '))
+  console.log = () => {}
+  try {
+    await generate({ root, checkOnly: false })
+  } finally {
+    console.warn = originalWarn
+    console.log = originalLog
+  }
+  return warnings
 }
 
 async function runSelftest() {
@@ -1891,35 +2004,107 @@ async function runSelftest() {
   // A source file that lost its instructions reference still generates a valid
   // looking target and passes drift check — the project silently loses all of
   // its governance. The warning is the only thing standing between the user and
-  // that outcome, so it has its own case.
+  // that outcome, so it has its own cases.
+  //
+  // Every case here asserts BOTH directions. Asserting only that the warning
+  // fires cannot tell a working check apart from one that warns unconditionally,
+  // and the quiet case is what pins the check to the file's actual content.
   {
-    await fs.writeFile(
-      path.join(sourceRoot, 'project', 'CLAUDE.md'),
-      '# CLAUDE\n\nProje talimati.\n'
-    )
-    const warnings = []
-    const originalWarn = console.warn
-    const originalLog = console.log
-    console.warn = (...a) => warnings.push(a.join(' '))
-    // generate() is called directly rather than through silentGenerate: quiet
-    // mode makes warn a no-op, so a quiet run could never observe the warning
-    // this case exists to check. Log is silenced separately to keep selftest
-    // output clean, which is what quiet mode would otherwise have done.
-    console.log = () => {}
-    try {
-      await generate({ root: fixtureRoot, checkOnly: false })
-    } finally {
-      console.warn = originalWarn
-      console.log = originalLog
-    }
+    const claudeMd = path.join(sourceRoot, 'project', 'CLAUDE.md')
+    const withRef = `# CLAUDE\n\n@${INSTRUCTIONS_REF}\n\nProje talimati.\n`
+
+    // Baseline: the file carries the reference, so nothing may be reported.
+    await fs.writeFile(claudeMd, withRef)
+    const quiet = await captureWarnings(fixtureRoot)
     assert(
-      warnings.some(w => w.includes(INSTRUCTIONS_REF)),
-      `expected a warning naming ${INSTRUCTIONS_REF}, got: ${warnings.join(' | ') || '(none)'}`
+      !quiet.some(w => w.includes(INSTRUCTIONS_REF)),
+      `an intact source must produce no reference warning, got: ${quiet.join(' | ')}`
     )
+
+    await fs.writeFile(claudeMd, '# CLAUDE\n\nProje talimati.\n')
+    const warnings = await captureWarnings(fixtureRoot)
+    assert(
+      warnings.some(w => w.includes('CLAUDE.md') && w.includes(INSTRUCTIONS_REF)),
+      `expected a warning naming CLAUDE.md and ${INSTRUCTIONS_REF}, ` +
+        `got: ${warnings.join(' | ') || '(none)'}`
+    )
+    await fs.writeFile(claudeMd, withRef)
+
+    // AGENTS.md and opencode.json are checked in the opencode-only selftest,
+    // not here. This fixture's only codex/opencode-targeted agent is the
+    // architect, and the staleness case above removed it — from that point on
+    // the manifest targets claude alone and those two branches are unreachable.
+    // That is exactly why they went untested until someone tried to cover them.
+  }
+
+  // Constitution marker drift. The markers are the only mechanical signal of
+  // which presets are on, and a mismatch is silent in both directions.
+  {
+    const instructions = path.join(sourceRoot, 'project', 'instructions.md')
+    const blockFor = key => `<!-- c:${key} -->\n## ${key}\n\nKural metni.\n<!-- /c:${key} -->\n`
+    // The fixture manifest sets no constitution key, so the defaults apply:
+    // the first four presets are on, planGate is off.
+    const onByDefault = ['noWorkaround', 'codeDocSync', 'perAgentMemory', 'languageStandard']
+    const wellFormed = `# Talimatlar\n\n${onByDefault.map(blockFor).join('\n')}`
+
+    // Well-formed and matching the manifest: silence.
+    await fs.writeFile(instructions, wellFormed)
+    const quiet = await captureWarnings(fixtureRoot)
+    assert(
+      !quiet.some(w => w.includes('c:')),
+      `matching markers must produce no warning, got: ${quiet.join(' | ')}`
+    )
+
+    // Preset on, block missing — the rule reaches no agent.
     await fs.writeFile(
-      path.join(sourceRoot, 'project', 'CLAUDE.md'),
-      `# CLAUDE\n\n@${INSTRUCTIONS_REF}\n\nProje talimati.\n`
+      instructions,
+      `# Talimatlar\n\n${onByDefault.filter(k => k !== 'codeDocSync').map(blockFor).join('\n')}`
     )
+    const missing = await captureWarnings(fixtureRoot)
+    assert(
+      missing.some(w => w.includes('constitution.codeDocSync is on')),
+      `expected a missing-block warning for codeDocSync, got: ${missing.join(' | ') || '(none)'}`
+    )
+
+    // Preset off, block present — agents obey a rule the manifest calls off.
+    await fs.writeFile(instructions, wellFormed + '\n' + blockFor('planGate'))
+    const stale = await captureWarnings(fixtureRoot)
+    assert(
+      stale.some(w => w.includes('constitution.planGate is off')),
+      `expected a stale-block warning for planGate, got: ${stale.join(' | ') || '(none)'}`
+    )
+
+    // Duplicated pair — upgrade removes blocks BY these markers, so the span it
+    // would delete is undefined.
+    await fs.writeFile(instructions, wellFormed + '\n' + blockFor('noWorkaround'))
+    const duplicated = await captureWarnings(fixtureRoot)
+    assert(
+      duplicated.some(w => w.includes('found 2 opening and 2 closing')),
+      `expected a duplicate-pair warning, got: ${duplicated.join(' | ') || '(none)'}`
+    )
+
+    // Unclosed pair — same hazard, reached by deleting the closing marker.
+    await fs.writeFile(instructions, wellFormed.replace('<!-- /c:perAgentMemory -->\n', ''))
+    const unclosed = await captureWarnings(fixtureRoot)
+    assert(
+      unclosed.some(w => w.includes('found 1 opening and 0 closing')),
+      `expected an unclosed-pair warning, got: ${unclosed.join(' | ') || '(none)'}`
+    )
+
+    // Inverted pair — both markers present exactly once, but the block runs
+    // backwards, so a removal would delete everything except the block.
+    await fs.writeFile(
+      instructions,
+      `# Talimatlar\n\n<!-- /c:noWorkaround -->\nKural metni.\n<!-- c:noWorkaround -->\n` +
+        onByDefault.filter(k => k !== 'noWorkaround').map(blockFor).join('\n')
+    )
+    const inverted = await captureWarnings(fixtureRoot)
+    assert(
+      inverted.some(w => w.includes('comes before')),
+      `expected an inverted-pair warning, got: ${inverted.join(' | ') || '(none)'}`
+    )
+
+    await fs.rm(instructions, { force: true })
   }
 
   // Cleanup.
@@ -2016,6 +2201,49 @@ async function runOpencodeOnlySelftest() {
 
   const check = await silentGenerate({ root: fixtureRoot, checkOnly: true })
   assert(check.ok === true, 'opencode-only: --check should be clean after generate')
+
+  // The instructions reference on the two non-Claude sources. This is the only
+  // fixture where they are live — the main selftest ends up claude-only, so
+  // both branches are unreachable there.
+  //
+  // opencode.json carries the reference as the first entry of its `instructions`
+  // array rather than as prose, but losing it costs the project exactly what a
+  // stripped AGENTS.md costs, so it is checked the same way.
+  {
+    const agentsMd = path.join(sourceRoot, 'project', 'AGENTS.md')
+    const ocJson = path.join(sourceRoot, 'project', 'opencode.json')
+    const agentsWithRef = `# AGENTS\n\n@${INSTRUCTIONS_REF}\n`
+    const ocWithRef =
+      `{\n  "$schema": "https://opencode.ai/config.json",\n` +
+      `  "instructions": ["${INSTRUCTIONS_REF}", "AGENTS.md"]\n}\n`
+
+    await fs.writeFile(agentsMd, agentsWithRef)
+    await fs.writeFile(ocJson, ocWithRef)
+    const quiet = await captureWarnings(fixtureRoot)
+    assert(
+      !quiet.some(w => w.includes(INSTRUCTIONS_REF)),
+      `opencode-only: intact sources must produce no reference warning, got: ${quiet.join(' | ')}`
+    )
+
+    for (const [file, name, intact] of [
+      [agentsMd, 'AGENTS.md', agentsWithRef],
+      [ocJson, 'opencode.json', ocWithRef],
+    ]) {
+      await fs.writeFile(
+        file,
+        name === 'opencode.json'
+          ? '{\n  "$schema": "https://opencode.ai/config.json"\n}\n'
+          : '# AGENTS\n'
+      )
+      const warnings = await captureWarnings(fixtureRoot)
+      assert(
+        warnings.some(w => w.includes(name) && w.includes(INSTRUCTIONS_REF)),
+        `opencode-only: expected a warning naming ${name} and ${INSTRUCTIONS_REF}, ` +
+          `got: ${warnings.join(' | ') || '(none)'}`
+      )
+      await fs.writeFile(file, intact)
+    }
+  }
 
   await fs.rm(fixtureRoot, { recursive: true, force: true })
 }

@@ -254,19 +254,40 @@ Göç **tek seferliktir** ve git ile geri alınabilir; skill bunu söyler.
 | Kural | Nerede | Davranış |
 |---|---|---|
 | Hedeflenen her ekosistemin kaynak dosyası `instructions.md` referansını taşımalı | `sync` öncesi | **Uyar + eklemeyi teklif et** |
-| `instructions.md` açık preset'lerin işaret çiftlerini taşımalı | artefakt doğrulaması | **Yapılmadı** — aşağıya bak |
+| `instructions.md` açık preset'lerin işaret çiftlerini taşımalı | `sync` öncesi | **Uyar** |
 
-**İkincisi inşa edilmedi.** `instructions.md` bir **proje** dosyasıdır, bu repoda örneği
-yok; `validate-plan-gate.mjs` yalnız bu reponun kendi şablonlarını (`templates/plan.md`,
-`templates/work-plan-skill.md`) denetler — bir projeye kurulmuş `instructions.md`'yi
-değil. Projedeki işaretleri mekanik denetlemek, o projeye kurulan **ayrı bir
-doğrulayıcı** gerektirir; bu spec'in kapsamı dışında kalan ayrı bir iş
-(`docs/superpowers/plans/2026-08-19-preset-upgrade.md:1074`). Bugün onun yerini
-`team-builder-upgrade/SKILL.md`'nin "Ortak akış" 7. adımı (*Doğrula ve raporla*) tutuyor:
-preset her açılıp kapatıldığında model `instructions.md`'yi elle tarayıp beklenen işaret
-çiftinin var/yok olduğunu kontrol eder. Mekanik değil — ama bugün var olan tek denetim
-budur, ve bu yüzden aşağıdaki değişecekler tablosunda bu satıra karşılık bir `.mjs`
-değişikliği **yoktur**.
+**İkincisi önce "yapılamaz" diye kayda geçmişti; o yargı yanlıştı.** Gerekçe şuydu:
+`instructions.md` bir **proje** dosyasıdır, bu repoda örneği yok, ve
+`validate-plan-gate.mjs` yalnız bu reponun kendi şablonlarını denetler — dolayısıyla
+denetim, projeye kurulan ayrı bir doğrulayıcı ister. Öncüller doğru, sonuç değil: yargı
+`validate-plan-gate.mjs`'e bakıyordu ve `sync-agent-config.mjs`'i hiç hesaba katmamıştı.
+
+`sync-agent-config.mjs` **zaten projeye karşı** çalışır: `sourceRoot`'u projenin
+`.agent-source/`'udur, `resolveSource('project', 'instructions.md')` tam o dosyayı verir,
+manifest'in `constitution` preset'leri elindedir, ve `--check`'i düşürmeyen bir `warn`
+kanalı vardır. Denetim, referans kontrolünün **kardeş fonksiyonudur** — aynı dosya, aynı
+bağlam, aynı çalıştırma. Ayrı doğrulayıcı, kurulum ya da dağıtım gerekmiyor.
+
+`warnConstitutionMarkerDrift` her preset için manifest'in dediğiyle dosyadaki işaret
+çiftini karşılaştırır ve dört durumu ayrı ayrı bildirir:
+
+| Durum | Neden önemli |
+|---|---|
+| Preset açık, blok yok | Kural hiçbir agent'a ulaşmıyor |
+| Preset kapalı, blok duruyor | Agent'lar resmen kapalı bir kurala uyuyor |
+| Çift kopuk ya da yinelenmiş | Bloğun kapsamı tanımsız |
+| Çift ters sırada | Bloğun kapsamı tanımsız |
+
+Son iki satır **düzenleme güvenliğidir**: yükseltme blokları bu işaretlere göre ekleyip
+çıkarır, dolayısıyla kapanışı olmayan ya da yinelenmiş bir çift, silinecek aralığı
+tanımsız bırakır — hem de kullanıcının canonical kaynağında.
+
+Mismatch değil **uyarıdır**, referans kontrolüyle aynı gerekçeyle: mismatch `--check`'i
+düşürür ve `instructions.md` projenin kendi dosyasıdır.
+
+`team-builder-upgrade/SKILL.md`'nin 7. adımındaki elle tarama **kalkmadı**: `sync`
+çalıştırılana kadar hiçbir mekanik denetim devreye girmez, ve yükseltme bloğu
+`sync`'ten önce yazar.
 
 **Mevcut kurallar korunur.** `constitution.planGate` ile kök `planGate` nesnesinin
 varlık/yokluk eşleşmesi, kapı sahiplerinin `writesCode: false` olması, hedeflenen her
@@ -278,7 +299,7 @@ ekosistemde executor bulunması — hepsi aynen kalır.
 |---|---|
 | `team-builder-upgrade/SKILL.md` | **YENİ** — dördüncü skill: preset çevirme, artefakt kurma/bırakma, göç |
 | `team-builder-setup/SKILL.md` | `instructions.md` yazar; hedef kaynaklarına referans + özgü içerik koyar; anayasa bloklarını işaretler |
-| `team-builder-shared/sync-agent-config.mjs` | `project/instructions.md`'yi tanır ve kopyalar; referans eksikse uyarır |
+| `team-builder-shared/sync-agent-config.mjs` | `project/instructions.md`'yi tanır ve kopyalar; referans eksikse (üç hedef dosyada da) uyarır; işaret çiftleriyle manifest'in preset'lerini karşılaştırır |
 | `team-builder-shared/canonical-source.md` | Yeni kaynak→hedef haritası |
 | `team-builder-shared/templates/constitution-blocks.md` | **YENİ** — preset başına işaretli blok şablonu; setup ve yükseltme aynı kaynağı render eder |
 | `team-builder-shared/constitution.md` | Her preset'in işaret adı; blok şablonuna işaret |

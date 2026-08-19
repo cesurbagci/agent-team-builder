@@ -41,8 +41,13 @@ Hangi preset olursa olsun sıra aynıdır:
 7. **Doğrula ve raporla.** Doğrulama şu ikisidir:
    `node ~/.claude/skills/team-builder-shared/validate-manifest.mjs` ile manifest'i
    denetle, ve `instructions.md`'de beklediğin blokların bulunup bulunmadığını gör
-   (açtığın preset'in işaret çifti var mı, kapattığınınki gitmiş mi). Sonra kullanıcıya
-   ne değiştiğini **sade dille** söyle.
+   (açtığın preset'in işaret çifti var mı, kapattığınınki gitmiş mi).
+   6. adımdaki `sync` bu ikinci kontrolü **mekanik olarak da** yapar: manifest'in
+   preset'leriyle dosyadaki işaretleri karşılaştırır ve uyuşmazlığı uyarı olarak basar.
+   Uyarı çıkarsa **görmezden gelme** — bloğu sen bu turda yazdın, demek ki istediğin gibi
+   yazılmamış. Elle taraman yine de gerekli: uyarı yalnız `sync` çalıştığında görünür,
+   sen ise bloğu ondan **önce** yazıyorsun.
+   Sonra kullanıcıya ne değiştiğini **sade dille** söyle.
 
 ## İşaretli bloklar
 

@@ -1071,6 +1071,6 @@ git commit -m "docs: mark the scope E spec as implemented"
 
 **Kapsam dışı olduğu için görevi yok:** rol/routing/ekosistem değiştirme, kurulumdan sonra ekosistem ekleme, `instructions.md` içeriğinin otomatik yeniden üretimi, göçün geri alınması.
 
-**Not — işaret denetimi neden otomatik test değil:** `instructions.md` bir **proje** dosyasıdır, bu repoda örneği yok; `validate-plan-gate.mjs` bu reponun kendi şablonlarını denetliyor. Projedeki işaretleri denetlemek, projeye kurulan bir doğrulayıcı gerektirir — ayrı iş. Bu planda işaret tutarlılığı görev 8'in elle taramasıyla kapsanıyor ve bu sınır burada açıkça yazılıdır.
+**Not — işaret denetimi neden bu planda otomatik test değil:** bu plan yürütülürken gerekçe "`instructions.md` bir proje dosyası, denetimi projeye kurulan ayrı bir doğrulayıcı ister" diye kaydedilmişti ve **yanlıştı** — `sync-agent-config.mjs` zaten projeye karşı çalışıyor, denetim onun içine sığdı. Bu planın kapsamında işaret tutarlılığı görev 8'in elle taramasıyla kapsandı; mekanik denetim sonradan `warnConstitutionMarkerDrift` olarak eklendi (bkz. spec'in *Doğrulayıcı değişikliği* bölümü). Bu satır tarihsel kayıttır, yeniden çalıştırılacak bir yönerge değil.
 
 **Not — davranışsal kriterler neden otomatik test değil:** yükseltme bir skill'dir, yani çalışma zamanı bir agent'tır. Bu repoda çalıştırılabilir tek şey generator ve doğrulayıcılardır; onlar kuralın **belgelendiğini** zorlar. Kriterlerin kendisi görev 8'in provasında yürütülür.
