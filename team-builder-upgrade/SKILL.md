@@ -36,8 +36,13 @@ Hangi preset olursa olsun sıra aynıdır:
    bu adım **zorunludur**.
 4. **Onay al.** Onaysız hiçbir dosya değişmez.
 5. **Uygula:** manifest → `instructions.md` bloğu → (varsa) artefakt.
-6. **`sync` çalıştır.**
-7. **Doğrula ve raporla.**
+6. **`sync` çalıştır.** `team-builder-sync` skill'ini çağır ya da doğrudan
+   `node ~/.claude/skills/team-builder-shared/sync-agent-config.mjs` koştur.
+7. **Doğrula ve raporla.** Doğrulama şu ikisidir:
+   `node ~/.claude/skills/team-builder-shared/validate-manifest.mjs` ile manifest'i
+   denetle, ve `instructions.md`'de beklediğin blokların bulunup bulunmadığını gör
+   (açtığın preset'in işaret çifti var mı, kapattığınınki gitmiş mi). Sonra kullanıcıya
+   ne değiştiğini **sade dille** söyle.
 
 ## İşaretli bloklar
 
@@ -100,9 +105,15 @@ açma ve kapatma ayrı ayrı anlatılır.
    - plan denetleyicisi: bir agent adı ya da "yok"
    - kod denetleyicisi: bir agent adı ya da "yok"
 
-   Seçilen agent **kod yazmayan** bir agent olmalı (`writesCode: false`). Kullanıcı kod
-   yazan bir rol seçerse söyle ve tekrar sor — doğrulayıcı zaten reddeder, ama hatayı
-   sihirbaz aşamasında yakalamak daha iyidir.
+   Seçilen agent **kod yazmayan** bir agent olmalı: manifest'te `agents[]` içindeki o
+   girdinin `writesCode` alanı `false` olmalı. Alan **yoksa** agent kod yazar sayılır,
+   yani seçilemez. Kullanıcı kod yazan bir rol seçerse söyle ve tekrar sor —
+   doğrulayıcı zaten reddeder, ama hatayı sihirbaz aşamasında yakalamak daha iyidir.
+
+   **Projede hiç `writesCode: false` agent yoksa** kapı açılamaz. Tekrar tekrar sorma:
+   durumu söyle ve iki seçenek sun — kullanıcı `null` denetleyiciyle devam etsin (kapı
+   açılır ama o kapı atlanır), ya da önce `team-builder-setup` ile kod yazmayan bir rol
+   eklesin. Rol eklemek bu skill'in işi **değildir**.
 2. **Manifest'i yaz:** `constitution.planGate: true` **ve** kök `planGate` nesnesi
    (`planReviewer`, `codeReviewer` — ikisi de zorunlu, değer ad ya da `null`).
 3. **Bloğu ekle:** `<!-- c:planGate -->` … `<!-- /c:planGate -->`, şablondan render
@@ -154,7 +165,12 @@ işletmeye çalışır.
    doğrulayıcı reddeder.
 2. **Bloğu çıkar:** `<!-- c:planGate -->` … `<!-- /c:planGate -->`.
 3. **Kaynağı sil:** `.agent-source/skills/work-plan/`
-4. **`sync` çalıştır**
+4. **`sync` çalıştır** — `team-builder-sync` skill'ini çağır ya da
+   `node ~/.claude/skills/team-builder-shared/sync-agent-config.mjs` koştur.
+   **Bu noktada `--check` çalıştırma ve kimseye çalıştırtma.** Kaynağı bilerek sildin,
+   yani drift **beklenen** durumdur ve `--check` 1 ile döner. `team-builder-sync`
+   "sync'ten sonra `--check` temiz olmalı" der — o kural normal senkron içindir, kapatma
+   akışında geçerli değildir. 5. adımı bitirdikten sonra `--check` yine temiz döner.
 5. **`sync`'in `(stale)` diye raporladığı hedeflerden yalnız `work-plan` yolunda
    olanları sil.** `.agents/skills/work-plan/` **her projede** çıkar (o kopya ekosistem
    koşulsuz üretilir); `.claude/skills/work-plan/` ve `.opencode/skills/work-plan/` ise
@@ -193,23 +209,17 @@ Preset çeviremezsin — önce göç.
    - **Aynıysa** → devam.
    - **Farklıysa** → **DUR.** Farkı göster ve sor: "Bu iki dosya ayrışmış. Hangisi
      ortak metin olsun?" Sessizce birini kazandırma — kullanıcının yazdığı metni
-     kaybetmek demektir.
+     kaybetmek demektir. Kullanıcı seçmezse **hiçbir şey değişmez** — göç başlamaz,
+     dosyalar olduğu gibi kalır. Aynısı 4. adımdaki `codeDocSync` durması için de
+     geçerlidir.
 
 3. **`instructions.md`'yi oluştur.** Seçilen dosyanın içeriğini al. Ekosisteme özgü
    olduğunu bildiğin bölümleri **çıkar** — bugün bu yalnız Claude'un `topology: native`
    durumundaki "Takımı başlatma" bölümüdür; onu bir kenara koy, 5. adımda geri
    yazacaksın.
 
-4. **İşaretleri blok blok onaylat.**
-
-   **`codeDocSync` bloğu ayrı bir kontrol ister.** Öbür preset'lerin metni serbest
-   prose'dur, ama bunun tablosu `manifest.codeDocSync[]`'ten render edilmiş olmalıdır —
-   bu dosyanın kendi kuralı: *"ikisi ayrışırsa blok yalan söyler"*. Eski projede tablo
-   elle düzenlenmiş olabilir. **Metni manifest ile karşılaştır:**
-   - Aynıysa → normal onay akışı.
-   - Farklıysa → **DUR** ve kullanıcıya farkı göster: hangisi doğru? Cevaba göre ya
-     manifest'i güncelle ya bloğu manifest'ten yeniden render et. Prose'u olduğu gibi
-     sarma — sardığın anda yalan kalıcılaşır ve hiçbir doğrulayıcı bunu yakalamaz. Her preset için, manifest'te **açık** olanları sırayla:
+4. **İşaretleri blok blok onaylat.** Her preset için, manifest'te **açık** olanları
+   sırayla:
    > "`noWorkaround` metnin burada başlıyor gibi görünüyor:
    > *<ilk iki satır>* … *<son satır>*
    > İşaretleri buraya koyuyorum — doğru mu?"
@@ -220,6 +230,15 @@ Preset çeviremezsin — önce göç.
      > işaretleri elle koyman gerekiyor."
 
    **Yarım göç, yanlış göçten iyidir.** Tahminle işaret koyma.
+
+   **`codeDocSync` bloğu ek bir kontrol ister.** Öbür preset'lerin metni serbest
+   prose'dur, ama bunun tablosu `manifest.codeDocSync[]`'ten render edilmiş olmalıdır —
+   bu dosyanın kendi kuralı: *"ikisi ayrışırsa blok yalan söyler"*. Eski projede tablo
+   elle düzenlenmiş olabilir. Onaydan **önce** metni manifest ile karşılaştır:
+   - Aynıysa → normal onay akışı.
+   - Farklıysa → **DUR** ve kullanıcıya farkı göster: hangisi doğru? Cevaba göre ya
+     manifest'i güncelle ya bloğu manifest'ten yeniden render et. Prose'u olduğu gibi
+     sarma — sardığın anda yalan kalıcılaşır ve hiçbir doğrulayıcı bunu yakalamaz.
 
 5. **Hedef kaynaklarını yeniden yaz.**
    - `project/CLAUDE.md` → `@.agent-source/project/instructions.md` + (varsa) 3. adımda

@@ -293,7 +293,7 @@ ekosistemde executor bulunması — hepsi aynen kalır.
 | E-R8 | İşaretsiz projede yükseltme çağrıldı | Göç teklif edilir |
 | E-R9 | Göç onaylandı, bloklar ayırt edilebildi | `instructions.md` oluşur, hedefler referansa döner |
 | E-R10 | Referans silinmiş, `sync` çalıştı | Uyarı + ekleme teklifi |
-| E-R11 | Projeye özel cevap isteyen preset açıldı (`noWorkaround`, `codeDocSync`) | Soru kalıbıyla sorulur; cevap hem manifest'e hem render edilen bloğa yazılır |
+| E-R11 | Projeye özel cevap isteyen preset açıldı (`noWorkaround`, `codeDocSync`) | Soru kalıbıyla sorulur. `codeDocSync` → hem `manifest.codeDocSync[]`'e hem bloğa; `noWorkaround` → **yalnız bloğa** (manifest'te desen listesi alanı yoktur) |
 
 ### Olumsuz (N)
 
