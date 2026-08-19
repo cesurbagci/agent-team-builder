@@ -708,8 +708,15 @@ ekle. `TEMPLATE.md` varsa dokunma.
 inbox: 2   draft: 1   approved: 3   in-progress: 1   done: 7
 ```
 
-> "3 onaylı, 1 süren iş artık izlenmeyecek. Dosyalar `.agent-work/` altında duruyor ve
-> silinmiyor. Devam edilsin mi?"
+Sorduğunda **bütün etkiyi** söyle, yalnız veri tarafını değil. Bu onay tek onaydır ve
+konfigürasyon silmeyi de yetkilendirir:
+
+> "Plan kapısını kapatıyorum. Şunlar olacak:
+> — `.agent-work/` **olduğu gibi kalıyor**: 3 onaylı, 1 süren iş artık izlenmeyecek ama
+>   hiçbir dosya silinmiyor.
+> — `work-plan` skill'i **siliniyor**: kaynağı ve ekosistem dizinlerindeki kopyaları.
+> — Manifest'ten plan kapısı ayarları ve ortak talimattan plan kapısı bölümü çıkıyor.
+> Devam edilsin mi?"
 
 Kullanıcı onaylamazsa **hiçbir şey değişmez** — manifest de dahil.
 
@@ -722,9 +729,10 @@ işletmeye çalışır.
 
 1. Kaynağı sil: `.agent-source/skills/work-plan/`
 2. `sync` çalıştır
-3. `sync`'in `(stale)` diye raporladığı hedefleri sil — tipik olarak
-   `.agents/skills/work-plan/`, `.claude/skills/work-plan/`, `.opencode/skills/work-plan/`
-   (hangi ekosistemler hedefliyse)
+3. `sync`'in `(stale)` raporundan **yalnız `work-plan` yolunda olanları** sil.
+   `.agents/skills/work-plan/` her projede çıkar (o kopya ekosistem koşulsuz üretilir);
+   `.claude/skills/work-plan/` ve `.opencode/skills/work-plan/` ilgili ekosistem
+   hedefleniyorsa. Listedeki başka yollara dokunma.
 4. Silinenleri kullanıcıya listele
 
 **Manifest'te iki şey birden değişir:** `constitution.planGate: false` **ve** kök

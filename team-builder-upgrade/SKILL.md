@@ -129,8 +129,16 @@ ekle. `TEMPLATE.md` varsa dokunma.
 inbox: 2   draft: 1   approved: 3   in-progress: 1   done: 7
 ```
 
-> "3 onaylı, 1 süren iş artık izlenmeyecek. Dosyalar `.agent-work/` altında duruyor ve
-> silinmiyor. Devam edilsin mi?"
+Sorduğunda **bütün etkiyi** söyle, yalnız veri tarafını değil. Bu onay tek onaydır ve
+konfigürasyon silmeyi de yetkilendirir; kullanıcı yalnız planlarının akıbetini onayladığını
+sanmamalı:
+
+> "Plan kapısını kapatıyorum. Şunlar olacak:
+> — `.agent-work/` **olduğu gibi kalıyor**: 3 onaylı, 1 süren iş artık izlenmeyecek ama
+>   hiçbir dosya silinmiyor.
+> — `work-plan` skill'i **siliniyor**: kaynağı ve ekosistem dizinlerindeki kopyaları.
+> — Manifest'ten plan kapısı ayarları ve ortak talimattan plan kapısı bölümü çıkıyor.
+> Devam edilsin mi?"
 
 Kullanıcı onaylamazsa **hiçbir şey değişmez** — manifest de dahil.
 
@@ -147,9 +155,12 @@ işletmeye çalışır.
 2. **Bloğu çıkar:** `<!-- c:planGate -->` … `<!-- /c:planGate -->`.
 3. **Kaynağı sil:** `.agent-source/skills/work-plan/`
 4. **`sync` çalıştır**
-5. **`sync`'in `(stale)` diye raporladığı hedefleri sil** — tipik olarak
-   `.agents/skills/work-plan/`, `.claude/skills/work-plan/`, `.opencode/skills/work-plan/`
-   (hangi ekosistemler hedefliyse)
+5. **`sync`'in `(stale)` diye raporladığı hedeflerden yalnız `work-plan` yolunda
+   olanları sil.** `.agents/skills/work-plan/` **her projede** çıkar (o kopya ekosistem
+   koşulsuz üretilir); `.claude/skills/work-plan/` ve `.opencode/skills/work-plan/` ise
+   ilgili ekosistem hedefleniyorsa. **Listedeki başka yollara dokunma** — aynı koşuda
+   ilgisiz bir stale girdi de raporlanmış olabilir ve onu silmek bu işlemin
+   duyurulmamış bir yan etkisi olur.
 6. **Silinenleri kullanıcıya listele**
 
 ### Sıra önemlidir
