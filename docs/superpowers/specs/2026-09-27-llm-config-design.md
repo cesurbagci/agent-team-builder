@@ -60,6 +60,9 @@ Aynı rol üç ekosistemde üç ayrı modelle çalışıyor. Ayrıca:
 - **OpenCode** ajan frontmatter'ında `model:` var; effort gibi seçenekler (belgedeki örnek
   `reasoningEffort`) sağlayıcıya olduğu gibi aktarılıyor, anlamı sağlayıcıya bağlı. Model
   verilmezse birincil ajan genel modeli, alt ajan onu çağıranın modelini kullanıyor.
+  `opencode debug agent <ad>` ile model çağırmadan doğrulandı: frontmatter'daki
+  `reasoningEffort: "high"` ajan yapılandırmasına `options.reasoningEffort` olarak giriyor;
+  tırnaklı `model: "sağlayıcı/model"` doğru çözümleniyor.
 - **Makine adı kararsız.** Bu Mac `cesurbs-MacBook-Pro.local`,
   `cesurbs-MacBook-Pro` ve `cesurb’s MacBook Pro` adlarını döndürüyor; `HostName` ayarlı
   değil, macOS adı ağdan alabiliyor.
@@ -428,9 +431,8 @@ gerçekten bir kuralı koruduğu gösterilir.
 **Elle yürütülen provalar**, dosyaları ilk kez okuyan biri tarafından: kurulum akışı
 (L-R19), yeni makine (L-R12, L-R13), değiştirme (L-R14, L-R15, L-N16), yenileme (L-N17) ve
 eski yapıdaki bir fixture projenin göçü (L-R16, L-R17). Ek olarak bu makinede gerçek
-`codex debug models` ve `opencode models` ile bir çalıştırma, ve OpenCode'un frontmatter'daki
-`reasoningEffort`'u gerçekten kabul ettiğinin deneyle doğrulanması — şu an doğrulanmamış
-tek varsayım bu.
+`codex debug models` ve `opencode models` ile bir çalıştırma, ve üretilen bir OpenCode ajanının
+`opencode debug agent <ad>` ile `options.reasoningEffort` taşıdığının görülmesi.
 
 ## Kararlar
 
