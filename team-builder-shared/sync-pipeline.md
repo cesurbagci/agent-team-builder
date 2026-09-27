@@ -132,6 +132,9 @@ repodaki metni proje dışındaki bir dosyaya — örneğin bir kabuk başlangı
   değilse sync **durur**: yoksa repodaki bir bağ, makinedeki özel bir dosyayı repoya
   kopyalatırdı. Çözülen yol bağ izlenmeden okunur; kontrolden sonra bağa çevrilen bir dosya
   okunmaz.
+- Defter (`generated-files.json`) de aynı kontrolle okunur: girdileri sonraki deftere taşınır,
+  bu yüzden başka bir projenin defterine giden bir bağ sync'i durdurur. Proje dışına çıkan bir
+  girdi (`..` ya da bağlı bir dizin üzerinden) denetlenmez ve raporlanmaz.
 - `.gitignore` sembolik bağsa okunmaz ve yazılmaz; sync uyarır (§11). Okuma, destekleyen
   platformlarda bağı izlemeyen bir açılışla yapılır.
 

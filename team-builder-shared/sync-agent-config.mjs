@@ -253,6 +253,15 @@ function createContext({ root, checkOnly }) {
     return real
   }
 
+  async function isInsideProject(directory) {
+    try {
+      await assertInsideProject(directory, await realRoot(), '')
+      return true
+    } catch {
+      return false
+    }
+  }
+
   // The resolved path is read without following a link at its name, so the
   // file cannot be swapped for one between the check and the read.
   async function readSourceText(sourcePath) {
@@ -281,6 +290,7 @@ function createContext({ root, checkOnly }) {
     copyExpected,
     assertSourceInside,
     readSourceText,
+    isInsideProject,
   }
 }
 
@@ -926,9 +936,13 @@ async function reportStaleGenerated(ctx, ledgerPath) {
   if (!(await pathExists(ledgerPath))) {
     return []
   }
+  // The ledger is local output, but its entries are carried forward, so it
+  // must be this project's own file: a link to another project's ledger stops
+  // sync. Only malformed JSON is tolerated.
+  const text = await ctx.readSourceText(ledgerPath)
   let previous
   try {
-    previous = JSON.parse(await readText(ledgerPath))
+    previous = JSON.parse(text)
   } catch {
     return []
   }
@@ -940,6 +954,10 @@ async function reportStaleGenerated(ctx, ledgerPath) {
     if (typeof relative !== 'string' || relative.length === 0) continue
     if (ctx.produced.has(relative)) continue
     const filePath = ctx.resolveRoot(...relative.split('/'))
+    // An entry must name a path inside the project — by `..` or through a
+    // linked directory it could reach beyond it — or checking it would probe
+    // the machine outside.
+    if (!(await ctx.isInsideProject(path.dirname(filePath)))) continue
     if (!(await ledgerEntryExists(filePath))) continue
     ctx.mismatches.push(`${relative} (stale)`)
     stale.push(relative)
@@ -1075,11 +1093,7 @@ async function generate({ root, checkOnly, quiet = false, catalogs = null }) {
   const manifest = JSON.parse(await ctx.readSourceText(manifestPath))
   const validate = await loadValidate()
   validate(manifest)
-  for (const relative of [LLM_SHARED_RELATIVE, LLM_LOCAL_RELATIVE]) {
-    const layerPath = ctx.resolveRoot(...relative.split('/'))
-    if (await pathExists(layerPath)) await ctx.assertSourceInside(layerPath)
-  }
-  const layers = await readLlmLayers(ctx.resolvedRoot)
+  const layers = await readLlmLayers(ctx.resolvedRoot, { read: filePath => ctx.readSourceText(filePath) })
   checkLlmLayers(layers, manifest, warn)
   await checkAgentSources(ctx, manifest)
   for (const relative of localOutputPaths(manifest)) ctx.localPaths.add(relative)
@@ -2988,6 +3002,35 @@ async function runWriteContainmentSelftest() {
       `an llm.json linking outside the project must stop sync, got ${llmRefused ? llmRefused.message : 'no error'}`
     )
     await fs.rm(llmFile)
+
+    // The ledger's entries are carried forward: a ledger that is a link to
+    // another project's stops sync, and an entry that leaves the project —
+    // by `..` or through a linked directory — is never checked or reported.
+    const ledgerFile = path.join(project, '.agent-source', 'generated-files.json')
+    const outsideLedger = path.join(outside, 'generated-files.json')
+    await fs.writeFile(outsideLedger, JSON.stringify({ files: ['.claude/agents/private.md'] }))
+    await fs.rm(ledgerFile, { force: true })
+    await fs.symlink(outsideLedger, ledgerFile)
+    let ledgerRefused = null
+    try {
+      await silentGenerate({ root: project, checkOnly: false })
+    } catch (error) {
+      ledgerRefused = error
+    }
+    assert(
+      ledgerRefused !== null && ledgerRefused.message.includes('outside the project'),
+      `a ledger linking outside the project must stop sync, got ${ledgerRefused ? ledgerRefused.message : 'no error'}`
+    )
+    await fs.rm(ledgerFile)
+    await fs.symlink(outside, path.join(project, 'probe'))
+    await fs.writeFile(ledgerFile, JSON.stringify({ files: ['../outside/rcfile', 'probe/rcfile'] }))
+    const probeCheck = await silentGenerate({ root: project, checkOnly: true })
+    assert(
+      !probeCheck.mismatches.some(m => m.includes('rcfile')),
+      `ledger entries outside the project must not be checked, got ${JSON.stringify(probeCheck.mismatches)}`
+    )
+    await fs.rm(path.join(project, 'probe'))
+    await fs.rm(ledgerFile)
 
     // A directory on the way that resolves outside the project stops sync.
     await fs.rm(path.join(project, '.claude'), { recursive: true, force: true })

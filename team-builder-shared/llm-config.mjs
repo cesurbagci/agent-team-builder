@@ -15,10 +15,12 @@ export const LLM_SHARED_RELATIVE = '.agent-source/llm.json'
 export const LLM_LOCAL_RELATIVE = '.agent-source/llm.local.json'
 export const ECOSYSTEMS = ['claude', 'codex', 'opencode']
 
-async function readLayer(root, relative) {
+const readFileText = filePath => fs.readFile(filePath, 'utf8')
+
+async function readLayer(root, relative, read) {
   let text
   try {
-    text = await fs.readFile(path.join(root, ...relative.split('/')), 'utf8')
+    text = await read(path.join(root, ...relative.split('/')))
   } catch (error) {
     if (error.code === 'ENOENT') return undefined
     throw error
@@ -32,11 +34,12 @@ async function readLayer(root, relative) {
 
 // Both layers are optional. A missing file is undefined — never null, which a
 // file can hold and validation must reject — and resolution then treats every
-// value it would have held as unset.
-export async function readLlmLayers(root) {
+// value it would have held as unset. `read` lets sync read through its
+// containment check; it must reject a missing file with code ENOENT.
+export async function readLlmLayers(root, { read = readFileText } = {}) {
   return {
-    shared: await readLayer(root, LLM_SHARED_RELATIVE),
-    local: await readLayer(root, LLM_LOCAL_RELATIVE),
+    shared: await readLayer(root, LLM_SHARED_RELATIVE, read),
+    local: await readLayer(root, LLM_LOCAL_RELATIVE, read),
   }
 }
 
