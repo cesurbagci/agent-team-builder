@@ -281,7 +281,7 @@ Tüm cevaplar toplandı; şimdi kaynağı yaz, doğrula ve generate et. Sırayla
 
 - `.agent-source/skills/<skill>/SKILL.md` — repo skill kaynakları (varsa).
 - `.agent-source/README.md` — "generated'ı elleme; burayı güncelle + sync çalıştır" notu.
-- `.agent-source/llm.json` — model ve effort; Adım 3(c)'deki Akış 1 yazar. Ajan dosyaları ve defter git'e girmez; `.gitignore` bloğunu sync yazar.
+- `.agent-source/llm.json` — model ve effort; Adım 5'in 3(c) maddesindeki Akış 1 yazar. Ajan dosyaları ve defter git'e girmez; `.gitignore` bloğunu sync yazar.
 - **Plan kapısı açıksa** (`constitution.planGate: true`) şunları da üret — hepsi
   `docLanguage` dilinde, `~/.claude/skills/team-builder-shared/plan-gate.md` sözleşmesine
   göre:
@@ -382,5 +382,5 @@ Tüm cevaplar toplandı; şimdi kaynağı yaz, doğrula ve generate et. Sırayla
 - **Manifest'i doğrulamadan generate etme.** 8b geçmeden 8c'ye geçme.
 - **Drift'i yok sayma.** 8d temiz çıkmadan iş bitmiş sayılmaz.
 - **Generated dosyayı elle yazma/düzenleme.** Tek kaynak `.agent-source/`; generated hedefler yalnız sync ile üretilir, elle değişiklik bir sonraki `--check`'te drift olarak yakalanır.
-- **Mevcut takımın üzerine sessizce yazma.** Adım 1'de `.agent-source/` varsa kullanıcıyı uyar, add/edit/sync'e yönlendir.
+- **Mevcut takımın üzerine sessizce yazma.** Adım 1'de `.agent-source/` varsa kullanıcıyı uyar ve var olan skill'lere yönlendir (`team-builder-models`, `team-builder-upgrade`, `team-builder-sync`).
 - **docLanguage dışı dil kullanma.** Tüm üretilen metinler seçilen dilde; kod/dosya/commit İngilizce.

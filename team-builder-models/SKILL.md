@@ -10,8 +10,9 @@ biçimi, çözümleme kuralı, doğrulama, katalog komutları —
 `~/.claude/skills/team-builder-shared/llm-config.md`'dedir; **önce onu oku**. Bu dosya
 yalnız prosedürdür.
 
-**Kapsam dışı:** rol eklemek/çıkarmak, routing ve hedef ekosistem (setup'ın işi), anayasa
-preset'leri (`team-builder-upgrade`).
+**Kapsam dışı:** rol eklemek/çıkarmak, routing ve hedef ekosistem (kurulu projede skill'i yok:
+manifest'i ve rol dosyasını elle düzenleyip sync çalıştır), anayasa preset'leri
+(`team-builder-upgrade`).
 
 ## Önce durumu tespit et
 
@@ -54,7 +55,8 @@ Hedeflenen her ekosistem için, CLI kuruluysa:
 - Bir girdiye model yazarken effort'u da **aynı girdiye** yaz — `defaults`'ta ya da
   `agents`'ta, hangi dosyada olursa olsun. Effort, modeli seçen katmandan daha genel bir
   katmandan gelmez (`llm-config.md`, *Çözümleme*): alttaki effort'u korumak istiyorsan onu
-  bu girdiye kopyala; yazmazsan ekosistemin varsayılanı çalışır.
+  bu girdiye kopyala; yazmazsan — daha özel bir katmanda effort yoksa — ekosistemin
+  varsayılanı çalışır.
 
 ## Akış 1 — Ortak dosyayı kur
 
@@ -179,8 +181,9 @@ Güncellenmiş team-builder bu yapıda sync'i durdurur.
    - Göçün tamamı **tek bir commit**tir ve git ile geri alınabilir. Commit'i sen yapma.
      Commit'e girmesi gerekenler: **yeni** `.agent-source/llm.json`, manifest, rol
      dosyaları, `.gitignore`, sync'in yeniden ürettiği git'teki dosyalar ve takipten
-     çıkarılan dosyalar. `llm.json` henüz takip edilmediği için `git commit -a` onu
-     **almaz**; unutulursa takım sessizce varsayılan modellerle çalışır.
+     çıkarılan dosyalar. Yeni dosyalar (`llm.json`, önceden yoksa `.gitignore`) henüz takip
+     edilmediği için `git commit -a` onları **almaz**; `llm.json` unutulursa takım sessizce
+     varsayılan modellerle çalışır.
    - **Bu commit'i çeken her takım arkadaşı bir kez sync çalıştırmalı:** git, takibi
      bırakılan dosyaları commit'i çekenin diskinden siler.
    - Takımdaki herkes team-builder'ın yeni sürümünü kurmalı; eski sürüm `llm.json`'ı
