@@ -25,6 +25,7 @@ import {
   resolveModelSettings,
 } from './llm-config.mjs'
 import { validateLlmConfig } from './validate-llm.mjs'
+import { catalogWarnings, parseCodexCatalog, readCatalogs, runCli } from './model-catalogs.mjs'
 
 // validate-manifest.mjs runs its own selftest block when `--selftest` is in
 // process.argv. Since this script shares that flag, import it dynamically with
@@ -142,6 +143,8 @@ function createContext({ root, checkOnly }) {
   // never as drift; one that is present but different still is drift.
   const localPaths = new Set()
   const notGenerated = []
+  // Every model and effort this run resolved, for the catalog check.
+  const resolvedModels = []
 
   const toPosix = filePath =>
     path.relative(resolvedRoot, filePath).split(path.sep).join('/')
@@ -188,6 +191,7 @@ function createContext({ root, checkOnly }) {
     produced,
     localPaths,
     notGenerated,
+    resolvedModels,
     toPosix,
     resolveRoot,
     resolveSource,
@@ -658,10 +662,15 @@ async function syncAgents(ctx, manifest, projectName, layers) {
       continue
     }
     const targets = agentTargets(agent, manifest)
+    const resolve = ecosystem => {
+      const settings = resolveModelSettings(layers, agent.name, ecosystem)
+      ctx.resolvedModels.push({ agent: agent.name, ecosystem, ...settings })
+      return settings
+    }
 
     if (targets.has('claude')) {
       const fileName = `${agent.name}.md`
-      const settings = resolveModelSettings(layers, agent.name, 'claude')
+      const settings = resolve('claude')
       await ctx.copyExpected(source, ctx.resolveRoot('.claude', 'agents', fileName), src =>
         renderClaudeAgentMd(src, settings)
       )
@@ -681,14 +690,14 @@ async function syncAgents(ctx, manifest, projectName, layers) {
           agent,
           manifest,
           projectName,
-          resolveModelSettings(layers, agent.name, 'codex')
+          resolve('codex')
         )
       )
     }
 
     if (targets.has('opencode')) {
       const fileName = `${agent.name}.md`
-      const settings = resolveModelSettings(layers, agent.name, 'opencode')
+      const settings = resolve('opencode')
       await ctx.copyExpected(
         source,
         ctx.resolveRoot('.opencode', 'agents', fileName),
@@ -921,7 +930,24 @@ function checkLlmLayers(layers, manifest, warn) {
   }
 }
 
-async function generate({ root, checkOnly, quiet = false }) {
+// What this machine will run, checked against what this machine's CLIs say
+// exists. Warnings only — catalogs differ per machine and account, and CI has
+// none. A selftest passes its own `catalogs`, so no real CLI is ever called.
+async function warnAgainstCatalogs(ctx, catalogs, log, warn) {
+  const ecosystems = [
+    ...new Set(
+      ctx.resolvedModels
+        .filter(entry => entry.ecosystem !== 'claude' && entry.model !== undefined)
+        .map(entry => entry.ecosystem)
+    ),
+  ]
+  const inProject = (command, args) => runCli(command, args, ctx.resolvedRoot)
+  const machine = catalogs ?? (await readCatalogs(ecosystems, inProject))
+  for (const note of machine.notes ?? []) log(`i ${note}`)
+  for (const message of catalogWarnings(ctx.resolvedModels, machine)) warn(`! ${message}`)
+}
+
+async function generate({ root, checkOnly, quiet = false, catalogs = null }) {
   const log = quiet ? () => {} : (...a) => console.log(...a)
   const warn = quiet ? () => {} : (...a) => console.warn(...a)
   const error = quiet ? () => {} : (...a) => console.error(...a)
@@ -947,6 +973,7 @@ async function generate({ root, checkOnly, quiet = false }) {
   await syncAgents(ctx, manifest, projectName, layers)
   await syncSkills(ctx, manifest)
   await syncGitignore(ctx, manifest)
+  await warnAgainstCatalogs(ctx, catalogs, log, warn)
 
   // Staleness is judged against the PREVIOUS ledger, then the new one is written.
   // The new ledger is the union of this run's produced paths and any stale
@@ -1010,9 +1037,13 @@ function assert(condition, message) {
   }
 }
 
+// Selftests never call the real CLIs: an empty catalog set means "no CLI
+// installed", which is also what CI sees.
+const NO_CATALOGS = { notes: [] }
+
 // Run generate() with quiet=true so selftest output stays clean.
 async function silentGenerate(options) {
-  return generate({ ...options, quiet: true })
+  return generate({ catalogs: NO_CATALOGS, ...options, quiet: true })
 }
 
 // Run generate() and collect what it warned. generate() is called directly
@@ -1020,14 +1051,14 @@ async function silentGenerate(options) {
 // run could never observe the warnings these cases exist to check. Log is
 // silenced separately to keep selftest output clean, which is what quiet mode
 // would otherwise have done.
-async function captureWarnings(root) {
+async function captureWarnings(root, options = {}) {
   const warnings = []
   const originalWarn = console.warn
   const originalLog = console.log
   console.warn = (...a) => warnings.push(a.join(' '))
   console.log = () => {}
   try {
-    await generate({ root, checkOnly: false })
+    await generate({ root, checkOnly: false, catalogs: NO_CATALOGS, ...options })
   } finally {
     console.warn = originalWarn
     console.log = originalLog
@@ -1893,6 +1924,37 @@ async function runSelftest() {
       'a legacy manifest field must stop generation and name the migration'
     )
     await fs.writeFile(manifestPath, JSON.stringify(manifest, null, 2))
+    await silentGenerate({ root: fixtureRoot, checkOnly: false })
+  }
+
+  // A retiring Codex model is reported through sync, with the date and the
+  // replacement the Codex catalog names.
+  {
+    const localPath = path.join(sourceRoot, 'llm.local.json')
+    await fs.writeFile(
+      localPath,
+      JSON.stringify({ agents: { architect: { codex: { model: 'gpt-5.5' } } } })
+    )
+    const catalogs = {
+      notes: [],
+      codex: parseCodexCatalog(
+        JSON.stringify({
+          models: [
+            {
+              slug: 'gpt-5.5',
+              supported_reasoning_levels: [{ effort: 'low' }, { effort: 'medium' }],
+              upgrade: { model: 'gpt-5.6-sol', retirement_at: '2026-10-14T19:00:00Z' },
+            },
+          ],
+        })
+      ),
+    }
+    const retirement = await captureWarnings(fixtureRoot, { catalogs })
+    assert(
+      retirement.some(w => w.includes('gpt-5.5') && w.includes('2026-10-14') && w.includes('gpt-5.6-sol')),
+      `a retiring model must be reported through sync, got: ${retirement.join(' | ') || '(none)'}`
+    )
+    await fs.rm(localPath)
     await silentGenerate({ root: fixtureRoot, checkOnly: false })
   }
 
