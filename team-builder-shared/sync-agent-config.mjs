@@ -917,8 +917,10 @@ async function checkAgentSources(ctx, manifest) {
     }
     // Model and effort live in llm.json. A copy here would be a second source
     // drifting from the first — the very bug that layout removed.
+    // YAML also accepts a quoted key and space before the colon; Claude would
+    // read those as the same key, so they are refused the same way.
     for (const key of ['model', 'effort']) {
-      if (new RegExp(`^${key}:`, 'm').test(block)) {
+      if (new RegExp(`^(["']?)${key}\\1[ \\t]*:`, 'm').test(block)) {
         problems.push(
           `${where} frontmatter must not set ${key} — it lives in ${LLM_SHARED_RELATIVE}; run team-builder-models to migrate`
         )
@@ -1921,8 +1923,13 @@ async function runSelftest() {
     // Model or effort in the role file stops generation: the model's only
     // home is llm.json.
     const architectPath = path.join(sourceRoot, 'agents', 'architect.md')
-    for (const key of ['model', 'effort']) {
-      await fs.writeFile(architectPath, architectBody.replace('\n---\n', `\n${key}: x\n---\n`))
+    for (const [key, line] of [
+      ['model', 'model: x'],
+      ['effort', 'effort: x'],
+      ['model', '"model": x'],
+      ['effort', "'effort' : x"],
+    ]) {
+      await fs.writeFile(architectPath, architectBody.replace('\n---\n', `\n${line}\n---\n`))
       let thrown = null
       try {
         await silentGenerate({ root: fixtureRoot, checkOnly: false })
@@ -1931,7 +1938,7 @@ async function runSelftest() {
       }
       assert(
         thrown !== null && thrown.message.includes(`must not set ${key}`),
-        `${key} in the role file must stop generation (got ${thrown ? thrown.message : 'no error'})`
+        `${line} in the role file must stop generation (got ${thrown ? thrown.message : 'no error'})`
       )
     }
     await fs.writeFile(architectPath, architectBody)
