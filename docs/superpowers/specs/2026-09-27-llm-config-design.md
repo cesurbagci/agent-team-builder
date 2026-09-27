@@ -53,7 +53,9 @@ Aynı rol üç ekosistemde üç ayrı modelle çalışıyor. Ayrıca:
     `{"model":"gpt-5.6-sol","retirement_at":"2026-10-14T19:00:00Z", ...}` — `gpt-5.5`
     bu spec'in yazıldığı günden 17 gün sonra kalkıyor.
   - `opencode models` — yalnız **bu makinede yapılandırılmış** sağlayıcıları listeliyor
-    (bu makinede `anthropic` yok: "Provider not found").
+    (bu makinede `anthropic` yok: "Provider not found"). Projenin `opencode.json`'unda
+    tanımlı bir sağlayıcı yalnız komut o projenin dizininde çalışınca listeleniyor
+    (denendi: aynı makinede proje dizininde listede, başka dizinde yok).
   - `claude` CLI'ında model listeleyen komut yok.
 - **Süre:** `codex debug models` ilk çağrıda 1,0 s, önbellekten 0,03 s;
   `opencode models` 1,3–2,0 s.
@@ -231,6 +233,8 @@ Anthropic API'de adı kendisi doğruluyor.
 - Yalnız uyarır; çıkış kodunu etkilemez — `--check` modunda da. Kataloglar makineye ve
   hesaba göre değişir, CI'da yoktur.
 - Her komut sync başına en fazla bir kez, **10 saniye** sınırla çalışır (ölçülen 1–2 s).
+- Komutlar **proje kökünde** çalışır, sync'in başlatıldığı dizinde değil: katalog projenin
+  yapılandırmasına bağlıdır (OpenCode, projenin `opencode.json`'undaki sağlayıcıları ekler).
 - CLI yoksa kontrol **sessizce** atlanır (CI'da beklenen durum). CLI var ama hata verdi,
   zaman aşımına uğradı ya da çıktı çözümlenemediyse **tek bilgi satırı** yazılır ve kontrol
   atlanır.
@@ -321,7 +325,7 @@ korumaz.** Göç, takımın commit ettiği değerlerden geldiği için **ortak**
 | Bugün | Göçte |
 |---|---|
 | Claude: rol dosyasındaki `model:` | `claude.model`. Manifest'teki `model` farklıysa ikisi gösterilir, kullanıcı seçer. Rol dosyasında `model:` yoksa Claude varsayılanla çalışıyordu — alan boş kalır |
-| Claude: effort | Hiç yazılmıyordu — boş kalır |
+| Claude: rol dosyasındaki `effort:` | `claude.effort`. Team-builder bunu hiç yazmadı, ama rol dosyası Claude'a olduğu gibi kopyalandığı için elle eklenen satır etkiliydi. Satır yoksa Claude oturumun effort'uyla çalışıyordu — alan boş kalır |
 | Codex: manifest `model` | Yalnız Codex kataloğunda bulunuyorsa `codex.model` olur. Claude hedefli agent'larda bu değer bir Claude takma adıydı — taşınmaz, katalogdan öneri sunulur. Katalog okunamıyorsa skill sorar |
 | Codex: `model_reasoning_effort` | `codex.effort` |
 | OpenCode: `opencode_model` | `opencode.model` |
@@ -332,7 +336,7 @@ Ardından katalog kontrolü çalışır (örneğin emeklilik uyarısı).
 **Adımlar** (kullanıcı onayından sonra):
 
 1. `llm.json`'ı yaz.
-2. Eski alanları manifest'ten, `model:` satırlarını rol dosyalarından sil.
+2. Eski alanları manifest'ten, `model:` ve `effort:` satırlarını rol dosyalarından sil.
 3. Üretilen ajan dosyalarını ve defteri `git rm --cached` ile takipten çıkar — diskteki
    dosyalar yerinde kalır.
 4. Sync çalıştır — `.gitignore` bloğunu yazar, ajan dosyalarını yeniden üretir.
