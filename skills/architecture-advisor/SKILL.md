@@ -5,6 +5,8 @@ description: Mevcut projeyi analiz edip mimari dokümanları (ADR = mimari karar
 
 # Architecture Advisor
 
+> **Dosya yolları:** team-builder'ın betik ve belgeleri `${CLAUDE_SKILL_DIR}/../team-builder-shared/` altındadır; bu dosyadaki yollar buna göre yazılmıştır. Yol `CLAUDE_SKILL_DIR` adıyla çözülmeden görünüyorsa (Codex plugin'i onu çözmez), onu bu SKILL.md'nin bulunduğu klasörün mutlak yoluyla değiştir.
+
 Projedeki **mimari kararları** kullanıcıyla birlikte yazılı hale getirir. Sıfırdan değil:
 önce mevcut kodu/yapıyı analiz eder, **hangi kararların belgelenmesi gerektiğini önerir**,
 sonra seçilenleri **tek tek, kullanıcıyla birlikte** yazar.
@@ -21,12 +23,12 @@ sonra seçilenleri **tek tek, kullanıcıyla birlikte** yazar.
 
 1. **Takım kaynağı var mı bak:** `.agent-source/agents/manifest.json` varsa oradan al:
    - `architectureDocs.root` (örn. `docs/mimari`), `architectureDocs.layout` (`central`|`per-module`), `docLanguage`.
-   - Yapı/format için `~/.claude/skills/team-builder-shared/architecture-docs.md`.
+   - Yapı/format için `${CLAUDE_SKILL_DIR}/../team-builder-shared/architecture-docs.md`.
 2. **Yoksa kullanıcıya sade sor:** mimari dokümanlar nereye (`docs/mimari` | `docs/architecture`), dil ne (tr/en). (Bu skill takımdan bağımsız da çalışır.)
 3. Yazma yetkisi yalnızca `docs/<arch-root>/` (ve per-module ise `modules/<name>/docs/`) altındadır — **production koduna yazma**, sadece oku (architect disiplini).
-4. **STANDART ZORUNLU:** Tüm dokümanları `~/.claude/skills/team-builder-shared/templates/doc-standard.md` standardına ve şablonlarına göre yaz:
+4. **STANDART ZORUNLU:** Tüm dokümanları `${CLAUDE_SKILL_DIR}/../team-builder-shared/templates/doc-standard.md` standardına ve şablonlarına göre yaz:
    - ADR → `templates/adr.md`, kısıt → `templates/constraint.md`, tasarım → `templates/design.md`.
-   - Proje kökünde `docs/<arch-root>/templates/` zaten varsa (setup kopyalamış) onları kullan; yoksa `team-builder-shared/templates/`'ten oku. Yapı için `~/.claude/skills/team-builder-shared/architecture-docs.md`.
+   - Proje kökünde `docs/<arch-root>/templates/` zaten varsa (setup kopyalamış) onları kullan; yoksa `team-builder-shared/templates/`'ten oku. Yapı için `${CLAUDE_SKILL_DIR}/../team-builder-shared/architecture-docs.md`.
 
 ## Akış
 

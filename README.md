@@ -17,8 +17,9 @@ in the project.
 - [Skills](#skills)
 - [Requirements](#requirements)
 - [Installation](#installation)
-  - [macOS / Linux](#macos--linux)
-  - [Windows](#windows)
+  - [Claude Code plugin](#claude-code-plugin)
+  - [Codex plugin](#codex-plugin)
+  - [Script install](#script-install)
   - [Manual install](#manual-install)
 - [Verify the install](#verify-the-install)
 - [Quick start](#quick-start)
@@ -53,19 +54,46 @@ and bakes the rules the team must follow (the "constitution") into each agent's 
 | `/team-builder-models` | Chooses the model and effort each agent runs with, per ecosystem: the shared `.agent-source/llm.json`, this machine's `llm.local.json`, refreshing new or retiring models, and migrating older projects. |
 | `/architecture-advisor` | Analyzes the project, proposes ADR / architecture constraints / design, and writes them with you step by step under `docs/<arch-root>/`. Also works standalone. |
 
-`team-builder-shared/` holds the shared references the skills depend on, plus the generator
-(`sync-agent-config.mjs`) and the validators (`validate-manifest.mjs`, `validate-llm.mjs`).
+`skills/team-builder-shared/` holds the shared references the skills depend on, plus the
+generator (`sync-agent-config.mjs`) and the validators (`validate-manifest.mjs`,
+`validate-llm.mjs`).
 
 ## Requirements
 
 - **Claude Code**, **Codex**, or **OpenCode** installed (any combination).
 - **Node.js ≥ 18** — for the generator (`sync-agent-config.mjs`) and the manifest validator.
-- macOS / Linux: `bash`, `perl` (used for the codex/opencode path rewrite; both ship by default).
+- Script install on macOS / Linux: `bash`, `perl` (used for the path rewrite; both ship by default).
   Windows: **PowerShell 5+**.
 
 ## Installation
 
-Clone the repo first:
+Pick one method per tool: installing the same tool both as a plugin and by script lists
+every skill twice.
+
+### Claude Code plugin
+
+```bash
+claude plugin marketplace add cesurbagci/agent-team-builder
+claude plugin install team-builder@team-builder
+```
+
+The skills carry the plugin's name: `/team-builder:team-builder-setup`,
+`/team-builder:team-builder-sync`, and so on. `--scope project` on either command limits it to
+the current project; `cesurbagci/agent-team-builder#<branch-or-tag>` pins a version.
+
+### Codex plugin
+
+```bash
+codex plugin marketplace add cesurbagci/agent-team-builder
+codex plugin add team-builder@team-builder
+```
+
+Codex does not prefix plugin skills: they appear as `$team-builder-setup`,
+`$team-builder-sync`, and so on. `--ref <branch-or-tag>` on `marketplace add` pins a version.
+
+### Script install
+
+For Claude Code, Codex and OpenCode — the only way for OpenCode. Clone the repo first:
 
 ```bash
 git clone https://github.com/cesurbagci/agent-team-builder.git
@@ -118,15 +146,14 @@ subfolder structure) into your global skills directory:
 
 ```bash
 # macOS / Linux — Claude
-cp -R team-builder-setup team-builder-sync team-builder-upgrade team-builder-models \
-  architecture-advisor team-builder-shared ~/.claude/skills/
+cp -R skills/* ~/.claude/skills/
 ```
 
 > **Important:** `team-builder-shared/` contains the shared references the skills depend
-> on — **always copy it too**. For a manual Codex install (target `~/.codex/skills/`) or
-> OpenCode install (`~/.config/opencode/skills/`) you must rewrite the
-> `.claude/skills/team-builder*` self-paths to `.codex/skills/...` or
-> `.config/opencode/skills/...` (the script does this automatically).
+> on — **always copy it too**. The skills name those files as
+> `${CLAUDE_SKILL_DIR}/../team-builder-shared/…`; in a copy, replace `${CLAUDE_SKILL_DIR}/..`
+> in the copied `.md` files with the absolute path of the skills directory (the script does
+> this automatically).
 
 > **OpenCode note:** OpenCode discovers Claude Code's skill directories natively —
 > `~/.claude/skills/` and a project's `.claude/skills/` — in addition to its own
@@ -138,7 +165,8 @@ cp -R team-builder-setup team-builder-sync team-builder-upgrade team-builder-mod
 ## Verify the install
 
 Open the tool you installed for (Claude Code, Codex or OpenCode) and confirm these
-appear in the skill list:
+appear in the skill list (the Claude plugin shows them as `/team-builder:<name>`, the Codex
+plugin as `$<name>`):
 
 ```
 /team-builder-setup
@@ -148,8 +176,8 @@ appear in the skill list:
 /architecture-advisor
 ```
 
-You can also smoke-test the generator (swap the path for the directory you installed
-into — `~/.codex/skills` or `~/.config/opencode/skills`):
+After a script install you can also smoke-test the generator (swap the path for the
+directory you installed into — `~/.codex/skills` or `~/.config/opencode/skills`):
 
 ```bash
 node ~/.claude/skills/team-builder-shared/validate-manifest.mjs --selftest
@@ -159,7 +187,8 @@ node ~/.claude/skills/team-builder-shared/validate-manifest.mjs --selftest
 
 1. Open your agent tool (Claude Code, Codex or OpenCode) at the root of the project you
    want a team for.
-2. Type `/team-builder-setup`.
+2. Type `/team-builder-setup` (Claude plugin: `/team-builder:team-builder-setup`; Codex
+   plugin: `$team-builder-setup`).
 3. The wizard walks you through it step by step: target (Claude/Codex/OpenCode — **no
    default, you pick; any single one is valid**), topology, doc language, architecture
    root, constitution presets, roles, and per-role model/effort/skill.
@@ -202,15 +231,22 @@ The single source of truth is `.agent-source/`:
 
 ## Distribution methods
 
-- **Script install (recommended, current):** clone + `install.sh` / `install.ps1`. Works today
-  on macOS / Linux / Windows. Skills resolve from `~/.claude/skills/team-builder-shared/`.
-- **Plugin / marketplace (planned):** one-command `/plugin install` with auto-updates. This
-  requires migrating the skills' path references to `${CLAUDE_PLUGIN_ROOT}` and is tracked as a
-  future enhancement.
+- **Plugin (Claude Code, Codex):** the repo is its own marketplace for both tools
+  (`.claude-plugin/`; `.agents/plugins/marketplace.json` + `.codex-plugin/`). The version lives
+  in `.claude-plugin/plugin.json` and `.codex-plugin/plugin.json` — keep the two equal.
+- **Script install:** clone + `install.sh` / `install.ps1`, for all three tools. The skills find
+  their scripts next to themselves; the script writes in the absolute path.
 
 ## Update & uninstall
 
-**Update:** `git pull`, then re-run the install script (it overwrites the existing install).
+**Update:**
+
+- Claude plugin: `claude plugin marketplace update team-builder`, then
+  `claude plugin update team-builder@team-builder` (restart to apply).
+- Codex plugin: `codex plugin marketplace upgrade team-builder`.
+- Script install: `git pull`, then re-run the install script (it overwrites the existing
+  install).
+
 Projects set up with an older version keep model settings in the manifest; the updated sync
 stops on them and points to `/team-builder-models`, which prepares the migration as one commit
 for you to make.
@@ -218,7 +254,9 @@ Anyone who runs team-builder commands should update: older versions do not read 
 and their sync would drop the model lines from the agent files. Teammates who only use the
 agents just pull.
 
-**Uninstall:** remove the skill folders from your global directory.
+**Uninstall:** `claude plugin uninstall team-builder@team-builder` or
+`codex plugin remove team-builder@team-builder` for a plugin. For a script install, remove the
+skill folders from your global directory:
 
 ```bash
 # macOS / Linux
@@ -281,19 +319,46 @@ tanımlar ve takımın uyması gereken kuralları (anayasa) her agent'ın talima
 | `/team-builder-models` | Her agent'ın hangi model ve effort'la çalışacağını ekosistem başına ayarlar: ortak `.agent-source/llm.json`, bu makinenin `llm.local.json`'u, yeni çıkan ya da kalkan modellerin yenilenmesi ve eski projelerin göçü. |
 | `/architecture-advisor` | Projeyi analiz edip ADR / mimari kısıt / tasarım önerir ve kullanıcıyla adım adım `docs/<arch-root>/` altına yazar. Takımdan bağımsız da çalışır. |
 
-`team-builder-shared/`, skill'lerin dayandığı paylaşılan referansları + generator'ı
+`skills/team-builder-shared/`, skill'lerin dayandığı paylaşılan referansları + generator'ı
 (`sync-agent-config.mjs`) ve doğrulayıcıları (`validate-manifest.mjs`, `validate-llm.mjs`) barındırır.
 
 ## Gereksinimler
 
 - **Claude Code**, **Codex** veya **OpenCode** kurulu (herhangi bir kombinasyon).
 - **Node.js ≥ 18** — generator (`sync-agent-config.mjs`) ve manifest doğrulayıcı için.
-- macOS / Linux: `bash`, `perl` (codex/opencode hedefinde path düzeltmesi için; ikisi de hazır gelir).
+- macOS / Linux'ta script ile kurulum: `bash`, `perl` (yol düzeltmesi için; ikisi de hazır gelir).
   Windows: **PowerShell 5+**.
 
 ## Kurulum
 
-Önce repoyu klonla:
+Her araç için tek bir yöntem seç: aynı aracı hem plugin hem script ile kurarsan her skill
+iki kez listelenir.
+
+### Claude Code plugin'i
+
+```bash
+claude plugin marketplace add cesurbagci/agent-team-builder
+claude plugin install team-builder@team-builder
+```
+
+Skill'ler plugin'in adını taşır: `/team-builder:team-builder-setup`,
+`/team-builder:team-builder-sync` vb. İki komuttan birine `--scope project` eklersen yalnız o
+projede geçerli olur; `cesurbagci/agent-team-builder#<dal-ya-da-etiket>` bir sürüme sabitler.
+
+### Codex plugin'i
+
+```bash
+codex plugin marketplace add cesurbagci/agent-team-builder
+codex plugin add team-builder@team-builder
+```
+
+Codex plugin skill'lerinin önüne plugin adını eklemez: `$team-builder-setup`,
+`$team-builder-sync` vb. olarak görünürler. `marketplace add`'e `--ref <dal-ya-da-etiket>`
+eklemek bir sürüme sabitler.
+
+### Script ile kurulum
+
+Claude Code, Codex ve OpenCode için — OpenCode'un tek yolu. Önce repoyu klonla:
 
 ```bash
 git clone https://github.com/cesurbagci/agent-team-builder.git
@@ -346,15 +411,13 @@ bozmadan) global skills dizinine kopyala:
 
 ```bash
 # macOS / Linux — Claude
-cp -R team-builder-setup team-builder-sync team-builder-upgrade team-builder-models \
-  architecture-advisor team-builder-shared ~/.claude/skills/
+cp -R skills/* ~/.claude/skills/
 ```
 
 > **Önemli:** `team-builder-shared/` paylaşılan referansları içerir; skill'ler ona dayanır —
-> **mutlaka birlikte kopyala**. Codex'e (`~/.codex/skills/`) veya OpenCode'a
-> (`~/.config/opencode/skills/`) elle kurarken `.claude/skills/team-builder*` self-yollarını
-> sırasıyla `.codex/skills/...` veya `.config/opencode/skills/...` olarak güncellemen gerekir
-> (script bunu otomatik yapar).
+> **mutlaka birlikte kopyala**. Skill'ler bu dosyaları `${CLAUDE_SKILL_DIR}/../team-builder-shared/…`
+> diye anar; kopyada, kopyalanan `.md` dosyalarındaki `${CLAUDE_SKILL_DIR}/..`'yı skills
+> dizininin mutlak yoluyla değiştir (script bunu otomatik yapar).
 
 > **OpenCode notu:** OpenCode, kendi dizinlerinin (`~/.config/opencode/skills/`,
 > `~/.agents/skills/`, proje `.opencode/skills/`) yanı sıra **Claude Code'un skill
@@ -366,7 +429,8 @@ cp -R team-builder-setup team-builder-sync team-builder-upgrade team-builder-mod
 ## Kurulumu doğrula
 
 Kurduğun aracı aç (Claude Code, Codex ya da OpenCode) ve skill listesinde şunların
-göründüğünü kontrol et:
+göründüğünü kontrol et (Claude plugin'i onları `/team-builder:<ad>`, Codex plugin'i `$<ad>`
+olarak gösterir):
 
 ```
 /team-builder-setup
@@ -376,7 +440,7 @@ göründüğünü kontrol et:
 /architecture-advisor
 ```
 
-Generator'ın sağlığını da test edebilirsin (yolu kurduğun dizinle değiştir —
+Script ile kurduysan generator'ın sağlığını da test edebilirsin (yolu kurduğun dizinle değiştir —
 `~/.codex/skills` ya da `~/.config/opencode/skills`):
 
 ```bash
@@ -387,7 +451,8 @@ node ~/.claude/skills/team-builder-shared/validate-manifest.mjs --selftest
 
 1. Takımını kurmak istediğin projenin kök dizininde aracını aç (Claude Code, Codex ya da
    OpenCode).
-2. `/team-builder-setup` yaz.
+2. `/team-builder-setup` yaz (Claude plugin'i: `/team-builder:team-builder-setup`; Codex
+   plugin'i: `$team-builder-setup`).
 3. Sihirbaz seni adım adım götürür: hedef (Claude/Codex/OpenCode — **varsayılan yok, sen
    seçersin; tek bir hedef seçmek de geçerli**), topoloji, doküman dili, mimari kök,
    anayasa presetleri, roller ve her rol için model/effort/skill.
@@ -430,22 +495,31 @@ Tek gerçek kaynak `.agent-source/`'tur:
 
 ## Dağıtım yöntemleri
 
-- **Script install (önerilen, mevcut):** clone + `install.sh` / `install.ps1`. macOS / Linux /
-  Windows'ta bugün çalışır. Skill'ler `~/.claude/skills/team-builder-shared/`'tan çözülür.
-- **Plugin / marketplace (planlanan):** tek komut `/plugin install` + otomatik güncelleme. Bu,
-  skill'lerin yol referanslarının `${CLAUDE_PLUGIN_ROOT}`'a taşınmasını gerektirir; gelecek bir
-  geliştirme olarak izleniyor.
+- **Plugin (Claude Code, Codex):** repo iki araç için de kendi marketplace'idir
+  (`.claude-plugin/`; `.agents/plugins/marketplace.json` + `.codex-plugin/`). Sürüm
+  `.claude-plugin/plugin.json` ve `.codex-plugin/plugin.json`'dadır — ikisini eşit tut.
+- **Script ile kurulum:** clone + `install.sh` / `install.ps1`, üç araç için de. Skill'ler
+  betiklerini kendi yanlarında bulur; script mutlak yolu yazar.
 
 ## Güncelleme & kaldırma
 
-**Güncelleme:** repoyu `git pull` ile çek, install script'ini yeniden çalıştır (mevcut
-kurulumu üzerine yazar). Eski sürümle kurulmuş projeler model ayarlarını manifest'te tutar;
+**Güncelleme:**
+
+- Claude plugin'i: `claude plugin marketplace update team-builder`, sonra
+  `claude plugin update team-builder@team-builder` (uygulamak için yeniden başlat).
+- Codex plugin'i: `codex plugin marketplace upgrade team-builder`.
+- Script ile kurulum: repoyu `git pull` ile çek, install script'ini yeniden çalıştır (mevcut
+  kurulumu üzerine yazar).
+
+Eski sürümle kurulmuş projeler model ayarlarını manifest'te tutar;
 güncellenmiş sync onlarda durur ve `/team-builder-models`'i gösterir — o, göçü senin
 atacağın tek bir commit olarak hazırlar. team-builder komutlarını çalıştıran herkes
 güncellemeli: eski sürümler `llm.json`'ı okumaz ve sync'leri ajan dosyalarındaki model
 satırlarını siler. Ajanları yalnız kullanan takım arkadaşları sadece `git pull` yapar.
 
-**Kaldırma:** skill klasörlerini global dizinden sil.
+**Kaldırma:** plugin için `claude plugin uninstall team-builder@team-builder` ya da
+`codex plugin remove team-builder@team-builder`. Script ile kurduysan skill klasörlerini global
+dizinden sil:
 
 ```bash
 # macOS / Linux

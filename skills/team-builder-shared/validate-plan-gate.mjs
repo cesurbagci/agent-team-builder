@@ -75,7 +75,10 @@ export function parseArgs(argv) {
   if (rootIdx !== -1 && !argv[rootIdx + 1]) {
     throw new Error('--root requires a directory path')
   }
-  const root = rootIdx !== -1 ? argv[rootIdx + 1] : process.cwd()
+  // Default: the directory holding this bundle — skills/ in the repo, the
+  // skills directory in a copy install — wherever the command runs from.
+  const root =
+    rootIdx !== -1 ? argv[rootIdx + 1] : path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
   return { selftest, root }
 }
 
@@ -274,7 +277,8 @@ export async function validatePlanGateArtifacts(rootDir) {
   }
 
   // A file literally named SKILL.md under team-builder-shared/ would be picked
-  // up as a global skill once the repo is installed into ~/.claude/skills/.
+  // up as a skill: the plugins scan skills/, and a copy install lands next to
+  // the other skills.
   const stray = await findStraySkillFiles(shared)
   for (const filePath of stray) {
     errors.push(`${path.relative(rootDir, filePath)} must not be named SKILL.md`)

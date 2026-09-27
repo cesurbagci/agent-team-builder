@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # team-builder skills installer (macOS / Linux)
-# Copies the skill directories in this repo into the Claude, Codex and/or
-# OpenCode global skills directory.
+# Copies the skill directories under skills/ into the Claude, Codex and/or
+# OpenCode global skills directory. (Claude Code and Codex can also install the
+# repo as a plugin — see the README.)
 #
 # There is no default target — pick one explicitly, or run with no argument to
 # be prompted.
@@ -48,41 +49,38 @@ choose_target() {
 TARGET="${1:-}"
 [ -n "$TARGET" ] || TARGET="$(choose_target)"
 
-# Rewrite the skill's OWN install path so its internal references resolve under
-# the target ecosystem's skills dir (e.g. ~/.claude/skills/team-builder-shared ->
-# ~/.codex/skills/team-builder-shared). Only the team-builder/architecture-advisor
-# self-references are touched; generic project paths like .claude/agents are left
-# alone. Perl behaves identically on GNU and BSD/macOS (sed -i is not portable).
-rewrite_self_paths() {
-  local dir="$1" prefix="$2"
+# The skills name their bundled files relative to themselves:
+# ${CLAUDE_SKILL_DIR}/../team-builder-shared/... The Claude Code plugin resolves
+# that on its own; a copy knows where it landed, so the absolute path is written
+# in instead — the same form for every tool, a custom CLAUDE_SKILLS_DIR included.
+# Perl behaves identically on GNU and BSD/macOS (sed -i is not portable).
+rewrite_skill_dir() {
+  local dir="$1" dest="$2"
   find "$dir" -name '*.md' -type f -print0 | while IFS= read -r -d '' f; do
-    PREFIX="$prefix" perl -0777 -pi \
-      -e 's{(/)\.claude/skills/(team-builder|architecture-advisor)}{${1}$ENV{PREFIX}/$2}g' "$f"
+    DEST="$dest" perl -0777 -pi -e 's{\$\{CLAUDE_SKILL_DIR\}/\.\./}{$ENV{DEST}/}g' "$f"
   done
 }
 
 copy_skills() {
-  # $1: destination skills dir ; $2: path prefix for self-reference rewrite (empty = none)
-  local dest="$1" prefix="${2:-}"
-  mkdir -p "$dest"
+  # $1: destination skills dir
+  mkdir -p "$1"
+  local dest; dest="$(cd "$1" && pwd)"
   shopt -s nullglob
-  for src in "$SRC_DIR"/*/; do
+  for src in "$SRC_DIR"/skills/*/; do
     local name; name="$(basename "$src")"
     # Only directories that are skills (have SKILL.md) or the shared bundle.
     if [ -f "$src/SKILL.md" ] || [ "$name" = "team-builder-shared" ]; then
       echo "  -> $name  ($dest/$name)"
       rm -rf "${dest:?}/$name"
       cp -R "$src" "$dest/$name"
-      if [ -n "$prefix" ]; then
-        rewrite_self_paths "$dest/$name" "$prefix"
-      fi
+      rewrite_skill_dir "$dest/$name" "$dest"
     fi
   done
 }
 
 install_claude()   { echo "Installing for Claude...";   copy_skills "${CLAUDE_SKILLS_DIR:-$HOME/.claude/skills}"; }
-install_codex()    { echo "Installing for Codex...";    copy_skills "$HOME/.codex/skills" ".codex/skills"; }
-install_opencode() { echo "Installing for OpenCode..."; copy_skills "$HOME/.config/opencode/skills" ".config/opencode/skills"; }
+install_codex()    { echo "Installing for Codex...";    copy_skills "$HOME/.codex/skills"; }
+install_opencode() { echo "Installing for OpenCode..."; copy_skills "$HOME/.config/opencode/skills"; }
 
 case "$TARGET" in
   claude)   install_claude ;;

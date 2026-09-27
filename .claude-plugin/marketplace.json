@@ -1,0 +1,16 @@
+{
+  "name": "team-builder",
+  "description": "Set up and maintain a team of AI coding agents from one canonical source (.agent-source/): generates Claude Code, Codex and OpenCode agent configuration, keeps it in sync and manages models.",
+  "owner": {
+    "name": "cesurbagci",
+    "url": "https://github.com/cesurbagci"
+  },
+  "plugins": [
+    {
+      "name": "team-builder",
+      "description": "Set up and maintain a team of AI coding agents from one canonical source (.agent-source/): generates Claude Code, Codex and OpenCode agent configuration, keeps it in sync and manages models.",
+      "source": "./",
+      "category": "productivity"
+    }
+  ]
+}

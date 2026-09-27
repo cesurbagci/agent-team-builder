@@ -5,6 +5,8 @@ description: Kurulmuş bir projede anayasa preset'lerini (geçici çözüm yok, 
 
 # team-builder-upgrade
 
+> **Dosya yolları:** team-builder'ın betik ve belgeleri `${CLAUDE_SKILL_DIR}/../team-builder-shared/` altındadır; bu dosyadaki yollar buna göre yazılmıştır. Yol `CLAUDE_SKILL_DIR` adıyla çözülmeden görünüyorsa (Codex plugin'i onu çözmez), onu bu SKILL.md'nin bulunduğu klasörün mutlak yoluyla değiştir.
+
 Kurulmuş bir projede **anayasa preset'lerini** açar/kapatır. Kurulum bir kez çalışır
 (`team-builder-setup`), `sync` ince bir sarmalayıcıdır (`team-builder-sync`); bu skill
 ikisinin arasındaki boşluğu doldurur: kurulumdan sonra fikir değişince.
@@ -39,16 +41,16 @@ Hangi preset olursa olsun sıra aynıdır:
 4. **Onay al.** Onaysız hiçbir dosya değişmez.
 5. **Uygula:** manifest → `instructions.md` bloğu → (varsa) artefakt.
    Manifest'i yazdıktan **hemen sonra**, bloğa ve artefakta geçmeden
-   `node ~/.claude/skills/team-builder-shared/validate-manifest.mjs` koştur. Geçersizse
+   `node "${CLAUDE_SKILL_DIR}/../team-builder-shared/validate-manifest.mjs"` koştur. Geçersizse
    **dur ve düzelt**. Setup aynı denetimi üretimden **önce** yapar; burada da öyle olmalı
    — geçersiz bir manifest'le ilerlersen 6. adımdaki `sync` onu üretilen dosyalara da
    taşır ve geri alınacak iş büyür.
 6. **`sync` çalıştır.** `team-builder-sync` skill'ini çağır ya da doğrudan
-   `node ~/.claude/skills/team-builder-shared/sync-agent-config.mjs` koştur. Sonuç commit
+   `node "${CLAUDE_SKILL_DIR}/../team-builder-shared/sync-agent-config.mjs"` koştur. Sonuç commit
    edileceği için bu makinede `llm.local.json` varsa `--no-local` ile çalıştır ve doğrula
    (`team-builder-sync`, *Commit'e gidecek bir üretim*).
 7. **Doğrula ve raporla.** Doğrulama şu ikisidir:
-   `node ~/.claude/skills/team-builder-shared/validate-manifest.mjs` ile manifest'i
+   `node "${CLAUDE_SKILL_DIR}/../team-builder-shared/validate-manifest.mjs"` ile manifest'i
    denetle, ve `instructions.md`'de beklediğin blokların bulunup bulunmadığını gör
    (açtığın preset'in işaret çifti var mı, kapattığınınki gitmiş mi).
    6. adımdaki `sync` bu ikinci kontrolü **mekanik olarak da** yapar: manifest'in
@@ -74,7 +76,7 @@ bloklarda durur:
 **Blok varlığı = preset açık.** İkinci bir durum kaydı tutma; manifest ile blok
 arasında bir tutarsızlık görürsen kullanıcıya bildir ve manifest'i doğru kabul et.
 
-**Açarken:** bloğu `~/.claude/skills/team-builder-shared/templates/constitution-blocks.md`'den
+**Açarken:** bloğu `${CLAUDE_SKILL_DIR}/../team-builder-shared/templates/constitution-blocks.md`'den
 render et — verbatim kopyalama, `docLanguage`'e çevir ve `<...>` yer tutucularını
 projenin cevaplarıyla doldur. Bloğu `instructions.md`'nin sonuna ekle.
 
@@ -86,7 +88,7 @@ projenin cevaplarıyla doldur. Bloğu `instructions.md`'nin sonuna ekle.
 ## Projeye özel cevap isteyen preset'ler
 
 `noWorkaround` ve `codeDocSync` açılırken projeye özel bilgi gerekir. Soru kalıplarını
-`~/.claude/skills/team-builder-shared/constitution.md`'den al ve **sade dille** sor —
+`${CLAUDE_SKILL_DIR}/../team-builder-shared/constitution.md`'den al ve **sade dille** sor —
 alan adı ya da "glob" gibi jargon gösterme.
 
 - `noWorkaround` → reddedilen desen listesi. Çekirdek bir liste öner, kullanıcı ekler.
@@ -141,7 +143,7 @@ açma ve kapatma ayrı ayrı anlatılır.
 3. **Bloğu ekle:** `<!-- c:planGate -->` … `<!-- /c:planGate -->`, şablondan render
    edilmiş, denetleyici adları doldurulmuş.
 4. **Skill kaynağını üret:** `.agent-source/skills/work-plan/SKILL.md` —
-   `~/.claude/skills/team-builder-shared/templates/work-plan-skill.md`'den,
+   `${CLAUDE_SKILL_DIR}/../team-builder-shared/templates/work-plan-skill.md`'den,
    `docLanguage`'e çevrilerek. **İşaretler çevrilmez.**
 5. **İskeleti kur:** `.agent-work/` altında `README.md`, `TEMPLATE.md` (bu da
    `templates/plan.md`'den render edilir) ve beş klasör: `inbox/ draft/ approved/
@@ -195,7 +197,7 @@ işletmeye çalışır.
 2. **Bloğu çıkar:** `<!-- c:planGate -->` … `<!-- /c:planGate -->`.
 3. **Kaynağı sil:** `.agent-source/skills/work-plan/`
 4. **`sync` çalıştır** — `team-builder-sync` skill'ini çağır ya da
-   `node ~/.claude/skills/team-builder-shared/sync-agent-config.mjs` koştur.
+   `node "${CLAUDE_SKILL_DIR}/../team-builder-shared/sync-agent-config.mjs"` koştur.
    **Bu noktada `--check` çalıştırma ve kimseye çalıştırtma.** Kaynağı bilerek sildin,
    yani drift **beklenen** durumdur ve `--check` 1 ile döner. `team-builder-sync`
    "sync'ten sonra `--check` temiz olmalı" der — o kural normal senkron içindir, kapatma

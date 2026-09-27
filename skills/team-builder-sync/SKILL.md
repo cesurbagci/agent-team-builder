@@ -5,6 +5,8 @@ description: Bir projedeki agent konfigürasyonunu canonical kaynaktan (.agent-s
 
 # team-builder-sync
 
+> **Dosya yolları:** team-builder'ın betik ve belgeleri `${CLAUDE_SKILL_DIR}/../team-builder-shared/` altındadır; bu dosyadaki yollar buna göre yazılmıştır. Yol `CLAUDE_SKILL_DIR` adıyla çözülmeden görünüyorsa (Codex plugin'i onu çözmez), onu bu SKILL.md'nin bulunduğu klasörün mutlak yoluyla değiştir.
+
 ## Genel Bakış
 
 İnce bir sarmalayıcı: `.agent-source/` canonical kaynağından generated agent
@@ -19,7 +21,7 @@ manifest'te hangi ekosistemler hedeflenmişse yalnız onlar üretilir: Claude is
 + `.opencode/agents/*.md` + `.opencode/team.md`. Değişiklik gerektiğinde
 `.agent-source/` güncellenir, sonra bu skill ile sync çalıştırılır.
 
-Referans dokümanlar (kurulu yol): `~/.claude/skills/team-builder-shared/` altında
+Referans dokümanlar (kurulu yol): `${CLAUDE_SKILL_DIR}/../team-builder-shared/` altında
 `sync-pipeline.md` (generator davranış sözleşmesi) ve `canonical-source.md`
 (kaynak→hedef haritası).
 
@@ -51,7 +53,7 @@ onları bırakabilir.
 ### 2. Manifest'i doğrula (generate ÖNCESİ)
 
 Bozuk bir manifest ile generate çalıştırma. Önce
-`~/.claude/skills/team-builder-shared/validate-manifest.mjs` ile doğrula.
+`${CLAUDE_SKILL_DIR}/../team-builder-shared/validate-manifest.mjs` ile doğrula.
 
 Bu modül parse edilmiş bir nesne üzerinde çalışır: `validate(doc)` fonksiyonunu
 export eder (geçerliyse `true`, değilse hata fırlatır). Tercih edilen yol:
@@ -59,7 +61,7 @@ export eder (geçerliyse `true`, değilse hata fırlatır). Tercih edilen yol:
 
 ```bash
 node --input-type=module -e '
-import { validate } from "'"$HOME"'/.claude/skills/team-builder-shared/validate-manifest.mjs";
+import { validate } from "${CLAUDE_SKILL_DIR}/../team-builder-shared/validate-manifest.mjs";
 import { readFileSync } from "node:fs";
 const root = process.argv[1];
 const doc = JSON.parse(readFileSync(root + "/.agent-source/agents/manifest.json", "utf8"));
@@ -68,14 +70,13 @@ console.log("MANIFEST OK");
 ' <proje>
 ```
 
-(`<proje>` yerine projenin mutlak yolunu koy. `$HOME` çözümlenmiyorsa
-`~/.claude/...` yerine tam yolu yaz.)
+(`<proje>` yerine projenin mutlak yolunu koy.)
 
 En azından modülün kendi selftest'ini çalıştırıp sağlamlığını teyit et, sonra
 manifest'i yukarıdaki gibi elle doğrula:
 
 ```bash
-node ~/.claude/skills/team-builder-shared/validate-manifest.mjs --selftest
+node "${CLAUDE_SKILL_DIR}/../team-builder-shared/validate-manifest.mjs" --selftest
 ```
 
 Doğrulama hata verirse: **dur**, hatayı kullanıcıya raporla, `.agent-source/` düzelt.
@@ -89,7 +90,7 @@ kendisi doğrular ve hata varsa durur.
 Manifest geçerliyse generated hedefleri kaynaktan üret:
 
 ```bash
-node ~/.claude/skills/team-builder-shared/sync-agent-config.mjs --root <proje>
+node "${CLAUDE_SKILL_DIR}/../team-builder-shared/sync-agent-config.mjs" --root <proje>
 ```
 
 Generator idempotenttir: kaynak değişmemişse hiçbir dosya yeniden yazılmaz.
@@ -118,7 +119,7 @@ kontrol et. Sync'ten hemen sonra `--check` **temiz** (exit 0) olmalıdır. Sync'
 `--no-local` ile çalıştırdıysan `--check`'e de `--no-local` ekle.
 
 ```bash
-node ~/.claude/skills/team-builder-shared/sync-agent-config.mjs --root <proje> --check
+node "${CLAUDE_SKILL_DIR}/../team-builder-shared/sync-agent-config.mjs" --root <proje> --check
 echo "DRIFT EXIT=$?"
 ```
 

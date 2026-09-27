@@ -5,9 +5,11 @@ description: Kurulmuş bir team-builder projesinde agent'ların hangi LLM modeli
 
 # team-builder-models
 
+> **Dosya yolları:** team-builder'ın betik ve belgeleri `${CLAUDE_SKILL_DIR}/../team-builder-shared/` altındadır; bu dosyadaki yollar buna göre yazılmıştır. Yol `CLAUDE_SKILL_DIR` adıyla çözülmeden görünüyorsa (Codex plugin'i onu çözmez), onu bu SKILL.md'nin bulunduğu klasörün mutlak yoluyla değiştir.
+
 Agent'ların **hangi modelle ve hangi effort'la** çalışacağını yönetir. Sözleşme — dosya
 biçimi, çözümleme kuralı, doğrulama, katalog komutları —
-`~/.claude/skills/team-builder-shared/llm-config.md`'dedir; **önce onu oku**. Bu dosya
+`${CLAUDE_SKILL_DIR}/../team-builder-shared/llm-config.md`'dedir; **önce onu oku**. Bu dosya
 yalnız prosedürdür.
 
 **Kapsam dışı:** rol eklemek/çıkarmak, routing ve hedef ekosistem (kurulu projede skill'i yok:
@@ -76,7 +78,7 @@ Hedeflenen her ekosistem için, CLI kuruluysa:
 3. Her rol için öneri sun. **Taşınabilir** seçenekleri öne çıkar — bu dosya takımdaki
    herkeste çalışacak:
    - **Claude:** takma ad ve effort. Rol önerisi
-     `~/.claude/skills/team-builder-shared/governance-defaults.md`'de (örneğin architect
+     `${CLAUDE_SKILL_DIR}/../team-builder-shared/governance-defaults.md`'de (örneğin architect
      `opus` + `high`, developer `sonnet` + `medium`).
    - **Codex:** yalnız `visibility: list` **ve** `upgrade` alanı boş modeller. Effort önerisi
      modelin `default_reasoning_level`'ı; rol ağırsa bir üst seviye.
@@ -88,7 +90,7 @@ Hedeflenen her ekosistem için, CLI kuruluysa:
 5. Özeti sade dille göster, onay al, `.agent-source/llm.json`'ı yaz.
 6. **Setup'tan çağrıldıysan burada dur:** sync'i setup, bütün dosyaları yazdıktan sonra
    kendisi çalıştırır. Değilse sync çalıştır:
-   `node ~/.claude/skills/team-builder-shared/sync-agent-config.mjs --root <proje>`.
+   `node "${CLAUDE_SKILL_DIR}/../team-builder-shared/sync-agent-config.mjs" --root <proje>`.
    Bu makinede `llm.local.json` varsa `--no-local` ekle — sonuç takımın commit'i olacak
    (`team-builder-sync`, *Commit'e gidecek bir üretim*). Doğrulama hatası verirse düzelt ve
    tekrar çalıştır.

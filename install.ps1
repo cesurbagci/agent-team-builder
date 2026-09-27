@@ -2,8 +2,9 @@
 .SYNOPSIS
   team-builder skills installer (Windows / PowerShell).
 .DESCRIPTION
-  Copies the skill directories in this repo into the Claude, Codex and/or
-  OpenCode global skills directory.
+  Copies the skill directories under skills\ into the Claude, Codex and/or
+  OpenCode global skills directory. (Claude Code and Codex can also install the
+  repo as a plugin — see the README.)
 .PARAMETER Target
   claude | codex | opencode | both | all
   There is no default — omit it to be prompted.
@@ -47,18 +48,16 @@ if (-not $Target) {
   }
 }
 
-# Rewrite the skill's OWN install path so its internal references resolve under
-# the target ecosystem's skills dir. Only team-builder/architecture-advisor
-# self-references are touched; generic project paths are left alone.
-function Rewrite-SelfPaths {
-  param([string]$Dir, [string]$Prefix)
+# The skills name their bundled files relative to themselves:
+# ${CLAUDE_SKILL_DIR}/../team-builder-shared/... The Claude Code plugin resolves
+# that on its own; a copy knows where it landed, so the absolute path is written
+# in instead (forward slashes: node and the shells accept them on Windows).
+function Rewrite-SkillDir {
+  param([string]$Dir, [string]$Dest)
+  $absolute = ((Resolve-Path -LiteralPath $Dest).Path) -replace '\\', '/'
   Get-ChildItem -Path $Dir -Filter '*.md' -Recurse -File | ForEach-Object {
     $content = Get-Content -Raw -LiteralPath $_.FullName
-    $updated = [regex]::Replace(
-      $content,
-      '(/)\.claude/skills/(team-builder|architecture-advisor)',
-      ('$1' + $Prefix + '/$2')
-    )
+    $updated = $content.Replace('${CLAUDE_SKILL_DIR}/../', $absolute + '/')
     if ($updated -ne $content) {
       Set-Content -LiteralPath $_.FullName -Value $updated -NoNewline
     }
@@ -66,9 +65,9 @@ function Rewrite-SelfPaths {
 }
 
 function Copy-Skills {
-  param([string]$Dest, [string]$Prefix = '')
+  param([string]$Dest)
   New-Item -ItemType Directory -Force -Path $Dest | Out-Null
-  Get-ChildItem -Path $SrcDir -Directory | ForEach-Object {
+  Get-ChildItem -Path (Join-Path $SrcDir 'skills') -Directory | ForEach-Object {
     $name = $_.Name
     $hasSkill = Test-Path -LiteralPath (Join-Path $_.FullName 'SKILL.md')
     if ($hasSkill -or $name -eq 'team-builder-shared') {
@@ -76,7 +75,7 @@ function Copy-Skills {
       Write-Host "  -> $name  ($targetPath)"
       if (Test-Path -LiteralPath $targetPath) { Remove-Item -Recurse -Force -LiteralPath $targetPath }
       Copy-Item -Recurse -LiteralPath $_.FullName -Destination $targetPath
-      if ($Prefix) { Rewrite-SelfPaths -Dir $targetPath -Prefix $Prefix }
+      Rewrite-SkillDir -Dir $targetPath -Dest $Dest
     }
   }
 }
@@ -86,8 +85,8 @@ $codexDir    = Join-Path $HOME '.codex\skills'
 $opencodeDir = Join-Path $HOME '.config\opencode\skills'
 
 function Install-Claude   { Write-Host 'Installing for Claude...';   Copy-Skills -Dest $claudeDir }
-function Install-Codex    { Write-Host 'Installing for Codex...';    Copy-Skills -Dest $codexDir -Prefix '.codex/skills' }
-function Install-OpenCode { Write-Host 'Installing for OpenCode...'; Copy-Skills -Dest $opencodeDir -Prefix '.config/opencode/skills' }
+function Install-Codex    { Write-Host 'Installing for Codex...';    Copy-Skills -Dest $codexDir }
+function Install-OpenCode { Write-Host 'Installing for OpenCode...'; Copy-Skills -Dest $opencodeDir }
 
 switch ($Target) {
   'claude'   { Install-Claude }

@@ -5,6 +5,8 @@ description: Bir projede governance kuralları gömülü kalıcı agent takımı
 
 # Team Builder Setup (v2 Sihirbaz)
 
+> **Dosya yolları:** team-builder'ın betik ve belgeleri `${CLAUDE_SKILL_DIR}/../team-builder-shared/` altındadır; bu dosyadaki yollar buna göre yazılmıştır. Yol `CLAUDE_SKILL_DIR` adıyla çözülmeden görünüyorsa (Codex plugin'i onu çözmez), onu bu SKILL.md'nin bulunduğu klasörün mutlak yoluyla değiştir.
+
 ## ÖNCE: Doğru niyet mi? (yanlış tetiklenme koruması)
 
 Bu skill **takım KONFİGÜRASYONU kurmak** içindir (bir kez; dosya üretir) — **iş yaptırmak için değil.**
@@ -19,34 +21,34 @@ Bu skill, bulunulan projede **governance kuralları gömülü, çok hedefli bir 
 
 **Temel ilke:** Hiçbir şeyi varsaymadan üretme. Önce sor → kullanıcı onaylasın/değiştirsin → sonra yaz. `.agent-source/` tek gerçek kaynaktır; generated dosyalar elle değiştirilmez, kaynaktan türetilir ve `--check` ile drift'siz tutulur.
 
-**Ortak çekirdek referansları:** Akışın her aşaması `~/.claude/skills/team-builder-shared/` altındaki referans dosyalarına dayanır. İlgili adımda o dosyayı oku ve kuralına uy. Bu skill o dosyaları tekrar etmez; onlara yönlendirir. (Repo içi geliştirmede de aynı isimler `team-builder-shared/` altındadır.)
+**Ortak çekirdek referansları:** Akışın her aşaması `${CLAUDE_SKILL_DIR}/../team-builder-shared/` altındaki referans dosyalarına dayanır. İlgili adımda o dosyayı oku ve kuralına uy. Bu skill o dosyaları tekrar etmez; onlara yönlendirir. (Repo içi geliştirmede de aynı isimler `team-builder-shared/` altındadır.)
 
 ## Önkoşul: Ortak Çekirdek Dosyaları
 
 Akışa başlamadan önce şu dosyaların var olduğunu doğrula. Yoksa kullanıcıyı bilgilendir (ortak çekirdek paketi kurulmamış olabilir):
 
-- `~/.claude/skills/team-builder-shared/canonical-source.md` — `.agent-source/` çıktı mimarisi (kaynak → generate → drift).
-- `~/.claude/skills/team-builder-shared/wizard-state.md` — sihirbaz durum kaydı (resume): her adımda kaydet, başka oturumda devam et.
-- `~/.claude/skills/team-builder-shared/manifest-schema.md` — `agents/manifest.json` v2 şeması.
-- `~/.claude/skills/team-builder-shared/governance-defaults.md` — rol bazlı varsayılan governance + model/effort + domain-split.
-- `~/.claude/skills/team-builder-shared/member-template.md` — tek üye tanımlama rutini.
-- `~/.claude/skills/team-builder-shared/agent-md-rich.md` — zengin agent md gövde kalıbı.
-- `~/.claude/skills/team-builder-shared/skill-recommend.md` — proje-farkında skill önerisi.
-- `~/.claude/skills/team-builder-shared/routing.md` — path-based zorunlu routing tablosu.
-- `~/.claude/skills/team-builder-shared/constitution.md` — 5 cross-cutting anayasa preseti (ilk dördü default açık, plan kapısı default kapalı).
-- `~/.claude/skills/team-builder-shared/plan-gate.md` — plan kapısı kurulum sözleşmesi (KARAR 5 açıksa).
-- `~/.claude/skills/team-builder-shared/templates/plan.md` — plan dosyası şablonu.
-- `~/.claude/skills/team-builder-shared/templates/work-plan-skill.md` — projeye kurulacak `work-plan` skill'inin şablonu.
-- `~/.claude/skills/team-builder-shared/templates/constitution-blocks.md` — anayasa preset'lerinin işaretli blok şablonu (Adım 8a `instructions.md`'yi bundan render eder).
-- `~/.claude/skills/team-builder-shared/quality-dimensions.md` — kalite odakları (checkbox) → kısıt + reviewer eksenleri.
-- `~/.claude/skills/team-builder-shared/templates/` — mimari doküman standardı + ADR/kısıt/tasarım şablonları (`doc-standard.md`).
-- `~/.claude/skills/team-builder-shared/architecture-docs.md` — mimari doküman ağacı (arch-root + layout) + MADR.
-- `~/.claude/skills/team-builder-shared/codex-target.md` — Codex hedefi üretimi (TOML + agent-definitions + AGENTS.md).
-- `~/.claude/skills/team-builder-shared/opencode-target.md` — OpenCode hedefi üretimi (`.opencode/agents/*.md` + opencode.json + AGENTS.md).
-- `~/.claude/skills/team-builder-shared/topologies.md` — topoloji (subagent vs native agent teams) + native enablement.
-- `~/.claude/skills/team-builder-shared/sync-pipeline.md` — generate algoritması + drift sözleşmesi.
-- `~/.claude/skills/team-builder-shared/validate-manifest.mjs` — manifest doğrulayıcı (Node).
-- `~/.claude/skills/team-builder-shared/sync-agent-config.mjs` — generator (canonical → generated, `--check` drift).
+- `${CLAUDE_SKILL_DIR}/../team-builder-shared/canonical-source.md` — `.agent-source/` çıktı mimarisi (kaynak → generate → drift).
+- `${CLAUDE_SKILL_DIR}/../team-builder-shared/wizard-state.md` — sihirbaz durum kaydı (resume): her adımda kaydet, başka oturumda devam et.
+- `${CLAUDE_SKILL_DIR}/../team-builder-shared/manifest-schema.md` — `agents/manifest.json` v2 şeması.
+- `${CLAUDE_SKILL_DIR}/../team-builder-shared/governance-defaults.md` — rol bazlı varsayılan governance + model/effort + domain-split.
+- `${CLAUDE_SKILL_DIR}/../team-builder-shared/member-template.md` — tek üye tanımlama rutini.
+- `${CLAUDE_SKILL_DIR}/../team-builder-shared/agent-md-rich.md` — zengin agent md gövde kalıbı.
+- `${CLAUDE_SKILL_DIR}/../team-builder-shared/skill-recommend.md` — proje-farkında skill önerisi.
+- `${CLAUDE_SKILL_DIR}/../team-builder-shared/routing.md` — path-based zorunlu routing tablosu.
+- `${CLAUDE_SKILL_DIR}/../team-builder-shared/constitution.md` — 5 cross-cutting anayasa preseti (ilk dördü default açık, plan kapısı default kapalı).
+- `${CLAUDE_SKILL_DIR}/../team-builder-shared/plan-gate.md` — plan kapısı kurulum sözleşmesi (KARAR 5 açıksa).
+- `${CLAUDE_SKILL_DIR}/../team-builder-shared/templates/plan.md` — plan dosyası şablonu.
+- `${CLAUDE_SKILL_DIR}/../team-builder-shared/templates/work-plan-skill.md` — projeye kurulacak `work-plan` skill'inin şablonu.
+- `${CLAUDE_SKILL_DIR}/../team-builder-shared/templates/constitution-blocks.md` — anayasa preset'lerinin işaretli blok şablonu (Adım 8a `instructions.md`'yi bundan render eder).
+- `${CLAUDE_SKILL_DIR}/../team-builder-shared/quality-dimensions.md` — kalite odakları (checkbox) → kısıt + reviewer eksenleri.
+- `${CLAUDE_SKILL_DIR}/../team-builder-shared/templates/` — mimari doküman standardı + ADR/kısıt/tasarım şablonları (`doc-standard.md`).
+- `${CLAUDE_SKILL_DIR}/../team-builder-shared/architecture-docs.md` — mimari doküman ağacı (arch-root + layout) + MADR.
+- `${CLAUDE_SKILL_DIR}/../team-builder-shared/codex-target.md` — Codex hedefi üretimi (TOML + agent-definitions + AGENTS.md).
+- `${CLAUDE_SKILL_DIR}/../team-builder-shared/opencode-target.md` — OpenCode hedefi üretimi (`.opencode/agents/*.md` + opencode.json + AGENTS.md).
+- `${CLAUDE_SKILL_DIR}/../team-builder-shared/topologies.md` — topoloji (subagent vs native agent teams) + native enablement.
+- `${CLAUDE_SKILL_DIR}/../team-builder-shared/sync-pipeline.md` — generate algoritması + drift sözleşmesi.
+- `${CLAUDE_SKILL_DIR}/../team-builder-shared/validate-manifest.mjs` — manifest doğrulayıcı (Node).
+- `${CLAUDE_SKILL_DIR}/../team-builder-shared/sync-agent-config.mjs` — generator (canonical → generated, `--check` drift).
 
 ## Soru Sorma Biçimi (ÖNEMLİ — önce oku)
 
@@ -68,17 +70,17 @@ Sihirbaz çok sorulu; soruları **güvenle** sor:
 
 Adımları **bu sırayla** uygula. Her adımda kullanıcıya sor, cevabı al, sonraki adıma geç. Varsayılanlar yalnızca öneridir; kullanıcı onaylamadan kesinleşmez.
 
-> **DURUM KAYDI (resume) — her adımda yaz:** Bir cevap kesinleşince ilerlemeyi `.claude/team-builder-state.json`'a yaz (`~/.claude/skills/team-builder-shared/wizard-state.md` şeması). **Özellikle her agent tek tek yapılandırıldıktan sonra** kaydet — böylece kullanıcı başka bir oturumda kaldığı yerden devam edebilir. Üretim (Adım 8) bitince bu dosyayı **sil**.
+> **DURUM KAYDI (resume) — her adımda yaz:** Bir cevap kesinleşince ilerlemeyi `.claude/team-builder-state.json`'a yaz (`${CLAUDE_SKILL_DIR}/../team-builder-shared/wizard-state.md` şeması). **Özellikle her agent tek tek yapılandırıldıktan sonra** kaydet — böylece kullanıcı başka bir oturumda kaldığı yerden devam edebilir. Üretim (Adım 8) bitince bu dosyayı **sil**.
 
 ### Adım 1 — Ön kontrol
 
 1. Hedef proje kökünü tespit et (bulunulan çalışma dizini).
 2. `.agent-source/agents/manifest.json` var mı bak.
    - **Varsa:** Takım zaten kurulu. Kullanıcıyı uyar: "Model ve effort değiştirmek için `/team-builder-models`, anayasa preset'lerini açıp kapatmak için `/team-builder-upgrade`, generated dosyaları tazeleyip drift kontrol için `/team-builder-sync`. Rol eklemek ya da düzenlemek için henüz bir skill yok: `.agent-source/agents/manifest.json`'ı ve `.agent-source/agents/<ad>.md`'yi elle düzenleyip sync çalıştır; bir rolü kaldırırken manifest'teki atıflarını (`routing`, başka rollerin `consults`'u, `lead`) ve `.agent-source/llm.json`'daki girdilerini de sil — sync kalan her atıfta durur." Üzerine yazmayı kullanıcı açıkça istemedikçe **DEVAM ETME**.
-3. Yoksa **yarım kalmış kurulum var mı bak** (`~/.claude/skills/team-builder-shared/wizard-state.md`): `.claude/team-builder-state.json` varsa → kullanıcıya sade sor: "Bu projede yarım kalmış bir takım kurulumu var (en son: <adım>, <n> rol yapılandırıldı). **Devam mı, baştan mı?**"
+3. Yoksa **yarım kalmış kurulum var mı bak** (`${CLAUDE_SKILL_DIR}/../team-builder-shared/wizard-state.md`): `.claude/team-builder-state.json` varsa → kullanıcıya sade sor: "Bu projede yarım kalmış bir takım kurulumu var (en son: <adım>, <n> rol yapılandırıldı). **Devam mı, baştan mı?**"
    - **Devam** → state'i yükle; tamamlanmış cevapları TEKRAR SORMA; kısa "şu ana kadar seçtiklerin" özeti ver; `currentStep`/`currentAgentIndex`'ten sonraki adımdan sürdür.
    - **Baştan** → state dosyasını sil, sıfırdan.
-4. Hiçbiri yoksa → yeni kuruluma devam et. (Kaynak mimarisi: `~/.claude/skills/team-builder-shared/canonical-source.md`.)
+4. Hiçbiri yoksa → yeni kuruluma devam et. (Kaynak mimarisi: `${CLAUDE_SKILL_DIR}/../team-builder-shared/canonical-source.md`.)
 
 ### Adım 2 — Hedefler + Topoloji
 
@@ -86,11 +88,11 @@ Adımları **bu sırayla** uygula. Her adımda kullanıcıya sor, cevabı al, so
 
 **A) Hedef ekosistem(ler):** **Varsayılan hedef YOKTUR — hiçbirini önceden seçili varsayma.** Sade dille, çoklu-seçim olarak sor: "Bu takımı hangi araçlar için kurayım? (birden çok seçilebilir)". Üç seçenek de eşittir; **en az biri seçilmelidir** (hiçbiri seçilmezse tekrar sor, kendin seçme):
 - **Claude?** EVET ise takım `CLAUDE.md` + her claude hedefli agent için `.claude/agents/<name>.md` ile kurulur.
-- **Codex?** EVET ise takım `AGENTS.md` + `.codex/config.toml` + `.codex/team.md` + her codex hedefli agent için `.codex/agents/<name>.toml` ve `.codex/agent-definitions/<name>.md` ile kurulur. (Detay: `~/.claude/skills/team-builder-shared/codex-target.md`.)
-- **OpenCode?** EVET ise takım `AGENTS.md` (Codex ile paylaşılır) + `opencode.json` + `.opencode/team.md` + her opencode hedefli agent için `.opencode/agents/<name>.md` (OpenCode frontmatter + kaynak gövde) ile kurulur. (Detay: `~/.claude/skills/team-builder-shared/opencode-target.md`.)
+- **Codex?** EVET ise takım `AGENTS.md` + `.codex/config.toml` + `.codex/team.md` + her codex hedefli agent için `.codex/agents/<name>.toml` ve `.codex/agent-definitions/<name>.md` ile kurulur. (Detay: `${CLAUDE_SKILL_DIR}/../team-builder-shared/codex-target.md`.)
+- **OpenCode?** EVET ise takım `AGENTS.md` (Codex ile paylaşılır) + `opencode.json` + `.opencode/team.md` + her opencode hedefli agent için `.opencode/agents/<name>.md` (OpenCode frontmatter + kaynak gövde) ile kurulur. (Detay: `${CLAUDE_SKILL_DIR}/../team-builder-shared/opencode-target.md`.)
 - Manifest kök `targetsDefault`: seçilen ekosistemlerin birleşimi (örn. `["opencode"]`, `["claude","opencode"]`, `["claude","codex","opencode"]`). **Tek hedef seçmek geçerlidir** — örn. yalnız `["opencode"]` seçilirse `CLAUDE.md` ve `.claude/agents/*` **üretilmez**. (Üye bazında `targets` Adım 5'te daraltılabilir.)
 
-**B) Topoloji — YALNIZCA Claude seçildiyse sor; Claude seçilmediyse bu adımı tamamen ATLA** (`topology` manifest'e `subagent` yazılır). `~/.claude/skills/team-builder-shared/topologies.md`. Kullanıcıya **sade** sor:
+**B) Topoloji — YALNIZCA Claude seçildiyse sor; Claude seçilmediyse bu adımı tamamen ATLA** (`topology` manifest'e `subagent` yazılır). `${CLAUDE_SKILL_DIR}/../team-builder-shared/topologies.md`. Kullanıcıya **sade** sor:
 > "Claude tarafında agent'lar nasıl çalışsın?
 > **1) subagent (önerilen):** Bir lider dağıtır, agent'lar işi yapıp lidere döner. Kararlı, ek ayar yok.
 > **2) native takım (deneysel):** Agent'lar birbirine doğrudan mesajlaşıp paylaşılan görev listesiyle koordine olur. Yeni Claude Code sürümü ister, deneysel."
@@ -107,7 +109,7 @@ Adımları **bu sırayla** uygula. Her adımda kullanıcıya sor, cevabı al, so
 
 ### Adım 4 — Mimari doküman konumu (arch-root + layout)
 
-`~/.claude/skills/team-builder-shared/architecture-docs.md` kurallarını kullan.
+`${CLAUDE_SKILL_DIR}/../team-builder-shared/architecture-docs.md` kurallarını kullan.
 
 **Önce kavramı SADE anlat** (kullanıcı ADR'i bilmeyebilir):
 > "Takımın **mimari kararları** bir klasöre yazılır (architect eklediyseniz onun işi; eklemediyseniz bu kararları siz verirsiniz ve klasör yine kullanışlıdır). İçinde:
@@ -125,7 +127,7 @@ Adımları **bu sırayla** uygula. Her adımda kullanıcıya sor, cevabı al, so
 
 > **ÖNEMLİ SIRA:** Roller, anayasa presetleri ve routing'den **ÖNCE** belirlenir. Çünkü presetler ve routing seçilen rollere atıf yapar (örn. "reviewer şunu denetler"). Kullanıcı hangi rolleri istediğini söylemeden o rollerin davranışını sorma.
 
-`~/.claude/skills/team-builder-shared/governance-defaults.md` + `member-template.md` + `skill-recommend.md` + `agent-md-rich.md` kurallarını kullan. (Bu dosyalar SENİN rehberin; kullanıcıya **isimlerini/iç referansları gösterme** — yalnız sade öneri sun.)
+`${CLAUDE_SKILL_DIR}/../team-builder-shared/governance-defaults.md` + `member-template.md` + `skill-recommend.md` + `agent-md-rich.md` kurallarını kullan. (Bu dosyalar SENİN rehberin; kullanıcıya **isimlerini/iç referansları gösterme** — yalnız sade öneri sun.)
 
 1. **Önce kısa proje analizi yap** (sessizce): kod köklerini tara (`apps/*`, `modules/*`, `packages/*`, `src/*` vb.) ve **domain-split developer rolleri öner** (örn. `backend-developer`, `frontend-developer`, `extension-developer`). Bunu kullanıcıya "şu rolleri öneriyorum" diye sun.
 
@@ -140,13 +142,13 @@ Adımları **bu sırayla** uygula. Her adımda kullanıcıya sor, cevabı al, so
 
    **(a)** "Şimdi **<rol>** rolünü ayarlıyoruz (X/N). Görevi: <tek cümle>." diye başla.
    **(b) Hedef(ler)** — Adım 2'de birden çok ekosistem seçildiyse: bu rol hangilerinde üretilsin (claude / codex / opencode / kombinasyon; varsayılan = `targetsDefault`). Tek ekosistem varsa bu soruyu atla. → manifest `targets`.
-   **(c) Model** — burada **sorma.** Bütün roller yapılandırıldıktan sonra, dosyalar yazılmadan önce `~/.claude/skills/team-builder-models/SKILL.md`'nin **Akış 1 — Ortak dosyayı kur** bölümünü izle: her rol için modeli ve effort'u o makinenin kataloğundan sorar ve `.agent-source/llm.json`'ı yazar. Sync'i o akış çalıştırmaz; setup'ın son adımı çalıştırır. Manifest'e ve rol dosyasına **model yazma** — tek yeri `llm.json`'dır (`~/.claude/skills/team-builder-shared/llm-config.md`).
+   **(c) Model** — burada **sorma.** Bütün roller yapılandırıldıktan sonra, dosyalar yazılmadan önce `${CLAUDE_SKILL_DIR}/../team-builder-models/SKILL.md`'nin **Akış 1 — Ortak dosyayı kur** bölümünü izle: her rol için modeli ve effort'u o makinenin kataloğundan sorar ve `.agent-source/llm.json`'ı yazar. Sync'i o akış çalıştırmaz; setup'ın son adımı çalıştırır. Manifest'e ve rol dosyasına **model yazma** — tek yeri `llm.json`'dır (`${CLAUDE_SKILL_DIR}/../team-builder-shared/llm-config.md`).
    **(d) Effort** — model gibi, Akış 1'de sorulur; burada sorma.
    **(e) Kod yazsın mı + kime danışır** — varsayılanı söyle, onaylat/değiştir (architect eklendiyse developer → architect'e danışır; **architect eklenmediyse `consults` boş kalır ve belirsizlikte kullanıcıya sorulur**; architect/reviewer kod yazmaz).
    **(f) Skill'ler** — `skill-recommend.md` §4 **ZORUNLU FORMATINA birebir uy.** Bu role uygun **yüklü + public** skill'leri öner. **Hiçbir skill'i yalnız "isim — açıklama" ile gösterme**; her skill **iki satır** olmalı:
       ```
       • <skill-adı> — <bu projede ne işe yarar>
-        Kaynak: ✅ ~/.claude/skills/<name>   |   [owner/repo](https://github.com/owner/repo)   |   marketplace/eklenti
+        Kaynak: ✅ ${CLAUDE_SKILL_DIR}/../<name>   |   [owner/repo](https://github.com/owner/repo)   |   marketplace/eklenti
       ```
       Public skill'lerin adresini **WebSearch açıksa MUTLAKA ara ve yaz** (markdown link); bulamazsan "kaynak doğrulanmalı" işaretle ama kaynak satırını atlama.
       Sonra **her skill için TEK TEK** sor (tekli seçim 3 seçenek): **"Zorunlu (her zaman) / Gerektiğinde / Ekleme"** — önceden atama yapma, kullanıcı seçsin.
@@ -161,7 +163,7 @@ Adımları **bu sırayla** uygula. Her adımda kullanıcıya sor, cevabı al, so
 
 ### Adım 6 — Routing tablosu (kod yolu → rol)
 
-`~/.claude/skills/team-builder-shared/routing.md` kurallarını kullan. **Yalnız Adım 5'te eklenen roller** kullanılabilir.
+`${CLAUDE_SKILL_DIR}/../team-builder-shared/routing.md` kurallarını kullan. **Yalnız Adım 5'te eklenen roller** kullanılabilir.
 
 1. Proje analizine göre bir **path → rol** tablosu taslağı öner (örn. `apps/**/main/src/**` → `backend-developer`, `apps/**/renderer/src/**` → `frontend-developer`). **Yol dilbilgisi dardır:** Segment ya düz metin, ya `*` (tek segment), ya `**` (sıfır ya da daha çok segment) olur. Segment içi kısmi joker (`src/*.ts`, `docs/a*`) ve `.`/`..` **kabul edilmez** — routing dizin sahipliği atar, dosya filtresi değil. Ardışık `**` yazılmaz (`docs/**/**`), ve joker içermeyen bir yol (`docs`) o dizinin **alt ağacı** demektir — `docs/**` ile aynıdır. Kullanıcı `src/*.ts` gibi bir yol önerirse dizine çevir (`src/**`) — sohbette kabul edip sonda doğrulamada patlatma. İki yol kısmen çakışmamalı: ya biri ötekini kapsasın ya da tamamen ayrı olsunlar. Ayrıca **dokümantasyonu sahiplenen rol varsa** `docs/**` → o rol satırını öner (alt klasör değil, **tüm `docs/`** — sahip tüm dokümantasyonun sahibidir; `docs/<arch-root>/**` yazmak mimari kök dışındaki dokümanı sahipsiz bırakır). Sahip architect'tir; **architect yoksa doc-writer**. İkisi de varsa `docs/**` → architect ve ayrıca `docs/guides/**` → doc-writer gibi bir alt yol satırı **mutlaka** ver — doc-writer'a yol vermemek manifest'i geçersiz kılar (`workspace-write` ama yazacağı yer yok). **Kod yazmayan hiçbir doküman rolü yoksa bu satırı önerme** — `docs/` özel sahibi olmayan sıradan bir dizindir. Doküman rolünü tabloya yazmamak onu yazamaz hâlde kurar: sahiplik generator'a yalnız routing üzerinden geçer. **`architectureDocs.layout` `per-module` ise** aynı sahip için ayrıca `modules/*/docs/**` satırını öner — o yol `modules/*/**` developer satırının içinde kalır ve ayrı yazılmazsa modül dokümanı developer'ın olur.
 2. Kullanıcı onaylar / düzeltir / satır ekler-siler. Onaysız satır kesinleşmez.
@@ -178,7 +180,7 @@ Adımları **bu sırayla** uygula. Her adımda kullanıcıya sor, cevabı al, so
 
 ### Adım 7 — Kalite Odakları + Anayasa
 
-**7A) Kalite odakları (checkbox)** — `~/.claude/skills/team-builder-shared/quality-dimensions.md`.
+**7A) Kalite odakları (checkbox)** — `${CLAUDE_SKILL_DIR}/../team-builder-shared/quality-dimensions.md`.
 
 "Bu projede hangi kalite boyutlarına özellikle odaklanalım?" diye **çoklu seçim** sun. Boyutlar: **Performans · Kod tasarımı/sürdürülebilirlik · UI/UX tasarımı · Erişilebilirlik · Güvenlik · Test/kalite.** (6 boyut > 4 seçenek limiti → **iki gruba böl** veya düz metin checklist; alan adı/jargon gösterme.) Proje analizinden öner (örn. iOS/finans → performans + kod tasarımı + test; UI ağırlıklı → UI/UX + erişilebilirlik).
 
@@ -188,7 +190,7 @@ Seçilenler somut çıktıya döner (`quality-dimensions.md`):
 - **Rol/skill iması:** `security`→ security rolü + `security-review`; `ui-ux`→ UI developer + `frontend-design`/`swift-architecture-performance`; `testing`→ qa + `tdd-workflow`. Seçilen boyut için ilgili rol Adım 5'te eklenmediyse kullanıcıya hatırlat ("güvenliği seçtin ama security rolü yok — eklemek ister misin?"). Evet derse Adım 5'e dön, rolü ekle ve buraya geri gel.
 - `manifest.focus[]`'a yaz (örn. `["performance","code-design","security"]`).
 
-**7B) Anayasa presetleri (sade dille sor)** — `~/.claude/skills/team-builder-shared/constitution.md` kurallarını kullan. **İlk dört kuralı** default AÇIK olarak, **sade ve günlük dille** sun; kullanıcı kapatmak istediğini seçer. **Henüz var olmayan role atıf yapma** — açıklamayı Adım 5'te seçilen takıma göre uyarla (örn. reviewer eklenmediyse "otomatik denetleyen reviewer yok, kural yine de agent talimatlarına yazılır" de).
+**7B) Anayasa presetleri (sade dille sor)** — `${CLAUDE_SKILL_DIR}/../team-builder-shared/constitution.md` kurallarını kullan. **İlk dört kuralı** default AÇIK olarak, **sade ve günlük dille** sun; kullanıcı kapatmak istediğini seçer. **Henüz var olmayan role atıf yapma** — açıklamayı Adım 5'te seçilen takıma göre uyarla (örn. reviewer eklenmediyse "otomatik denetleyen reviewer yok, kural yine de agent talimatlarına yazılır" de).
 
 Sade açıklama kalıbı (jargon yok):
 
@@ -250,16 +252,16 @@ manifest'i geçersiz kılar.
 
 Tüm cevaplar toplandı; şimdi kaynağı yaz, doğrula ve generate et. Sırayla:
 
-**8a. `.agent-source/` kaynağını yaz** (mimari: `~/.claude/skills/team-builder-shared/canonical-source.md`):
+**8a. `.agent-source/` kaynağını yaz** (mimari: `${CLAUDE_SKILL_DIR}/../team-builder-shared/canonical-source.md`):
 
-- `.agent-source/agents/manifest.json` — kök alanlar (`targetsDefault`, `topology`, `docLanguage`, `architectureDocs`, `constitution`, `focus[]`, `routing[]`, `codeDocSync[]`, `lead`) + `agents[]`; `~/.claude/skills/team-builder-shared/manifest-schema.md` şemasına birebir uygun.
+- `.agent-source/agents/manifest.json` — kök alanlar (`targetsDefault`, `topology`, `docLanguage`, `architectureDocs`, `constitution`, `focus[]`, `routing[]`, `codeDocSync[]`, `lead`) + `agents[]`; `${CLAUDE_SKILL_DIR}/../team-builder-shared/manifest-schema.md` şemasına birebir uygun.
 - **Kalite odaklarından kısıt dosyaları** (Adım 7A, `quality-dimensions.md`): seçili boyutlardan somut olanlar için `docs/<arch-root>/constraints/<konu>.md`'yi `templates/constraint.md` standardıyla üret — örn. `code-design` → `file-size.md` (max satır eşiğiyle), `security` → `secrets.md`, `testing` → `coverage.md`.
-- `.agent-source/agents/<name>.md` — her üye için zengin rol talimatı (`~/.claude/skills/team-builder-shared/agent-md-rich.md` kalıbı, docLanguage dilinde). **`İletişim` bölümü topolojiye göre yazılır** (`subagent` → lead'e raporla; `native` → peer-to-peer mesajlaş — `topologies.md`).
+- `.agent-source/agents/<name>.md` — her üye için zengin rol talimatı (`${CLAUDE_SKILL_DIR}/../team-builder-shared/agent-md-rich.md` kalıbı, docLanguage dilinde). **`İletişim` bölümü topolojiye göre yazılır** (`subagent` → lead'e raporla; `native` → peer-to-peer mesajlaş — `topologies.md`).
 - **Her zaman:** `.agent-source/project/instructions.md` — **ortak talimat kaynağı.**
   Routing tablosu (+ çözüm kuralı: "bir dosya birden fazla satıra uyarsa **en özgül (en
   dar) yol kazanır**"), kod-doküman satırları, mimari kaynaklar ve **açık olan her
   anayasa preset'inin işaretli bloğu**. Bloklar
-  `~/.claude/skills/team-builder-shared/templates/constitution-blocks.md`'den render
+  `${CLAUDE_SKILL_DIR}/../team-builder-shared/templates/constitution-blocks.md`'den render
   edilir — verbatim kopyalanmaz, `docLanguage`'e çevrilir ve yer tutucular projenin
   cevaplarıyla doldurulur. **Kapalı preset'in bloğu yazılmaz.**
 - **Claude hedefi seçildiyse:** `.agent-source/project/CLAUDE.md` — **ilk satırı
@@ -271,8 +273,8 @@ Tüm cevaplar toplandı; şimdi kaynağı yaz, doğrula ve generate et. Sırayla
   satırını taşır: `Bütün proje kuralları @.agent-source/project/instructions.md
   dosyasındadır. Önce onu oku.` Bugün bu ekosistemlere özgü başka içerik yoktur, yani
   dosya kısadır; kullanıcının sonradan ekleyeceği şey için açık durur.
-- Codex hedefi seçildiyse ayrıca: `.agent-source/project/codex-config.toml`, `.agent-source/project/codex-team.md` (`~/.claude/skills/team-builder-shared/codex-target.md`).
-- OpenCode hedefi seçildiyse ayrıca: `.agent-source/project/opencode.json` (**yalnız geçerli şema anahtarları**: `$schema` + `instructions` + `permission` default'ları — **`"//"` gibi not anahtarı EKLEME**, OpenCode şemayı katı doğrular ve `Unrecognized key` ile başlamaz; `instructions` dizisinin **ilk** elemanı `.agent-source/project/instructions.md` olmalı, ardından `AGENTS.md` ve mimari doküman glob'u gelir) ve `.agent-source/project/opencode-team.md` (`~/.claude/skills/team-builder-shared/opencode-target.md`).
+- Codex hedefi seçildiyse ayrıca: `.agent-source/project/codex-config.toml`, `.agent-source/project/codex-team.md` (`${CLAUDE_SKILL_DIR}/../team-builder-shared/codex-target.md`).
+- OpenCode hedefi seçildiyse ayrıca: `.agent-source/project/opencode.json` (**yalnız geçerli şema anahtarları**: `$schema` + `instructions` + `permission` default'ları — **`"//"` gibi not anahtarı EKLEME**, OpenCode şemayı katı doğrular ve `Unrecognized key` ile başlamaz; `instructions` dizisinin **ilk** elemanı `.agent-source/project/instructions.md` olmalı, ardından `AGENTS.md` ve mimari doküman glob'u gelir) ve `.agent-source/project/opencode-team.md` (`${CLAUDE_SKILL_DIR}/../team-builder-shared/opencode-target.md`).
 
 > **Referans satırı zorunludur.** Kullanıcı onu silerse proje bütün governance metnini
 > **sessizce** kaybeder — üretilen dosya geçerli görünür ve drift kontrolü temiz döner.
@@ -283,32 +285,32 @@ Tüm cevaplar toplandı; şimdi kaynağı yaz, doğrula ve generate et. Sırayla
 - `.agent-source/README.md` — "generated'ı elleme; burayı güncelle + sync çalıştır" notu.
 - `.agent-source/llm.json` — model ve effort; Adım 5'in 3(c) maddesindeki Akış 1 yazar. Ajan dosyaları bu değerlerle üretilir; onlar ve defter git'e girer. Yalnız `llm.local.json` girmez; `.gitignore` bloğunu sync yazar.
 - **Plan kapısı açıksa** (`constitution.planGate: true`) şunları da üret — hepsi
-  `docLanguage` dilinde, `~/.claude/skills/team-builder-shared/plan-gate.md` sözleşmesine
+  `docLanguage` dilinde, `${CLAUDE_SKILL_DIR}/../team-builder-shared/plan-gate.md` sözleşmesine
   göre:
   - `.agent-work/` iskeleti: `inbox/ draft/ approved/ in-progress/ done/` boş dizinleri.
     **Bu dizin generated değildir** — bir kez kurulur, sonra `work-plan` skill'i yönetir;
     `sync` ona dokunmaz.
-  - `.agent-work/TEMPLATE.md` ← `~/.claude/skills/team-builder-shared/templates/plan.md`.
+  - `.agent-work/TEMPLATE.md` ← `${CLAUDE_SKILL_DIR}/../team-builder-shared/templates/plan.md`.
     Şablon Türkçe referanstır; **verbatim kopyalama**, `docLanguage` dilinde yeniden yaz.
     Beş `<!-- s:* -->` işareti ve `<!-- progress:not-started -->` sentinel'i **birebir
     korunur** (çeviriden bağımsızdırlar).
   - `.agent-work/README.md`: dizinin ne olduğunu ve beş klasörün ne anlama geldiğini
     anlatan kısa metin.
   - `.agent-source/skills/work-plan/SKILL.md` ←
-    `~/.claude/skills/team-builder-shared/templates/work-plan-skill.md`. Aynı kural:
+    `${CLAUDE_SKILL_DIR}/../team-builder-shared/templates/work-plan-skill.md`. Aynı kural:
     `docLanguage` dilinde yeniden yaz, makine işaretlerini birebir koru. Bu dosya
     `sync` tarafından ekosistem skill dizinlerine mirror'lanır.
 - **Plan kapısı kapalıysa** yukarıdakilerin **hiçbiri** üretilmez: `.agent-work/` yoktur,
   `work-plan` skill kaynağı yazılmaz, dolayısıyla mirror da oluşmaz.
-- Ayrıca `~/.claude/skills/team-builder-shared/architecture-docs.md`'deki "İskelet üretimi" kuralına göre `docs/<arch-root>/` iskeletini üret: `adr/` `constraints/` `design/` dizinleri + `ilkeler.md`. **README ve standart şablonları `~/.claude/skills/team-builder-shared/templates/` standardından kopyala:** `templates/architecture-readme.md` → `docs/<arch-root>/README.md`; `templates/{doc-standard.md, adr.md, constraint.md, design.md}` → `docs/<arch-root>/templates/`. Böylece dokümanlar **tek standartta** yazılır ve agent'lar bu standarda göre okur (`doc-standard.md`). per-module ise modül-docs şablonu da eklenir.
+- Ayrıca `${CLAUDE_SKILL_DIR}/../team-builder-shared/architecture-docs.md`'deki "İskelet üretimi" kuralına göre `docs/<arch-root>/` iskeletini üret: `adr/` `constraints/` `design/` dizinleri + `ilkeler.md`. **README ve standart şablonları `${CLAUDE_SKILL_DIR}/../team-builder-shared/templates/` standardından kopyala:** `templates/architecture-readme.md` → `docs/<arch-root>/README.md`; `templates/{doc-standard.md, adr.md, constraint.md, design.md}` → `docs/<arch-root>/templates/`. Böylece dokümanlar **tek standartta** yazılır ve agent'lar bu standarda göre okur (`doc-standard.md`). per-module ise modül-docs şablonu da eklenir.
 
 **8b. Manifest'i doğrula:**
 
-- Önce aracın çalıştığını teyit et: `node ~/.claude/skills/team-builder-shared/validate-manifest.mjs --selftest` → `SELFTEST PASS` görmelisin.
+- Önce aracın çalıştığını teyit et: `node "${CLAUDE_SKILL_DIR}/../team-builder-shared/validate-manifest.mjs" --selftest` → `SELFTEST PASS` görmelisin.
 - Sonra yazdığın `manifest.json`'u doğrula. **Tercih edilen yol:** küçük bir Node
   tek-satırıyla dosyayı parse edip `validate()` fonksiyonunu o obje ile çağır — kural
   listesinin tamamını uygulayan tek şey odur.
-- Çalıştıramıyorsan `~/.claude/skills/team-builder-shared/manifest-schema.md`'deki
+- Çalıştıramıyorsan `${CLAUDE_SKILL_DIR}/../team-builder-shared/manifest-schema.md`'deki
   **"Doğrulama kuralları"** bölümünü aç ve maddelerin **hepsini** tek tek denetle. Listeyi
   buraya kopyalama ve akıldan sayma: kurallar bu dosyadan bağımsız değişiyor, buradaki her
   kopya eskiyor. (Bu madde bir zamanlar kuralları satır içinde sayıyordu ve sekiz kural
@@ -317,13 +319,13 @@ Tüm cevaplar toplandı; şimdi kaynağı yaz, doğrula ve generate et. Sırayla
 
 **8c. Generate (sync):**
 
-- `node ~/.claude/skills/team-builder-shared/sync-agent-config.mjs --root <proje-kökü>` çalıştır. Generator kaynaktan tüm generated hedefleri üretir (`CLAUDE.md`, `.claude/agents/*.md`; Codex ise `AGENTS.md` + `.codex/*`; OpenCode ise `AGENTS.md` + `opencode.json` + `.opencode/*`). Davranış sözleşmesi: `~/.claude/skills/team-builder-shared/sync-pipeline.md`.
+- `node "${CLAUDE_SKILL_DIR}/../team-builder-shared/sync-agent-config.mjs" --root <proje-kökü>` çalıştır. Generator kaynaktan tüm generated hedefleri üretir (`CLAUDE.md`, `.claude/agents/*.md`; Codex ise `AGENTS.md` + `.codex/*`; OpenCode ise `AGENTS.md` + `opencode.json` + `.opencode/*`). Davranış sözleşmesi: `${CLAUDE_SKILL_DIR}/../team-builder-shared/sync-pipeline.md`.
 
 **8d. Drift kontrolü:**
 
-- `node ~/.claude/skills/team-builder-shared/sync-agent-config.mjs --root <proje-kökü> --check` çalıştır. `Agent configuration is in sync.` (exit 0) görmelisin. Drift varsa kaynağı düzelt → 8c → 8d tekrar; drift temizlenene kadar kullanıcıya "bitti" deme.
+- `node "${CLAUDE_SKILL_DIR}/../team-builder-shared/sync-agent-config.mjs" --root <proje-kökü> --check` çalıştır. `Agent configuration is in sync.` (exit 0) görmelisin. Drift varsa kaynağı düzelt → 8c → 8d tekrar; drift temizlenene kadar kullanıcıya "bitti" deme.
 
-**8e. (Yalnız `topology: native` ise) Agent teams enablement** — `~/.claude/skills/team-builder-shared/topologies.md`:
+**8e. (Yalnız `topology: native` ise) Agent teams enablement** — `${CLAUDE_SKILL_DIR}/../team-builder-shared/topologies.md`:
 
 - Bu adım **sync kapsamı dışıdır** (tek seferlik proje aç/kapa ayarı; `sync-agent-config.mjs` settings.json'a dokunmaz). Skill bunu **doğrudan ve dikkatli merge** ile yapar.
 - `.claude/settings.json`'u **oku → merge → yaz** (mevcut `hooks`, `permissions` vb. anahtarları KORU; sadece ekle/güncelle):
@@ -361,7 +363,7 @@ Tüm cevaplar toplandı; şimdi kaynağı yaz, doğrula ve generate et. Sırayla
 
 ## Quick Reference (adım → referans dosyası)
 
-| Adım | Konu | Referans (`~/.claude/skills/team-builder-shared/`) |
+| Adım | Konu | Referans (`${CLAUDE_SKILL_DIR}/../team-builder-shared/`) |
 |------|------|------|
 | 1 | Ön kontrol (kurulu mu / yarım kalmış mı — resume) | `canonical-source.md`, `wizard-state.md` |
 | 2 | Hedefler (Claude/Codex/OpenCode) + Topoloji (subagent/native) | `codex-target.md`, `opencode-target.md`, `topologies.md` |
