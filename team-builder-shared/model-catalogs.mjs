@@ -100,7 +100,10 @@ export function childEnv(env = process.env, platform = process.platform) {
     const isPath = platform === 'win32' ? key.toUpperCase() === 'PATH' : key === 'PATH'
     if (!isPath) child[key] = value
   }
-  child.PATH = pathEntries(env, platform).join(platform === 'win32' ? ';' : ':')
+  // An empty PATH would mean "search the working directory" to execvp; with no
+  // PATH at all it falls back to its own absolute default.
+  const entries = pathEntries(env, platform)
+  if (entries.length > 0) child.PATH = entries.join(platform === 'win32' ? ';' : ':')
   if (platform === 'win32') child.NoDefaultCurrentDirectoryInExePath = '1'
   return child
 }
@@ -115,7 +118,9 @@ export function needsShell(file, platform = process.platform) {
 function windowsShell(env) {
   const comspec = envValue(env, 'ComSpec', 'win32')
   if (comspec && isFullyQualified(comspec, 'win32')) return comspec
-  return path.win32.join(envValue(env, 'SystemRoot', 'win32') || 'C:\\Windows', 'System32', 'cmd.exe')
+  const systemRoot = envValue(env, 'SystemRoot', 'win32')
+  const root = systemRoot && isFullyQualified(systemRoot, 'win32') ? systemRoot : 'C:\\Windows'
+  return path.win32.join(root, 'System32', 'cmd.exe')
 }
 
 function execToString(file, args, options) {
@@ -427,6 +432,10 @@ async function runSelftest() {
       !('NoDefaultCurrentDirectoryInExePath' in posixChild),
     `the child PATH must keep only fully qualified entries, got ${JSON.stringify(posixChild)}`
   )
+  assert(
+    !('PATH' in childEnv({ PATH: ':relative' }, 'linux')),
+    'with no usable entry the child must get no PATH — an empty one means the working directory'
+  )
   const windowsChild = childEnv({ Path: 'C:\\Windows;.;"C:\\Tools";\\bin' }, 'win32')
   assert(
     windowsChild.PATH === 'C:\\Windows;C:\\Tools' &&
@@ -449,7 +458,7 @@ async function runSelftest() {
       resolveFile: () => process.execPath,
       env: { ...withoutPath, PATH: ['', nodeDir, 'relative'].join(path.delimiter) },
     }
-  )
+  ).catch(error => `rejected: ${error.message}`)
   assert(
     childPath === nodeDir,
     `runCli must start the resolved file with the filtered PATH, got ${JSON.stringify(childPath)}`
