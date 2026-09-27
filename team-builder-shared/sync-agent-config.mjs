@@ -740,6 +740,10 @@ async function syncSkills(ctx, manifest) {
   }
 }
 
+// Where the per-agent local output lives. A file there that sync no longer
+// generates has also left the .gitignore block.
+const LOCAL_AGENT_DIRS = ['.claude/agents/', '.codex/agents/', '.opencode/agents/']
+
 // Files sync writes that git does not track. Every agent file carries the
 // resolved model, and that may come from this machine's llm.local.json. The
 // list comes from the manifest alone, so it is the same on every machine
@@ -1014,6 +1018,14 @@ async function generate({ root, checkOnly, quiet = false, catalogs = null }) {
     }
     if (ctx.mismatches.some(m => m.endsWith(' (stale)'))) {
       warn('These files are no longer generated; deleting them is up to you.')
+      const staleAgentFile = ctx.mismatches.some(
+        m => m.endsWith(' (stale)') && LOCAL_AGENT_DIRS.some(dir => m.startsWith(dir))
+      )
+      if (staleAgentFile) {
+        warn(
+          "Stale agent files are no longer in the .gitignore block: delete them before committing, or they are committed with this machine's model."
+        )
+      }
     }
   }
   if (ctx.writes.length === 0) {
@@ -2169,10 +2181,14 @@ async function runSelftest() {
     )
     await fs.writeFile(manifestPath, JSON.stringify(manifest, null, 2))
     await fs.rm(qaSource)
-    await silentGenerate({ root: fixtureRoot, checkOnly: false })
+    const removedAgentWarnings = await captureWarnings(fixtureRoot)
     assert(
       !(await readText(gitignorePath)).includes('/.claude/agents/qa.md'),
       'a removed agent must leave the block'
+    )
+    assert(
+      removedAgentWarnings.some(w => w.includes('Stale agent files are no longer in the .gitignore block')),
+      `a stale agent file must be flagged as no longer ignored, got: ${removedAgentWarnings.join(' | ')}`
     )
     await fs.rm(path.join(fixtureRoot, '.claude', 'agents', 'qa.md'))
     await silentGenerate({ root: fixtureRoot, checkOnly: false })
@@ -2274,6 +2290,22 @@ async function runSelftest() {
       `${mirror} must be reported exactly as "${mirror} (stale)"`
     )
   }
+
+  // Negative case: a stale file that is NOT an agent file (a skill mirror)
+  // must print the generic stale-file line but never the agent-file line.
+  const skillStaleWarnings = await captureWarnings(fixtureRoot)
+  assert(
+    skillStaleWarnings.some(w =>
+      w.includes('These files are no longer generated; deleting them is up to you.')
+    ),
+    `a stale non-agent file must still print the generic stale-file line, got: ${skillStaleWarnings.join(' | ')}`
+  )
+  assert(
+    !skillStaleWarnings.some(w =>
+      w.includes('Stale agent files are no longer in the .gitignore block')
+    ),
+    `a stale non-agent file must not be flagged as a stale agent file, got: ${skillStaleWarnings.join(' | ')}`
+  )
 
   // Persists on a second consecutive sync, same contract as agent staleness.
   const skillStaleRunAgain = await silentGenerate({ root: fixtureRoot, checkOnly: false })

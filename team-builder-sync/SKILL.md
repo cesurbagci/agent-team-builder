@@ -36,15 +36,16 @@ Referans dokümanlar (kurulu yol): `~/.claude/skills/team-builder-shared/` altı
 - Bir generated dosyanın elle düzenlendiğinden şüpheleniliyor → `--check` farkı
   yakalar.
 
-Proje henüz takım kurulu değilse (`.agent-source/` yoksa) bu skill **çalıştırılmaz**;
+Proje henüz takım kurulu değilse (`.agent-source/agents/manifest.json` yoksa) bu skill **çalıştırılmaz**;
 kullanıcı `team-builder-setup` skill'ine yönlendirilir.
 
 ## Adımlar
 
-### 1. Ön kontrol: `.agent-source/` var mı?
+### 1. Ön kontrol: takım kurulu mu?
 
-Proje kökünde (`<proje>`) `.agent-source/` ve `.agent-source/agents/manifest.json`
-var mı bak.
+Proje kökünde (`<proje>`) `.agent-source/agents/manifest.json` var mı bak. Yalnız
+`.agent-source/` ya da yalnız `.agent-source/llm.json` yetmez — yarıda kalmış bir kurulum da
+onları bırakabilir.
 
 - Yoksa: dur, kullanıcıya bu projede takım kurulu olmadığını söyle ve
   `team-builder-setup`'a yönlendir. Sync çalıştırma.

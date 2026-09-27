@@ -4,9 +4,10 @@
 > oturumda kullanıcı kaldığı yerden devam edebilir.
 
 ## Konum
-`.claude/team-builder-state.json` (proje kökünde). **`.agent-source/` İÇİNDE DEĞİL** — çünkü
-`.agent-source/` varlığı "takım zaten kuruldu" sinyalidir; wizard daha bitmeden o dizini
-oluşturmayız. State dosyası bağımsızdır.
+`.claude/team-builder-state.json` (proje kökünde). **`.agent-source/` İÇİNDE DEĞİL** — takımın
+kurulu olduğunun sinyali `.agent-source/agents/manifest.json`'dır ve Adım 8'de yazılır; ondan
+önce `.agent-source/`'ta yalnız `team-builder-models` Akış 1'in yazdığı `llm.json` olabilir.
+State dosyası bağımsızdır.
 
 ## Ne zaman yazılır
 **Her adım/alt-adım tamamlanınca** (kullanıcı bir soruya cevap verip o parça kesinleşince)
@@ -17,7 +18,7 @@ Böylece oturum yarıda kesilse bile en fazla bir küçük adım kaybolur.
 
 ## Ne zaman silinir
 **Üretim (Adım 8) başarıyla bittiğinde** (`.agent-source/` yazıldı + sync drift temiz) state
-dosyasını **sil**. Kurulum tamamlandı; artık edit/add/sync kullanılır.
+dosyasını **sil**. Kurulum tamamlandı; artık `team-builder-models`, `team-builder-upgrade` ve `team-builder-sync` kullanılır; rol değişiklikleri elle yapılır (manifest, rol dosyası ve `llm.json` girdileri, sonra sync).
 
 ## Şema
 ```jsonc
@@ -47,7 +48,7 @@ dosyasını **sil**. Kurulum tamamlandı; artık edit/add/sync kullanılır.
 Alanlar `manifest-schema.md` ile uyumlu; tamamlanan kısımlar doldurulur, gerisi boş kalır.
 
 ## Resume akışı (Adım 1'de)
-1. `.agent-source/agents/manifest.json` **varsa** → takım zaten kurulu; edit/add/sync'e yönlendir (state'e bakma).
+1. `.agent-source/agents/manifest.json` **varsa** → takım zaten kurulu; var olan skill'lere yönlendir (`team-builder-models`, `team-builder-upgrade`, `team-builder-sync`), state'e bakma.
 2. Yoksa `.claude/team-builder-state.json` **varsa** → kullanıcıya sade sor:
    > "Bu projede yarım kalmış bir takım kurulumu var (en son: **<currentStep adının sade adı>**, **<n>** rol yapılandırıldı). Devam edelim mi, yoksa baştan mı başlayalım?"
    - **Devam** → state'i yükle, `currentStep`/`currentAgentIndex`'ten sonraki adımdan devam et. Tamamlanmış cevapları tekrar sorma; kısa bir "şu ana kadar seçtiklerin" özeti göster.
@@ -57,7 +58,7 @@ Alanlar `manifest-schema.md` ile uyumlu; tamamlanan kısımlar doldurulur, geris
 ## Notlar
 - State **tek gerçek ilerleme kaydıdır**; her adımda güncel tutulur (yazmayı unutma).
 - Bozuk/eksik state → kullanıcıya söyle, baştan başlamayı öner.
-- `add`/`edit` bu state'i kullanmaz (onlar tamamlanmış `.agent-source/` üzerinde çalışır).
+- Diğer skill'ler bu state'i kullanmaz; kurulumu tamamlanmış bir proje üzerinde çalışırlar.
 - **İki kapı sahibi sorusu ayrı ayrı kaydedilir.** Kullanıcı plan kapısını açıp ilk soruyu
   cevapladıktan sonra oturum kesilirse, resume'da o cevap **yeniden sorulmaz**: state'te
   `answers.planGate.planReviewer` doludur, `codeReviewer` anahtarı henüz yoktur. Devam

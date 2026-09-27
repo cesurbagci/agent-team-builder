@@ -1,6 +1,6 @@
 ---
 name: team-builder-upgrade
-description: Kurulmuş bir projede anayasa preset'lerini (geçici çözüm yok, kod-doküman senkronizasyonu, rol başına hafıza, dil standardı, plan kapısı) açar veya kapatır; plan kapısının artefaktlarını kurar ya da bırakır; eski yapıdaki projeleri tek talimat dosyasına göç ettirir. Tetikleyiciler — "plan kapısını aç", "preset aç", "preset kapat", "anayasa değiştir", "takımı yükselt", "talimatları tek dosyaya taşı", "projeyi yeni yapıya geçir". Yeni rol/routing/ekosistem eklemek için kullanma; kurulu projede bunlar elle yapılır (manifest ve rol dosyası, sonra sync). Model ya da effort değiştirmek için de kullanma; o team-builder-models'in işidir.
+description: Kurulmuş bir projede anayasa preset'lerini (geçici çözüm yok, kod-doküman senkronizasyonu, rol başına hafıza, dil standardı, plan kapısı) açar veya kapatır; plan kapısının artefaktlarını kurar ya da bırakır; eski yapıdaki projeleri tek talimat dosyasına göç ettirir. Tetikleyiciler — "plan kapısını aç", "preset aç", "preset kapat", "anayasa değiştir", "takımı yükselt", "talimatları tek dosyaya taşı", "projeyi yeni yapıya geçir". Yeni rol/routing/ekosistem eklemek için kullanma; kurulu projede bunlar elle yapılır (manifest, rol dosyası ve `llm.json` girdileri, sonra sync). Model ya da effort değiştirmek için de kullanma; o team-builder-models'in işidir.
 ---
 
 # team-builder-upgrade
@@ -10,8 +10,8 @@ Kurulmuş bir projede **anayasa preset'lerini** açar/kapatır. Kurulum bir kez 
 ikisinin arasındaki boşluğu doldurur: kurulumdan sonra fikir değişince.
 
 **Kapsam dışı:** rol ekleme/çıkarma, routing değiştirme, yeni ekosistem hedefleme — kurulu
-projede bunların skill'i yok (setup kurulu takımda durur): manifest'i ve rol dosyasını elle
-düzenleyip sync çalıştır. Model ve effort da kapsam dışıdır: `team-builder-models`'e yönlendir.
+projede bunların skill'i yok (setup kurulu takımda durur): manifest'i, rol dosyasını ve
+`llm.json`'daki girdilerini elle düzenleyip sync çalıştır. Model ve effort da kapsam dışıdır: `team-builder-models`'e yönlendir.
 
 ## Beş preset, üç sınıf
 
