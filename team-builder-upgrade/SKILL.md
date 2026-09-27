@@ -1,6 +1,6 @@
 ---
 name: team-builder-upgrade
-description: Kurulmuş bir projede anayasa preset'lerini (geçici çözüm yok, kod-doküman senkronizasyonu, rol başına hafıza, dil standardı, plan kapısı) açar veya kapatır; plan kapısının artefaktlarını kurar ya da bırakır; eski yapıdaki projeleri tek talimat dosyasına göç ettirir. Tetikleyiciler — "plan kapısını aç", "preset aç", "preset kapat", "anayasa değiştir", "takımı yükselt", "talimatları tek dosyaya taşı", "projeyi yeni yapıya geçir". Yeni rol/routing/ekosistem eklemek için kullanma; o setup'ın işidir. Model ya da effort değiştirmek için de kullanma; o team-builder-models'in işidir.
+description: Kurulmuş bir projede anayasa preset'lerini (geçici çözüm yok, kod-doküman senkronizasyonu, rol başına hafıza, dil standardı, plan kapısı) açar veya kapatır; plan kapısının artefaktlarını kurar ya da bırakır; eski yapıdaki projeleri tek talimat dosyasına göç ettirir. Tetikleyiciler — "plan kapısını aç", "preset aç", "preset kapat", "anayasa değiştir", "takımı yükselt", "talimatları tek dosyaya taşı", "projeyi yeni yapıya geçir". Yeni rol/routing/ekosistem eklemek için kullanma; kurulu projede bunlar elle yapılır (manifest ve rol dosyası, sonra sync). Model ya da effort değiştirmek için de kullanma; o team-builder-models'in işidir.
 ---
 
 # team-builder-upgrade

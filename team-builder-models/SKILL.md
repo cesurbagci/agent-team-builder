@@ -85,8 +85,10 @@ Hedeflenen her ekosistem için, CLI kuruluysa:
    kendisi çalıştırır. Değilse sync çalıştır:
    `node ~/.claude/skills/team-builder-shared/sync-agent-config.mjs --root <proje>`.
    Doğrulama hatası verirse düzelt ve tekrar çalıştır.
-7. Kullanıcıya söyle: "`llm.json` commit edilmeli — takımın model seçimi o." **Commit ve
-   push'u sen yapma.**
+7. Kullanıcıya söyle: "`llm.json` commit edilmeli — takımın model seçimi o." OpenCode'u
+   ortak dosyaya yazmadıysan ekle: "Her makinede bir kez `team-builder-models` çalıştırın;
+   OpenCode modelini o makine seçer." Setup'tan çağrıldıysan bunu setup'ın özeti söyler.
+   **Commit ve push'u sen yapma.**
 
 ## Akış 2 — Bu makineyi hazırla
 
@@ -100,11 +102,16 @@ sync bir katalog uyarısı verdiğinde.
    - effort modelin desteklediklerinde yok;
    - `upgrade` dolu → emeklilik tarihi ve yerine önerilen model.
 3. Her sorun için katalogdan seçenek sun.
-4. Sor: "Bu makinede farklı olmasını istediğin bir şey var mı? (örneğin daha ucuz bir
+4. OpenCode'u hedefleyen ama modeli çözümlenmeyen her agent için sor: "Bu makinede hangi
+   modelle çalışsın?" `opencode models`'tan seçenek sun; boş bırakmak da bir seçenek
+   (OpenCode varsayılanı). Ortak dosya OpenCode'u her makineye bırakmışsa seçim burada yapılır.
+5. Sor: "Bu makinede farklı olmasını istediğin bir şey var mı? (örneğin daha ucuz bir
    model)"
-5. `.agent-source/llm.local.json`'a **yalnız farkları** yaz: 3. adımda çözülen sorunlar ve 4.
-   adımda istenenler. Hiç fark yoksa **dosyayı oluşturma**.
-6. Sync çalıştır. Uyarı kalmadıysa bitti.
+6. `.agent-source/llm.local.json`'a **yalnız farkları** yaz: 3–5. adımlarda çözülenler ve
+   istenenler. Dosya varsa **var olan girdileri koru** — yalnız değişenleri güncelle ya da
+   ekle; dosya git'e girmediği için silinen bir girdi geri gelmez. Hiç fark yoksa **dosyayı
+   oluşturma**.
+7. Sync çalıştır. Uyarı kalmadıysa bitti.
 
 `llm.local.json` git'e girmez; `.gitignore` bloğunu sync yazar, ona dokunma.
 
@@ -117,7 +124,7 @@ sync bir katalog uyarısı verdiğinde.
    - Takım → `llm.json`. Yalnız bu makine → `llm.local.json`.
 2. Yeni modeli seçtir (katalog ya da takma adlar). Model değiştiyse effort'u **yeniden sor** —
    eski effort başka bir model için seçilmişti.
-3. Dosyayı yaz, sync çalıştır.
+3. Dosyayı yaz — var olan girdileri koru, yalnız değişeni güncelle — ve sync çalıştır.
 4. Ortak dosya değiştiyse commit edilmesi gerektiğini söyle; commit ve push yapma.
 
 ### Yenile — yeni model çıktı, model kalktı

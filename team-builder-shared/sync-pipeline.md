@@ -71,7 +71,8 @@ Her generated dosyanın başına sabit bir header yazılır:
   drift sayar.
 
 `CLAUDE.md` ve `AGENTS.md` bir satır daha taşır: ajan dosyalarının yerelde üretildiğini ve
-eksiklerse sync çalıştırılması gerektiğini söyler. Bu iki dosya git'tedir; repoyu yeni
+eksiklerse team-builder kurulup `team-builder-sync` skill'inin çalıştırılması gerektiğini
+söyler. Bu iki dosya git'tedir; repoyu yeni
 klonlayan ya da ajan dosyalarını takipten çıkaran commit'i çeken kişi önce onları okur.
 
 ## 5. `--check` Drift Davranışı
