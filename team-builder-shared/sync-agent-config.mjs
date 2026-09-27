@@ -783,8 +783,16 @@ function renderGitignore(existing, paths) {
 
 // .gitignore is the user's file and stays in git; sync owns only its block. It
 // is not a generated target, so it stays out of the ledger.
-async function syncGitignore(ctx, manifest) {
+async function syncGitignore(ctx, manifest, warn) {
   const gitignorePath = ctx.resolveRoot('.gitignore')
+  // A checked-out .gitignore can be a symbolic link to anywhere; writing through
+  // it would change a file outside the project. Sync leaves it alone.
+  if (await isSymbolicLink(gitignorePath)) {
+    warn(
+      '! .gitignore is a symbolic link, so sync does not write through it: the agent files and the ledger are not ignored by git. Replace the link with a file and run sync.'
+    )
+    return
+  }
   const existing = (await pathExists(gitignorePath)) ? await readText(gitignorePath) : ''
   const expected = renderGitignore(existing, localOutputPaths(manifest))
   await ctx.writeExpected(gitignorePath, expected, { track: false, keepLineEndings: true })
@@ -799,6 +807,14 @@ async function syncGitignore(ctx, manifest) {
 // ENOENT/ENOTDIR (the path or a parent segment is genuinely gone) means the
 // user actually removed it. Local to reportStaleGenerated — pathExists keeps
 // its existing "any error means absent" semantics for its other callers.
+async function isSymbolicLink(filePath) {
+  try {
+    return (await fs.lstat(filePath)).isSymbolicLink()
+  } catch {
+    return false
+  }
+}
+
 async function ledgerEntryExists(filePath) {
   try {
     await fs.lstat(filePath)
@@ -976,7 +992,7 @@ async function generate({ root, checkOnly, quiet = false, catalogs = null }) {
   await syncProjectFiles(ctx, manifest)
   await syncAgents(ctx, manifest, projectName, layers)
   await syncSkills(ctx, manifest)
-  await syncGitignore(ctx, manifest)
+  await syncGitignore(ctx, manifest, warn)
   await warnAgainstCatalogs(ctx, catalogs, log, warn)
 
   // Staleness is judged against the PREVIOUS ledger, then the new one is written.
@@ -2144,6 +2160,32 @@ async function runSelftest() {
       `a CRLF .gitignore with a current block must pass --check, got ${JSON.stringify(crlfCheck.mismatches)}`
     )
     await fs.writeFile(gitignorePath, `node_modules/\n\n${expectedBlock}`)
+
+    // A .gitignore that is a symbolic link may point outside the project: sync
+    // warns and never writes through it. (Creating a symlink needs extra
+    // rights on Windows, so the case runs elsewhere.)
+    if (process.platform !== 'win32') {
+      const outsideDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tb-outside-'))
+      const outsideFile = path.join(outsideDir, 'config')
+      try {
+        await fs.writeFile(outsideFile, 'keep me\n')
+        await fs.rm(gitignorePath)
+        await fs.symlink(outsideFile, gitignorePath)
+        const linkWarnings = await captureWarnings(fixtureRoot)
+        assert(
+          (await readText(outsideFile)) === 'keep me\n',
+          'sync must not write through a .gitignore symlink'
+        )
+        assert(
+          linkWarnings.some(w => w.includes('.gitignore is a symbolic link')),
+          `a .gitignore symlink must be reported, got: ${linkWarnings.join(' | ') || '(none)'}`
+        )
+      } finally {
+        await fs.rm(gitignorePath, { force: true })
+        await fs.writeFile(gitignorePath, `node_modules/\n\n${expectedBlock}`)
+        await fs.rm(outsideDir, { recursive: true, force: true })
+      }
+    }
 
     // The local LLM file changes what the agent files say, never which files
     // exist — so the block is the same on every machine.

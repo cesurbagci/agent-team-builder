@@ -173,6 +173,8 @@ effort başka bir model için seçilmiştir.
   dosyalarından** (agent × etkin hedef) oluşur; yollar sıralanır. Yerel dosya içeriği etkilemez, dosya kümesini etkilemez; blok herkeste aynı
   çıkar. Agent eklenip çıkarıldığında kendiliğinden güncellenir.
 - Bloğun dışına dokunulmaz. `.gitignore` yoksa yalnız blokla oluşturulur.
+- `.gitignore` sembolik bağsa sync onun içinden yazmaz ve uyarır: bağ proje dışını
+  gösterebilir.
 - `.codex/agent-definitions/` model taşımaz; commit edilmeye devam eder.
 - **Defter yerel olur.** Commit edilirse şu olur: takım arkadaşı bir agent'ı kaldırır,
   dosyasını siler, defteri commit eder; ben çektiğimde diskimdeki eski ajan dosyası

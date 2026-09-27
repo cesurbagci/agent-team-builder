@@ -91,6 +91,8 @@ Sync bunları `.gitignore`'da işaretli bir blokta tutar:
 - Liste yalnız manifest'ten hesaplanır. Yerel dosya içeriği değiştirir, dosya kümesini
   değiştirmez; blok **her makinede aynıdır**.
 - Bloğun dışına dokunulmaz. Başlangıç işareti olup bitiş işareti yoksa sync **durur**.
+- `.gitignore` sembolik bağsa sync onun içinden yazmaz ve uyarır — bağ proje dışını
+  gösterebilir; yerel çıktı o durumda yok sayılmaz.
 - `.codex/agent-definitions/` model taşımaz; git'te kalır.
 - `--check`: eksik yerel çıktı **kayma değildir** — CI'da ve taze klonda hiç yoktur; bilgi
   satırıyla söylenir. Var olup farklı olan yerel çıktı kaymadır.

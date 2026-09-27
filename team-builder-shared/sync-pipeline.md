@@ -203,6 +203,8 @@ Sync bu listeyi `.gitignore`'da işaretli bir blokta tutar:
 - Blok varsa yerinde yenilenir; yoksa dosyanın sonuna bir boş satırla eklenir; `.gitignore`
   yoksa yalnız blokla oluşturulur. **Bloğun dışına dokunulmaz.**
 - Başlangıç işareti olup bitiş işareti yoksa sync durur: değiştirilecek aralık tanımsızdır.
+- `.gitignore` sembolik bağsa sync onun içinden yazmaz ve uyarır: bağ proje dışını
+  gösterebilir.
 - `.gitignore` kullanıcının dosyasıdır ve git'tedir; deftere girmez. `--check` onu yazmaz,
   güncel olmayan blok kayma olarak raporlanır.
 
