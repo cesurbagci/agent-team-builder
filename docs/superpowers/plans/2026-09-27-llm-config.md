@@ -3743,17 +3743,21 @@ L="$(mktemp -d)"; git -C "$L" init -q
 mkdir -p "$L/.agent-source/agents" "$L/.agent-source/project"
 cat > "$L/.agent-source/agents/manifest.json" <<'J'
 { "targetsDefault": ["claude", "codex"], "docLanguage": "tr", "lead": "architect",
-  "routing": [{ "path": "docs/**", "role": "architect" }],
+  "routing": [{ "path": "docs/**", "role": "architect" }, { "path": "notes/**", "role": "writer" }],
   "agents": [
     { "name": "architect", "description": "Mimari.", "writesCode": false, "sandbox_mode": "workspace-write",
       "model": "opus", "model_reasoning_effort": "high", "consults": [], "extra_instructions": [] },
     { "name": "developer", "description": "Kod yazar.", "writesCode": true, "sandbox_mode": "workspace-write",
-      "model": "sonnet", "consults": ["architect"], "extra_instructions": [] } ] }
+      "model": "sonnet", "consults": ["architect"], "extra_instructions": [] },
+    { "name": "writer", "description": "Belge yazar.", "targets": ["claude"], "writesCode": false,
+      "sandbox_mode": "workspace-write", "model": "haiku", "model_reasoning_effort": "low",
+      "consults": [], "extra_instructions": [] } ] }
 J
 printf -- '---\nname: architect\ndescription: Mimari.\nmodel: opus\neffort: low\n---\n\n# Architect\n' > "$L/.agent-source/agents/architect.md"
 printf -- '---\nname: developer\ndescription: Kod yazar.\nmodel: haiku\n---\n\n# Developer\n' > "$L/.agent-source/agents/developer.md"
+printf -- '---\nname: writer\ndescription: Belge yazar.\nmodel: haiku\n---\n\n# Writer\n' > "$L/.agent-source/agents/writer.md"
 mkdir -p "$L/.claude/agents" "$L/.codex/agents"
-printf 'eski\n' > "$L/.claude/agents/architect.md"; printf 'eski\n' > "$L/.claude/agents/developer.md"
+printf 'eski\n' > "$L/.claude/agents/architect.md"; printf 'eski\n' > "$L/.claude/agents/developer.md"; printf 'eski\n' > "$L/.claude/agents/writer.md"
 printf 'eski\n' > "$L/.codex/agents/architect.toml"; printf 'eski\n' > "$L/.codex/agents/developer.toml"
 printf -- '---\nname: mine\n---\n' > "$L/.claude/agents/mine.md"
 git -C "$L" add -A && git -C "$L" commit -qm legacy
@@ -3761,7 +3765,7 @@ echo "$L"
 ```
 
 Okuyucudan iki şey iste ve kullanıcı cevaplarını sen ver:
-1. **Göç.** Beklenen: `developer`'da manifest `sonnet`, rol dosyası `haiku` — ikisi de gösterilip sorulur (cevap: `haiku`); `architect`'in rol dosyasındaki `effort: low` `agents.architect.claude.effort` olur ve yenilenen `.claude/agents/architect.md`'de `effort: low` durur; `architect`'in Codex `model`'i taşınmaz (bir Claude takma adıydı); `.claude/agents/mine.md` `git rm --cached` listesine **girmez**; sonunda `--check` temiz.
+1. **Göç.** Beklenen: `developer`'da manifest `sonnet`, rol dosyası `haiku` — ikisi de gösterilip sorulur (cevap: `haiku`); `architect`'in rol dosyasındaki `effort: low` `agents.architect.claude.effort` olur ve yenilenen `.claude/agents/architect.md`'de `effort: low` durur; `architect`'in Codex `model`'i taşınmaz (bir Claude takma adıydı); `writer` yalnız Claude'u hedefliyor: manifest'teki `model_reasoning_effort: low` hiçbir yerde çalışmıyordu — taşınmaz, planda söylenir, `llm.json`'da `agents.writer.codex` yoktur ve sync hata vermez; `.claude/agents/mine.md` `git rm --cached` listesine **girmez**; sonunda `--check` temiz ve okuyucu commit'e yeni `llm.json`'ın da girmesi gerektiğini söyler.
 2. **Akış 2**, göçten sonra: "Bu makinede farklı bir şey ister misin?" (cevap: "developer Claude'da sonnet olsun") → `llm.local.json` yalnız o farkı taşır; ortak dosyadaki `haiku` yerinde kalır.
 
 Okuyucunun takıldığı, yanlış yaptığı ya da talimatın iki türlü okunabildiği her yeri kaydet. Her birini ilgili dosyada düzelt ve provayı düzeltmeden sonra tekrarla. E kapsamında bu prova, doğrulayıcıların göremediği sekiz boşluk buldu.

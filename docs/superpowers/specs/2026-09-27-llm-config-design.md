@@ -322,6 +322,11 @@ ise `opencode_model` ile doğru ayarlanmış agent'ları uyarısız başka model
 **İlke: göç, her ekosistemin bugün fiilen çalıştırdığını korur; bilinen yanlışları
 korumaz.** Göç, takımın commit ettiği değerlerden geldiği için **ortak** dosyaya yazılır.
 
+Tablo yalnız agent'ın **etkin hedeflerindeki** ekosistemlere uygulanır (`targets`, yoksa
+`targetsDefault`). Hedeflenmeyen bir ekosistemin değeri hiçbir yerde çalışmıyordu — eski
+yapı `model_reasoning_effort`'u her role yazıyordu — ve ortak dosyada hedeflenmeyen
+ekosistem girdisi hatadır (L3); bu değer taşınmaz, kullanıcıya gösterilen planda söylenir.
+
 | Bugün | Göçte |
 |---|---|
 | Claude: rol dosyasındaki `model:` | `claude.model`. Manifest'teki `model` farklıysa ikisi gösterilir, kullanıcı seçer. Rol dosyasında `model:` yoksa Claude varsayılanla çalışıyordu — alan boş kalır |
@@ -340,7 +345,9 @@ Ardından katalog kontrolü çalışır (örneğin emeklilik uyarısı).
 3. Üretilen ajan dosyalarını ve defteri `git rm --cached` ile takipten çıkar — diskteki
    dosyalar yerinde kalır.
 4. Sync çalıştır — `.gitignore` bloğunu yazar, ajan dosyalarını yeniden üretir.
-5. Skill commit etmez. Göçün tamamı tek bir commit'tir, git ile geri alınabilir.
+5. Skill commit etmez. Göçün tamamı tek bir commit'tir, git ile geri alınabilir. Skill,
+   commit'e yeni `llm.json`'ın da girmesi gerektiğini söyler: dosya henüz takip edilmediği
+   için `git commit -a` onu almaz ve unutulursa takım sessizce varsayılan modellerle çalışır.
 
 **Takım arkadaşlarına etkisi.** Git, takibi bırakılan dosyaları commit'i çeken herkesin
 diskinden **siler**. Göç commit'ini çeken herkes bir kez sync çalıştırmalıdır;

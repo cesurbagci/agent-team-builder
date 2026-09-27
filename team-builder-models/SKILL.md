@@ -36,6 +36,8 @@ Hedeflenen her ekosistem için, CLI kuruluysa:
 | OpenCode | `opencode models` | Satır başına `sağlayıcı/model` — yalnız **bu makinede yapılandırılmış** sağlayıcılar |
 | Claude | — | Katalog yok. Takma adlar: `opus`, `sonnet`, `haiku`, `fable` — hep en yeni sürümü gösterirler. Sürümlü tam ad gerekiyorsa `https://code.claude.com/docs/en/model-config`'ten oku |
 
+- Komutları **proje kökünde** çalıştır: OpenCode, projenin `opencode.json`'undaki
+  sağlayıcıları yalnız orada listeler; başka dizinde geçerli bir model yok görünür.
 - CLI kurulu değilse o ekosistem için katalogdan öneri sunamazsın. Kullanıcıya söyle ve adı
   ondan al.
 - **Ad uydurma.** Katalogda ya da belgede görmediğin bir adı öneri olarak sunma.
@@ -49,6 +51,10 @@ Hedeflenen her ekosistem için, CLI kuruluysa:
 - Effort'u **modelden sonra** sor ve yalnız o modelin desteklediği seviyeleri sun: Codex'te
   `supported_reasoning_levels`; Claude'da `low`, `medium`, `high`, `xhigh`, `max` —
   belge "kullanılabilir seviyeler modele bağlı" diyor, emin değilsen `high`'ı öner.
+- Bir girdiye model yazarken effort'u da **aynı girdiye** yaz — `defaults`'ta ya da
+  `agents`'ta, hangi dosyada olursa olsun. Effort, modeli seçen katmandan daha genel bir
+  katmandan gelmez (`llm-config.md`, *Çözümleme*): alttaki effort'u korumak istiyorsan onu
+  bu girdiye kopyala; yazmazsan ekosistemin varsayılanı çalışır.
 
 ## Akış 1 — Ortak dosyayı kur
 
@@ -132,7 +138,11 @@ Güncellenmiş team-builder bu yapıda sync'i durdurur.
 
 **İlke: her ekosistemin bugün fiilen çalıştırdığını koru; bilinen yanlışları koruma.**
 
-1. Her agent için bugün ne çalıştığını çıkar:
+1. Her agent için bugün ne çalıştığını çıkar. Satırları yalnız agent'ın **etkin
+   hedeflerindeki** ekosistemler için uygula (`targets`, yoksa kök `targetsDefault`):
+   hedeflenmeyen bir ekosistemin değeri hiçbir yerde çalışmıyordu — eski yapı
+   `model_reasoning_effort`'u her role yazıyordu. Onu **taşıma** ve planda söyle; taşınırsa
+   sync onu hata olarak reddeder.
 
    | Bugün | Göçte |
    |---|---|
@@ -156,7 +166,7 @@ Güncellenmiş team-builder bu yapıda sync'i durdurur.
       dosyalar yerinde kalır:
 
       ```bash
-      git rm --cached --ignore-unmatch -q .agent-source/generated-files.json <ajan dosyaları>
+      git -C <proje> rm --cached --ignore-unmatch -q .agent-source/generated-files.json <ajan dosyaları>
       ```
 
       Ajan dosyalarının listesini manifest'ten kur: her agent için etkin hedeflerine göre
@@ -167,6 +177,10 @@ Güncellenmiş team-builder bu yapıda sync'i durdurur.
    6. `--check` çalıştır; temiz çıkmalı.
 5. Kullanıcıya söyle:
    - Göçün tamamı **tek bir commit**tir ve git ile geri alınabilir. Commit'i sen yapma.
+     Commit'e girmesi gerekenler: **yeni** `.agent-source/llm.json`, manifest, rol
+     dosyaları, `.gitignore`, sync'in yeniden ürettiği git'teki dosyalar ve takipten
+     çıkarılan dosyalar. `llm.json` henüz takip edilmediği için `git commit -a` onu
+     **almaz**; unutulursa takım sessizce varsayılan modellerle çalışır.
    - **Bu commit'i çeken her takım arkadaşı bir kez sync çalıştırmalı:** git, takibi
      bırakılan dosyaları commit'i çekenin diskinden siler.
    - Takımdaki herkes team-builder'ın yeni sürümünü kurmalı; eski sürüm `llm.json`'ı
