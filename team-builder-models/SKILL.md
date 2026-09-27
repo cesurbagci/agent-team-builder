@@ -154,7 +154,7 @@ Güncellenmiş team-builder bu yapıda sync'i durdurur.
    |---|---|
    | Claude: rol dosyasındaki `model:` | `agents.<ad>.claude.model`. Manifest'teki `model` farklıysa **ikisini de göster**, kullanıcı seçsin — Claude rol dosyasındakini çalıştırıyordu. Rol dosyasında `model:` yoksa Claude varsayılanla çalışıyordu: alanı boş bırak |
    | Claude: rol dosyasındaki `effort:` | `agents.<ad>.claude.effort`. Team-builder bunu hiç yazmadı ama rol dosyası olduğu gibi kopyalandığı için elle eklenen satır Claude'a ulaşıyordu. Satır yoksa Claude oturumun effort'uyla çalışıyordu: alanı boş bırak |
-   | Codex: manifest'teki `model` | Yalnız **Codex kataloğunda varsa** `agents.<ad>.codex.model`. Claude hedefli agent'larda bu bir Claude takma adıydı (`opus`) ve Codex'e yanlış gidiyordu — **taşıma**, katalogdan öner (Akış 1'deki gibi yalnız `visibility: list` ve `upgrade`'i boş modeller; bu dosya takımın). Katalog okunamıyorsa kullanıcıya sor |
+   | Codex: manifest'teki `model` | Yalnız **Codex kataloğunda varsa** `agents.<ad>.codex.model`. Claude hedefli agent'larda bu bir Claude takma adıydı (`opus`) ve Codex'e yanlış gidiyordu — **taşıma**. Katalogdan seçenek sun (Akış 1'deki gibi yalnız `visibility: list` ve `upgrade`'i boş modeller; bu dosya takımın) ve kullanıcıya seçtir — boş bırakmak da bir seçenektir, kendin seçme. Katalog okunamıyorsa adı kullanıcıya sor |
    | Codex: `model_reasoning_effort` | `agents.<ad>.codex.effort` — model taşınmasa da: Codex bu effort'la çalışıyordu. Modelsiz bir effort ekosistemin varsayılan modeline uygulanır ve katalogda denetlenmez |
    | OpenCode: `opencode_model` | `agents.<ad>.opencode.model` |
    | OpenCode: `opencode_model` yok | Eski sürüm kodda sabit bir yedek haritadan eskimiş bir ad yazıyordu — **taşıma**; `opencode models`'tan öner ya da boş bırak (OpenCode varsayılanı) |
@@ -164,7 +164,9 @@ Güncellenmiş team-builder bu yapıda sync'i durdurur.
 3. Planı sade dille göster ve **onay al**. Onaysız hiçbir dosya değişmez.
 4. Onaydan sonra, bu sırayla:
    1. `.agent-source/llm.json`'ı yaz. Değerler takımın commit ettiği dosyalardan geldiği
-      için **ortak** dosyaya.
+      için **ortak** dosyaya. Her değeri kendi agent'ının girdisine (`agents.<ad>`) yaz;
+      aynı olanları `defaults`'a **toplama** — eski yapıda her değer yalnız bir agent'ındı,
+      `defaults` ise sonradan eklenecek agent'lara da geçer.
    2. Manifest'teki her agent'tan `model`, `model_reasoning_effort` ve `opencode_model`
       alanlarını sil.
    3. Her `.agent-source/agents/<ad>.md` frontmatter'ından `model:` ve `effort:`
