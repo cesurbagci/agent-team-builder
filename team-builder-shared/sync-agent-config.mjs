@@ -102,27 +102,27 @@ async function assertInsideProject(directory, realRoot, relative) {
 
 // …and the file itself is replaced by renaming a freshly created sibling over
 // it: a link with that name is replaced, never followed — also a link that
-// appears after the check above. The sibling takes over an existing file's
-// mode, so a mirrored script keeps its executable bit.
+// appears after the check above. The sibling is written and given an existing
+// file's mode through its own handle, so a mirrored script keeps its
+// executable bit and nothing is done to the sibling by name. If the rename
+// fails, sync fails: rewriting in place would follow a link again.
 async function replaceFile(filePath, data) {
   const temporary = path.join(
     path.dirname(filePath),
     `.${path.basename(filePath)}.${randomUUID()}.tmp`
   )
-  await fs.writeFile(temporary, data, { flag: 'wx' })
+  const handle = await fs.open(temporary, 'wx')
   try {
-    const previous = await fs.lstat(filePath).catch(() => null)
-    if (previous?.isFile()) await fs.chmod(temporary, previous.mode & 0o7777)
+    try {
+      await handle.writeFile(data)
+      const previous = await fs.lstat(filePath).catch(() => null)
+      if (previous?.isFile()) await handle.chmod(previous.mode & 0o7777)
+    } finally {
+      await handle.close()
+    }
     await fs.rename(temporary, filePath)
   } catch (error) {
     await fs.rm(temporary, { force: true })
-    // Windows refuses to replace a file another process holds open. A regular
-    // file — not a link — can still be rewritten in place.
-    const busy = ['EPERM', 'EACCES', 'EBUSY'].includes(error.code)
-    if (process.platform === 'win32' && busy && !(await isSymbolicLink(filePath))) {
-      await fs.writeFile(filePath, data)
-      return
-    }
     throw error
   }
 }
@@ -239,8 +239,22 @@ function createContext({ root, checkOnly }) {
     writes.push(toPosix(filePath))
   }
 
+  // A source whose text is copied into generated output must be inside the
+  // project too: a checked-out link — the file itself or a directory above it —
+  // would otherwise copy a private file from elsewhere into the repository.
+  async function readSourceText(sourcePath) {
+    const real = await fs.realpath(sourcePath)
+    const root = await realRoot()
+    if (real !== root && !real.startsWith(root + path.sep)) {
+      throw new Error(
+        `Refusing to read ${toPosix(sourcePath)}: it resolves to ${real}, outside the project — is it a symbolic link?`
+      )
+    }
+    return readText(real)
+  }
+
   async function copyExpected(sourcePath, targetPath, transform = text => text) {
-    const source = await readText(sourcePath)
+    const source = await readSourceText(sourcePath)
     await writeExpected(targetPath, transform(source))
   }
 
@@ -2845,6 +2859,64 @@ async function runWriteContainmentSelftest() {
       (await fs.lstat(path.join(project, 'CLAUDE.md'))).isFile() &&
         (await readText(path.join(project, 'CLAUDE.md'))).includes('REPOSITORY_TEXT'),
       'the link must be replaced by the generated file'
+    )
+
+    // A source whose text reaches the output must be inside the project: a
+    // link to a private file elsewhere stops sync before its text is copied —
+    // whether the source file or its directory is the link.
+    const secret = path.join(outside, 'secret')
+    await fs.writeFile(secret, 'TOP-SECRET\n')
+    const projectClaude = path.join(project, '.agent-source', 'project', 'CLAUDE.md')
+    await fs.rm(projectClaude)
+    await fs.symlink(secret, projectClaude)
+    let sourceRefused = null
+    try {
+      await silentGenerate({ root: project, checkOnly: false })
+    } catch (error) {
+      sourceRefused = error
+    }
+    assert(
+      sourceRefused !== null && sourceRefused.message.includes('outside the project'),
+      `a source file linking outside the project must stop sync, got ${sourceRefused ? sourceRefused.message : 'no error'}`
+    )
+    assert(
+      !(await readText(path.join(project, 'CLAUDE.md'))).includes('TOP-SECRET'),
+      'a linked source must never reach generated output'
+    )
+    await fs.rm(projectClaude)
+    await fs.writeFile(projectClaude, 'echo REPOSITORY_TEXT\n')
+    const outsideSkills = path.join(outside, 'skills')
+    await fs.mkdir(path.join(outsideSkills, 'leak'), { recursive: true })
+    await fs.writeFile(path.join(outsideSkills, 'leak', 'SKILL.md'), 'TOP-SECRET\n')
+    const skillsSource = path.join(project, '.agent-source', 'skills')
+    await fs.symlink(outsideSkills, skillsSource)
+    let skillsRefused = null
+    try {
+      await silentGenerate({ root: project, checkOnly: false })
+    } catch (error) {
+      skillsRefused = error
+    }
+    assert(
+      skillsRefused !== null && skillsRefused.message.includes('outside the project'),
+      `a skills directory linking outside the project must stop sync, got ${skillsRefused ? skillsRefused.message : 'no error'}`
+    )
+    assert(
+      !(await pathExists(path.join(project, '.claude', 'skills', 'leak', 'SKILL.md'))),
+      'a linked skills directory must never be mirrored'
+    )
+    await fs.rm(skillsSource)
+
+    // Replacing a file keeps its mode: a mirrored script stays executable.
+    await fs.mkdir(path.join(skillsSource, 'tool'), { recursive: true })
+    await fs.writeFile(path.join(skillsSource, 'tool', 'run.sh'), 'echo one\n')
+    await silentGenerate({ root: project, checkOnly: false })
+    const mirror = path.join(project, '.claude', 'skills', 'tool', 'run.sh')
+    await fs.chmod(mirror, 0o755)
+    await fs.writeFile(path.join(skillsSource, 'tool', 'run.sh'), 'echo two\n')
+    await silentGenerate({ root: project, checkOnly: false })
+    assert(
+      (await readText(mirror)) === 'echo two\n' && ((await fs.stat(mirror)).mode & 0o777) === 0o755,
+      `a rewritten file must keep its mode, got ${((await fs.stat(mirror)).mode & 0o777).toString(8)}`
     )
 
     // A directory on the way that resolves outside the project stops sync.

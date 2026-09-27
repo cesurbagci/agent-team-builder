@@ -124,10 +124,20 @@ repodaki metni proje dışındaki bir dosyaya — örneğin bir kabuk başlangı
   sonra yapılır.
 - Dosyanın kendisi, yanında yeni açılan geçici bir dosyanın yeniden adlandırılmasıyla
   değiştirilir: o isimdeki bir bağ izlenmez, yerine gerçek dosya konur; bağın hedefi değişmez.
-  Var olan dosyanın izinleri korunur. Windows'ta açık tutulan bir dosya yeniden
-  adlandırılamazsa, bağ değilse yerinde yazılır.
+  Var olan dosyanın izinleri korunur. Yeniden adlandırma başarısız olursa (örneğin Windows'ta
+  dosyayı açık tutan bir süreç varsa) sync hata verir; yerinde yazmaz, çünkü yerinde yazmak bir
+  bağı yeniden izlerdi.
+- İçeriği üretilen bir dosyaya kopyalanan kaynak (`.agent-source/project/*`, rol dosyaları,
+  `skills/`), bağlar çözülünce proje içinde değilse sync **durur**: yoksa repodaki bir bağ,
+  makinedeki özel bir dosyayı repoya kopyalatırdı.
 - `.gitignore` sembolik bağsa okunmaz ve yazılmaz; sync uyarır (§11). Okuma, destekleyen
   platformlarda bağı izlemeyen bir açılışla yapılır.
+
+Bu kurallar repodaki içeriğe — commit'lenmiş bağlara — karşıdır. Sync çalışırken proje
+dizinini aynı anda değiştiren yerel bir süreçle yarışı ise tam kapatmazlar: Node, bir dizine
+tutunarak (`openat` gibi) dosya açmayı sunmaz. Böyle bir süreç, kontrol ile yazma arasında
+bir dizini bağa çevirirse yazma proje dışına kayabilir; Windows'ta `.gitignore` okuması da
+aynı yarışa açıktır.
 
 ## 7. `.claude/settings.local.json` Muafiyeti
 
