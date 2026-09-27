@@ -81,8 +81,9 @@ GENERATED'dır**; elle düzenlenmez, kaynaktan üretilir.
   `["claude","codex"]`. **Varsayılan ekosistem yoktur** — hedef her zaman açık bir seçimdir;
   Claude seçilmediyse `CLAUDE.md` ve `.claude/*` üretilmez.
 - `manifest.json`, Codex target'ı olan her agent için bir `*.toml` üretir; bu TOML
-  metadata (`name`, `description`, `model_reasoning_effort`, `sandbox_mode`,
-  `nickname_candidates`) ile `developer_instructions` bloğunu içerir.
+  manifest metadata'sını (`name`, `description`, `sandbox_mode`, `nickname_candidates`),
+  `llm.json`'dan çözümlenen `model` ve `model_reasoning_effort`'u (bkz. `llm-config.md`) ve
+  `developer_instructions` bloğunu içerir.
 
 ## Drift & Idempotentlik (özet)
 
