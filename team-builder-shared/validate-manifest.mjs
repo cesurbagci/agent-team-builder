@@ -17,8 +17,9 @@ const NAME_SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const TARGETS = ["claude", "codex", "opencode"];
 const TOPOLOGIES = ["subagent", "native"];
 const FOCUS = ["performance", "code-design", "ui-ux", "accessibility", "security", "testing"];
-const MODELS = ["opus", "sonnet", "haiku"];
-const EFFORTS = ["low", "medium", "high"];
+// Model and effort live in .agent-source/llm.json (llm-config.md). A leftover
+// field here would be silently ignored by the generator.
+const LEGACY_MODEL_FIELDS = ["model", "model_reasoning_effort", "opencode_model"];
 const ENFORCEMENTS = ["mandatory", "when-needed"];
 const CONSTITUTION_FIELDS = [
   "noWorkaround",
@@ -251,39 +252,12 @@ export function validate(doc) {
       );
     }
 
-    // model: verildiyse ve claude hedefliyse {opus,sonnet,haiku}
-    const targetsClaude = (effectiveTargets ?? []).includes("claude");
-    if (a && a.model !== undefined && targetsClaude) {
-      if (!MODELS.includes(a.model)) {
-        errors.push(`${label}: model geçersiz "${a.model}" (opus|sonnet|haiku)`);
-      }
-    }
-
-    // model_reasoning_effort: verildiyse {low,medium,high}
-    if (a && a.model_reasoning_effort !== undefined) {
-      if (!EFFORTS.includes(a.model_reasoning_effort)) {
+    for (const field of LEGACY_MODEL_FIELDS) {
+      if (a && a[field] !== undefined) {
         errors.push(
-          `${label}: model_reasoning_effort geçersiz "${a.model_reasoning_effort}" (low|medium|high)`
+          `${label}: "${field}" artık .agent-source/llm.json'da — team-builder-models ile göç et`
         );
       }
-    }
-
-    // opencode_model: verildiyse provider/model formatında string olmalı
-    const targetsOpencode = (effectiveTargets ?? []).includes("opencode");
-    if (a && a.opencode_model !== undefined) {
-      if (
-        typeof a.opencode_model !== "string" ||
-        !/^[^/]+\/[^/]+/.test(a.opencode_model)
-      ) {
-        errors.push(
-          `${label}: opencode_model "provider/model" formatında olmalı (örn. anthropic/claude-sonnet-4-5)`
-        );
-      }
-    } else if (targetsOpencode && a.model === undefined) {
-      // opencode hedefli ama ne opencode_model ne model var → fallback haritası da çalışmaz.
-      errors.push(
-        `${label}: opencode hedefli agent için opencode_model veya model belirtilmeli`
-      );
     }
 
     // skills[]: name zorunlu, enforcement {mandatory,when-needed}
@@ -504,8 +478,8 @@ export function validate(doc) {
 if (process.argv.includes("--selftest")) {
   let ok = true;
 
-  // 1) invalid-reddedilir: targets {claude,codex} dışı, model geçersiz, lead yok,
-  //    routing.role tanımsız agent, enforcement geçersiz, constitution boolean değil.
+  // 1) invalid-reddedilir: targets {claude,codex} dışı, lead yok, routing.role
+  //    tanımsız agent, enforcement geçersiz, constitution boolean değil.
   const bad = {
     lead: "ghost",
     topology: "mesh",
@@ -517,8 +491,6 @@ if (process.argv.includes("--selftest")) {
         name: "architect",
         description: "rol aciklamasi",
         targets: ["claude", "gpt"],
-        model: "ultra",
-        model_reasoning_effort: "extreme",
         skills: [{ name: "x", enforcement: "always" }],
       },
     ],
@@ -554,9 +526,6 @@ if (process.argv.includes("--selftest")) {
         name: "architect",
         description: "rol aciklamasi",
         targets: ["claude", "codex", "opencode"],
-        model: "opus",
-        opencode_model: "anthropic/claude-opus-4",
-        model_reasoning_effort: "high",
         writesCode: false,
         skills: [{ name: "architecture-advisor", enforcement: "when-needed" }],
       },
@@ -564,8 +533,6 @@ if (process.argv.includes("--selftest")) {
         name: "backend-developer",
         description: "rol aciklamasi",
         targets: ["claude", "codex"],
-        model: "sonnet",
-        model_reasoning_effort: "high",
         skills: [{ name: "backend-patterns", enforcement: "mandatory" }],
       },
     ],
@@ -581,13 +548,12 @@ if (process.argv.includes("--selftest")) {
   }
 
   // 3) opencode-only kabul edilir: targetsDefault ["opencode"], agent'lar targets
-  //    yazmaz. Claude model kuralı UYGULANMAMALI (model alanı hiç yok), OpenCode
-  //    kuralı targetsDefault üzerinden UYGULANMALI.
+  //    yazmaz; hedef targetsDefault'tan gelir.
   const opencodeOnly = {
     targetsDefault: ["opencode"],
     lead: "architect",
     agents: [
-      { name: "architect", description: 'rol aciklamasi', opencode_model: "openai/gpt-5", writesCode: false },
+      { name: "architect", description: 'rol aciklamasi', writesCode: false },
     ],
   };
   try {
@@ -600,20 +566,17 @@ if (process.argv.includes("--selftest")) {
     ok = false;
   }
 
-  // 4) targetsDefault üzerinden opencode hedefliyken model/opencode_model yoksa
-  //    reddedilmeli (eskiden targetsDefault yok sayıldığı için kaçıyordu).
-  let missingModelRejected = false;
+  // 4) OpenCode hedefli bir agent'ın hiçbir yerde modeli olmaması geçerlidir:
+  //    model .agent-source/llm.json'da durur, orada da yoksa OpenCode kendi
+  //    varsayılanını kullanır.
   try {
     validate({
       targetsDefault: ["opencode"],
       lead: "architect",
       agents: [{ name: "architect" , description: 'rol aciklamasi',}],
     });
-  } catch {
-    missingModelRejected = true;
-  }
-  if (!missingModelRejected) {
-    console.error("SELFTEST FAIL: opencode target without model accepted");
+  } catch (e) {
+    console.error("SELFTEST FAIL: opencode target without a model rejected:", e.message);
     ok = false;
   }
 
@@ -638,8 +601,8 @@ if (process.argv.includes("--selftest")) {
     targetsDefault: ["claude"],
     routing: [{ path: "src/**", role: "dev" }],
     agents: [
-      { name: "dev", description: 'rol aciklamasi', model: "sonnet" },
-      { name: "architect", description: 'rol aciklamasi', model: "opus", writesCode: false },
+      { name: "dev", description: 'rol aciklamasi' },
+      { name: "architect", description: 'rol aciklamasi', writesCode: false },
     ],
   });
 
@@ -672,6 +635,18 @@ if (process.argv.includes("--selftest")) {
       ok = false;
     }
   };
+
+  // Model and effort moved to .agent-source/llm.json. Each old field must stop
+  // validation and name the migration instead of being silently ignored.
+  for (const [field, value] of [
+    ["model", "claude-opus-5-5"],
+    ["model_reasoning_effort", "high"],
+    ["opencode_model", "openai/gpt-5"],
+  ]) {
+    const doc = gateBase();
+    doc.agents[0][field] = value;
+    expectReject(`legacy field ${field}`, doc, "team-builder-models");
+  }
 
   // V1 — constitution.planGate must be boolean.
   expectReject(
@@ -755,8 +730,8 @@ if (process.argv.includes("--selftest")) {
       planGate: { planReviewer: "architect", codeReviewer: null },
       routing: [{ path: "src/**", role: "dev" }],
       agents: [
-        { name: "dev", description: 'rol aciklamasi', model: "sonnet" },
-        { name: "architect", description: 'rol aciklamasi', model: "opus", writesCode: 0 },
+        { name: "dev", description: 'rol aciklamasi' },
+        { name: "architect", description: 'rol aciklamasi', writesCode: 0 },
       ],
     },
     "writesCode boolean olmalı"
@@ -773,10 +748,9 @@ if (process.argv.includes("--selftest")) {
       planGate: { planReviewer: "architect", codeReviewer: null },
       routing: [{ path: "src/**", role: "dev" }],
       agents: [
-        { name: "dev", description: 'rol aciklamasi', model: "sonnet" },
+        { name: "dev", description: 'rol aciklamasi' },
         {
           name: "architect", description: 'rol aciklamasi',
-          model: "opus",
           writesCode: false,
           sandbox_mode: "danger-full-access",
         },
@@ -796,8 +770,8 @@ if (process.argv.includes("--selftest")) {
       planGate: { planReviewer: "architect", codeReviewer: null },
       routing: [{ path: "src/**", role: "dev" }],
       agents: [
-        { name: "dev", description: 'rol aciklamasi', model: "sonnet", sandbox_mode: "read-only" },
-        { name: "architect", description: 'rol aciklamasi', model: "opus", writesCode: false },
+        { name: "dev", description: 'rol aciklamasi', sandbox_mode: "read-only" },
+        { name: "architect", description: 'rol aciklamasi', writesCode: false },
       ],
     },
     "writesCode false olmalı"
@@ -811,10 +785,9 @@ if (process.argv.includes("--selftest")) {
       targetsDefault: ["claude"],
       routing: [{ path: "src/**", role: "dev" }],
       agents: [
-        { name: "dev", description: 'rol aciklamasi', model: "sonnet" },
+        { name: "dev", description: 'rol aciklamasi' },
         {
           name: "doc-writer", description: 'rol aciklamasi',
-          model: "haiku",
           writesCode: false,
           sandbox_mode: "workspace-write",
         },
@@ -835,10 +808,9 @@ if (process.argv.includes("--selftest")) {
         { path: "src/auth/**", role: "security-reviewer" },
       ],
       agents: [
-        { name: "dev", description: 'rol aciklamasi', model: "sonnet" },
+        { name: "dev", description: 'rol aciklamasi' },
         {
           name: "security-reviewer", description: 'rol aciklamasi',
-          model: "opus",
           writesCode: false,
           sandbox_mode: "read-only",
         },
@@ -855,7 +827,7 @@ if (process.argv.includes("--selftest")) {
       {
         targetsDefault: ["claude"],
         routing: [{ path: "src/**", role: "dev" }],
-        agents: [{ name: "dev", model: "sonnet", description }],
+        agents: [{ name: "dev", description }],
       },
       "description dolu bir string olmalı"
     );
@@ -871,10 +843,9 @@ if (process.argv.includes("--selftest")) {
       { path, role: "doc-writer" },
     ],
     agents: [
-      { name: "dev", description: 'rol aciklamasi', model: "sonnet" },
+      { name: "dev", description: 'rol aciklamasi' },
       {
         name: "doc-writer", description: 'rol aciklamasi',
-        model: "haiku",
         writesCode: false,
         sandbox_mode: "workspace-write",
       },
@@ -933,8 +904,8 @@ if (process.argv.includes("--selftest")) {
           { path: b, role: "other" },
         ],
         agents: [
-          { name: "dev", description: "rol aciklamasi", model: "sonnet" },
-          { name: "other", description: "rol aciklamasi", model: "sonnet" },
+          { name: "dev", description: "rol aciklamasi" },
+          { name: "other", description: "rol aciklamasi" },
         ],
       },
       "aynı kapsamı gösteriyor"
@@ -952,8 +923,8 @@ if (process.argv.includes("--selftest")) {
         { path: "a/b/*", role: "other" },
       ],
       agents: [
-        { name: "dev", description: "rol aciklamasi", model: "sonnet" },
-        { name: "other", description: "rol aciklamasi", model: "sonnet" },
+        { name: "dev", description: "rol aciklamasi" },
+        { name: "other", description: "rol aciklamasi" },
       ],
     },
     "kesişiyor ama biri ötekini kapsamıyor"
@@ -970,8 +941,8 @@ if (process.argv.includes("--selftest")) {
       { path: "apps/**/main", role: "other" },
     ],
     agents: [
-      { name: "dev", description: "rol aciklamasi", model: "sonnet" },
-      { name: "other", description: "rol aciklamasi", model: "sonnet" },
+      { name: "dev", description: "rol aciklamasi" },
+      { name: "other", description: "rol aciklamasi" },
     ],
   });
 
@@ -984,18 +955,16 @@ if (process.argv.includes("--selftest")) {
       { path: "src/**", role: "dev" },
     ],
     agents: [
-      { name: "dev", description: "rol aciklamasi", model: "sonnet" },
+      { name: "dev", description: "rol aciklamasi" },
       {
         name: "architect",
         description: "rol aciklamasi",
-        model: "opus",
         writesCode: false,
         sandbox_mode: "workspace-write",
       },
       {
         name: "doc-writer",
         description: "rol aciklamasi",
-        model: "haiku",
         writesCode: false,
         sandbox_mode: "workspace-write",
       },
@@ -1019,16 +988,14 @@ if (process.argv.includes("--selftest")) {
           { path: b, role: "doc-writer" },
         ],
         agents: [
-          { name: "dev", description: 'rol aciklamasi', model: "sonnet" },
+          { name: "dev", description: 'rol aciklamasi' },
           {
             name: "architect", description: 'rol aciklamasi',
-            model: "opus",
             writesCode: false,
             sandbox_mode: "workspace-write",
           },
           {
             name: "doc-writer", description: 'rol aciklamasi',
-            model: "haiku",
             writesCode: false,
             sandbox_mode: "workspace-write",
           },
@@ -1048,7 +1015,6 @@ if (process.argv.includes("--selftest")) {
       agents: [
         {
           name: "doc-writer", description: 'rol aciklamasi',
-          model: "haiku",
           writesCode: false,
           sandbox_mode: "workspace-write",
         },
@@ -1065,10 +1031,9 @@ if (process.argv.includes("--selftest")) {
       { path: "docs/**", role: "doc-writer" },
     ],
     agents: [
-      { name: "dev", description: 'rol aciklamasi', model: "sonnet" },
+      { name: "dev", description: 'rol aciklamasi' },
       {
         name: "doc-writer", description: 'rol aciklamasi',
-        model: "haiku",
         writesCode: false,
         sandbox_mode: "workspace-write",
       },
@@ -1085,11 +1050,10 @@ if (process.argv.includes("--selftest")) {
     planGate: { planReviewer: "architect", codeReviewer: null },
     routing: [{ path: "src/**", role: "dev" }],
     agents: [
-      { name: "dev", description: 'rol aciklamasi', targets: ["claude", "codex"], model: "sonnet" },
+      { name: "dev", description: 'rol aciklamasi', targets: ["claude", "codex"] },
       {
         name: "architect", description: 'rol aciklamasi',
         targets: ["codex"],
-        model: "opus",
         writesCode: false,
       },
     ],
@@ -1106,8 +1070,8 @@ if (process.argv.includes("--selftest")) {
     },
     routing: [{ path: "src/**", role: "dev" }],
     agents: [
-      { name: "dev", description: 'rol aciklamasi', targets: ["claude", "codex"], model: "sonnet" },
-      { name: "architect", description: 'rol aciklamasi', targets: ["codex"], model: "opus", writesCode: false },
+      { name: "dev", description: 'rol aciklamasi', targets: ["claude", "codex"] },
+      { name: "architect", description: 'rol aciklamasi', targets: ["codex"], writesCode: false },
     ],
   });
 
@@ -1124,8 +1088,8 @@ if (process.argv.includes("--selftest")) {
       },
       routing: [{ path: "src/**", role: "dev" }],
       agents: [
-        { name: "dev", description: 'rol aciklamasi', targets: ["claude", "codex"], model: "sonnet" },
-        { name: "architect", description: 'rol aciklamasi', targets: ["codex"], model: "opus", writesCode: false },
+        { name: "dev", description: 'rol aciklamasi', targets: ["claude", "codex"] },
+        { name: "architect", description: 'rol aciklamasi', targets: ["codex"], writesCode: false },
       ],
     },
     "geçersiz ekosistem"
@@ -1145,8 +1109,8 @@ if (process.argv.includes("--selftest")) {
       },
       routing: [{ path: "src/**", role: "dev" }],
       agents: [
-        { name: "dev", description: 'rol aciklamasi', targets: ["claude", "codex"], model: "sonnet" },
-        { name: "architect", description: 'rol aciklamasi', targets: ["codex"], model: "opus", writesCode: false },
+        { name: "dev", description: 'rol aciklamasi', targets: ["claude", "codex"] },
+        { name: "architect", description: 'rol aciklamasi', targets: ["codex"], writesCode: false },
       ],
     },
     "dolu bir yol olmalı"
@@ -1167,8 +1131,8 @@ if (process.argv.includes("--selftest")) {
       },
       routing: [{ path: "src/**", role: "dev" }],
       agents: [
-        { name: "dev", description: 'rol aciklamasi', targets: ["claude", "codex"], model: "sonnet" },
-        { name: "architect", description: 'rol aciklamasi', targets: ["codex"], model: "opus", writesCode: false },
+        { name: "dev", description: 'rol aciklamasi', targets: ["claude", "codex"] },
+        { name: "architect", description: 'rol aciklamasi', targets: ["codex"], writesCode: false },
       ],
     },
     "nesne olmalı"
@@ -1184,10 +1148,9 @@ if (process.argv.includes("--selftest")) {
     planGate: { planReviewer: "architect", codeReviewer: null },
     routing: [{ path: "src/**", role: "dev" }],
     agents: [
-      { name: "dev", description: 'rol aciklamasi', model: "sonnet", sandbox_mode: "workspace-write" },
+      { name: "dev", description: 'rol aciklamasi', sandbox_mode: "workspace-write" },
       {
         name: "architect", description: 'rol aciklamasi',
-        model: "opus",
         writesCode: false,
         sandbox_mode: "read-only",
       },
@@ -1201,8 +1164,8 @@ if (process.argv.includes("--selftest")) {
       targetsDefault: ["claude"],
       routing: [{ path: "src/**", role: "dev" }],
       agents: [
-        { name: "dev", description: 'rol aciklamasi', model: "sonnet" },
-        { name: "dev", description: 'rol aciklamasi', model: "opus" },
+        { name: "dev", description: 'rol aciklamasi' },
+        { name: "dev", description: 'rol aciklamasi' },
       ],
     },
     "benzersiz"
@@ -1213,7 +1176,7 @@ if (process.argv.includes("--selftest")) {
     "V11 path traversal in name",
     {
       targetsDefault: ["claude"],
-      agents: [{ name: "../../../escaped", description: 'rol aciklamasi', model: "sonnet" }],
+      agents: [{ name: "../../../escaped", description: 'rol aciklamasi' }],
     },
     "portatif slug"
   );
@@ -1230,7 +1193,7 @@ if (process.argv.includes("--selftest")) {
       `V11 invalid name ${JSON.stringify(bad)}`,
       {
         targetsDefault: ["claude"],
-        agents: [{ name: bad, model: "sonnet" }],
+        agents: [{ name: bad }],
       },
       "portatif slug"
     );
@@ -1243,8 +1206,8 @@ if (process.argv.includes("--selftest")) {
       targetsDefault: ["claude"],
       routing: [{ path: "src/**", role: "dev" }],
       agents: [
-        { name: "dev", description: 'rol aciklamasi', model: "sonnet" },
-        { name: "Dev", description: 'rol aciklamasi', model: "opus" },
+        { name: "dev", description: 'rol aciklamasi' },
+        { name: "Dev", description: 'rol aciklamasi' },
       ],
     },
     "benzersiz"
@@ -1258,7 +1221,7 @@ if (process.argv.includes("--selftest")) {
       constitution: { planGate: true },
       planGate: { planReviewer: null, codeReviewer: null },
       routing: [],
-      agents: [{ name: "architect", description: 'rol aciklamasi', model: "opus", writesCode: false }],
+      agents: [{ name: "architect", description: 'rol aciklamasi', writesCode: false }],
     },
     // Not "uygun executor yok": this fixture also trips the per-ecosystem
     // check, whose message carries that same phrase. This fragment is unique
@@ -1275,11 +1238,10 @@ if (process.argv.includes("--selftest")) {
       planGate: { planReviewer: "architect", codeReviewer: null },
       routing: [{ path: "src/**", role: "dev" }],
       agents: [
-        { name: "dev", description: 'rol aciklamasi', targets: ["claude"], model: "sonnet" },
+        { name: "dev", description: 'rol aciklamasi', targets: ["claude"] },
         {
           name: "architect", description: 'rol aciklamasi',
           targets: ["claude", "codex"],
-          model: "opus",
           writesCode: false,
         },
       ],
@@ -1297,7 +1259,7 @@ if (process.argv.includes("--selftest")) {
       constitution: { planGate: true },
       planGate: { planReviewer: "architect", codeReviewer: null },
       routing: [{ path: "docs/**", role: "architect" }],
-      agents: [{ name: "architect", description: 'rol aciklamasi', model: "opus", writesCode: false }],
+      agents: [{ name: "architect", description: 'rol aciklamasi', writesCode: false }],
     },
     "en az bir agent gerekli"
   );
@@ -1312,7 +1274,7 @@ if (process.argv.includes("--selftest")) {
       constitution: { planGate: true },
       planGate: { planReviewer: null, codeReviewer: null },
       routing: [],
-      agents: [{ name: "dev", description: 'rol aciklamasi', model: "sonnet" }],
+      agents: [{ name: "dev", description: 'rol aciklamasi' }],
     },
     "en az bir agent gerekli"
   );
@@ -1326,11 +1288,10 @@ if (process.argv.includes("--selftest")) {
     planGate: { planReviewer: "architect", codeReviewer: null },
     routing: [{ path: "src/**", role: "dev" }],
     agents: [
-      { name: "dev", description: 'rol aciklamasi', targets: ["claude"], model: "sonnet" },
+      { name: "dev", description: 'rol aciklamasi', targets: ["claude"] },
       {
         name: "architect", description: 'rol aciklamasi',
         targets: ["claude"],
-        model: "opus",
         writesCode: false,
       },
     ],
@@ -1342,7 +1303,7 @@ if (process.argv.includes("--selftest")) {
     "V17 unknown consults role",
     {
       targetsDefault: ["claude"],
-      agents: [{ name: "dev", description: 'rol aciklamasi', model: "sonnet", consults: ["ghost"] }],
+      agents: [{ name: "dev", description: 'rol aciklamasi', consults: ["ghost"] }],
     },
     "consults \"ghost\" agents içinde bir name olmalı"
   );
@@ -1353,7 +1314,7 @@ if (process.argv.includes("--selftest")) {
     {
       targetsDefault: ["claude"],
       agents: [
-        { name: "dev", description: 'rol aciklamasi', model: "sonnet", skills: [{ enforcement: "mandatory" }] },
+        { name: "dev", description: 'rol aciklamasi', skills: [{ enforcement: "mandatory" }] },
       ],
     },
     "skills[].name zorunlu"
@@ -1365,7 +1326,7 @@ if (process.argv.includes("--selftest")) {
     {
       targetsDefault: ["claude"],
       codeDocSync: [{ code: "src/api/**" }],
-      agents: [{ name: "dev", description: 'rol aciklamasi', model: "sonnet" }],
+      agents: [{ name: "dev", description: 'rol aciklamasi' }],
     },
     "doc dolu bir string olmalı"
   );
@@ -1376,7 +1337,7 @@ if (process.argv.includes("--selftest")) {
     {
       targetsDefault: ["claude"],
       codeDocSync: [{ code: 42, doc: {} }],
-      agents: [{ name: "dev", description: 'rol aciklamasi', model: "sonnet" }],
+      agents: [{ name: "dev", description: 'rol aciklamasi' }],
     },
     "code dolu bir string olmalı"
   );

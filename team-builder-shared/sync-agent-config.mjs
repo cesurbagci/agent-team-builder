@@ -18,6 +18,13 @@ import path from 'node:path'
 import os from 'node:os'
 import { fileURLToPath } from 'node:url'
 import { routeContains } from './route-globs.mjs'
+import {
+  LLM_LOCAL_RELATIVE,
+  LLM_SHARED_RELATIVE,
+  readLlmLayers,
+  resolveModelSettings,
+} from './llm-config.mjs'
+import { validateLlmConfig } from './validate-llm.mjs'
 
 // validate-manifest.mjs runs its own selftest block when `--selftest` is in
 // process.argv. Since this script shares that flag, import it dynamically with
@@ -59,15 +66,6 @@ export const CONSTITUTION_PRESETS = [
   { key: 'languageStandard', enabledByDefault: true },
   { key: 'planGate', enabledByDefault: false },
 ]
-
-// Fallback map when an opencode-targeted agent has no explicit `opencode_model`.
-// The wizard normally asks for and stores a provider/model string per agent, so
-// this is a best-effort backstop only — adjust to the provider you actually use.
-const OPENCODE_MODEL_FALLBACK = {
-  opus: 'anthropic/claude-opus-4',
-  sonnet: 'anthropic/claude-sonnet-4-5',
-  haiku: 'anthropic/claude-haiku-4-5',
-}
 
 // ---------------------------------------------------------------------------
 // fs helpers
@@ -250,9 +248,28 @@ function frontmatterOf(text) {
   return match ? match[1] : null
 }
 
-function opencodeModel(agent) {
-  if (agent.opencode_model) return agent.opencode_model
-  return OPENCODE_MODEL_FALLBACK[agent.model] ?? 'anthropic/claude-sonnet-4-5'
+// Model names and effort levels as YAML scalars, unquoted where that is safe —
+// the documented style is `model: sonnet`. Quoted: anything a YAML parser could
+// read as syntax, and anything it would read as another type (`001234` is a
+// number, `null` a null). Starting with a letter rules out numbers, dates and
+// indicators, which leaves true, false and null. Whitespace never reaches
+// here — validate-llm rejects it.
+function yamlScalar(value) {
+  const plain =
+    /^[A-Za-z][A-Za-z0-9._:/@[\]-]*$/.test(value) && !/^(?:true|false|null)$/i.test(value)
+  return plain ? value : JSON.stringify(value)
+}
+
+// The Claude agent file is the source file with the resolved model and effort
+// appended to its frontmatter. checkAgentSources has already guaranteed that
+// the frontmatter exists and sets neither key, so nothing is duplicated.
+function renderClaudeAgentMd(source, settings = {}) {
+  const lines = []
+  if (settings.model) lines.push(`model: ${yamlScalar(settings.model)}`)
+  if (settings.effort) lines.push(`effort: ${yamlScalar(settings.effort)}`)
+  if (lines.length === 0) return source
+  const match = source.match(/^---\n([\s\S]*?)\n---\n?/)
+  return `---\n${match[1]}\n${lines.join('\n')}\n---\n${source.slice(match[0].length)}`
 }
 
 // Rich role body, reused from the single source md, with path/delegation rewrites.
@@ -274,7 +291,12 @@ function canWriteFiles(agent) {
     : agent.writesCode !== false
 }
 
-function renderOpencodeAgentMd(agent, manifest, source) {
+// `settings` is the resolved { model?, effort? } for this agent in OpenCode.
+// An unset model writes no line: a primary agent then uses the globally
+// configured model and a subagent the model of the agent that invoked it.
+// Effort goes out as `reasoningEffort`, which OpenCode hands to the provider
+// verbatim (`opencode debug agent <name>` shows it under `options`).
+function renderOpencodeAgentMd(agent, manifest, source, settings = {}) {
   const writesCode = agent.writesCode !== false
   const canEdit = canWriteFiles(agent)
   const mode = manifest.lead && agent.name === manifest.lead ? 'primary' : 'subagent'
@@ -285,7 +307,8 @@ function renderOpencodeAgentMd(agent, manifest, source) {
     '---\n' +
     `description: ${tomlString(agent.description)}\n` +
     `mode: ${mode}\n` +
-    `model: ${opencodeModel(agent)}\n` +
+    (settings.model ? `model: ${yamlScalar(settings.model)}\n` : '') +
+    (settings.effort ? `reasoningEffort: ${yamlScalar(settings.effort)}\n` : '') +
     'permission:\n' +
     `  edit: ${edit}\n` +
     `  bash: ${bash}\n` +
@@ -413,14 +436,15 @@ function renderDeveloperInstructions(agent, manifest, projectName) {
   return lines.join('\n')
 }
 
-function renderCodexAgentToml(agent, manifest, projectName) {
-  const modelLine = agent.model ? `model = ${tomlString(agent.model)}\n` : ''
-  // These are enums on the Codex side. Both fields are optional in the
-  // manifest, and emitting `= ""` for an absent one is not "unset" — Codex
-  // rejects the agent outright ("reasoning_effort must not be empty",
-  // "unknown variant"). Omit them so the agent inherits the default.
-  const effortLine = agent.model_reasoning_effort
-    ? `model_reasoning_effort = ${tomlString(agent.model_reasoning_effort)}\n`
+// `settings` is the resolved { model?, effort? } for this agent in Codex — the
+// codex entry only. The claude entry never reaches this file.
+function renderCodexAgentToml(agent, manifest, projectName, settings = {}) {
+  const modelLine = settings.model ? `model = ${tomlString(settings.model)}\n` : ''
+  // These are enums on the Codex side, and emitting `= ""` for an absent one is
+  // not "unset" — Codex rejects the agent outright ("reasoning_effort must not
+  // be empty", "unknown variant"). Omit them so the agent inherits the default.
+  const effortLine = settings.effort
+    ? `model_reasoning_effort = ${tomlString(settings.effort)}\n`
     : ''
   const sandboxLine = agent.sandbox_mode
     ? `sandbox_mode = ${tomlString(agent.sandbox_mode)}\n`
@@ -602,7 +626,7 @@ async function syncProjectFiles(ctx, manifest) {
   }
 }
 
-async function syncAgents(ctx, manifest, projectName) {
+async function syncAgents(ctx, manifest, projectName, layers) {
   const names = manifest.agents.map(agent => agent.name)
 
   for (const agent of manifest.agents) {
@@ -617,7 +641,10 @@ async function syncAgents(ctx, manifest, projectName) {
 
     if (targets.has('claude')) {
       const fileName = `${agent.name}.md`
-      await ctx.copyExpected(source, ctx.resolveRoot('.claude', 'agents', fileName))
+      const settings = resolveModelSettings(layers, agent.name, 'claude')
+      await ctx.copyExpected(source, ctx.resolveRoot('.claude', 'agents', fileName), src =>
+        renderClaudeAgentMd(src, settings)
+      )
     }
 
     if (targets.has('codex')) {
@@ -630,16 +657,22 @@ async function syncAgents(ctx, manifest, projectName) {
       )
       await ctx.writeExpected(
         ctx.resolveRoot('.codex', 'agents', tomlFileName),
-        renderCodexAgentToml(agent, manifest, projectName)
+        renderCodexAgentToml(
+          agent,
+          manifest,
+          projectName,
+          resolveModelSettings(layers, agent.name, 'codex')
+        )
       )
     }
 
     if (targets.has('opencode')) {
       const fileName = `${agent.name}.md`
+      const settings = resolveModelSettings(layers, agent.name, 'opencode')
       await ctx.copyExpected(
         source,
         ctx.resolveRoot('.opencode', 'agents', fileName),
-        src => renderOpencodeAgentMd(agent, manifest, src)
+        src => renderOpencodeAgentMd(agent, manifest, src, settings)
       )
     }
   }
@@ -755,11 +788,12 @@ function frontmatterValue(block, key) {
   return null
 }
 
-// The Claude body is this source file verbatim, so its own frontmatter is
-// never covered by the manifest checks: Claude will not load an agent without
-// a description, and a name disagreeing with the manifest detaches the file
-// from its routing and gate rules. This runs before anything is written —
-// reporting it as a mismatch would let a broken agent reach disk first.
+// The Claude file is this source file with the resolved model and effort
+// appended, so its own frontmatter is never covered by the manifest checks:
+// Claude will not load an agent without a description, and a name disagreeing
+// with the manifest detaches the file from its routing and gate rules. This
+// runs before anything is written — reporting it as a mismatch would let a
+// broken agent reach disk first.
 async function checkAgentSources(ctx, manifest) {
   const problems = []
   for (const agent of manifest.agents) {
@@ -786,9 +820,38 @@ async function checkAgentSources(ctx, manifest) {
     if (declared !== agent.name) {
       problems.push(`${where} frontmatter name must be "${agent.name}"`)
     }
+    // Model and effort live in llm.json. A copy here would be a second source
+    // drifting from the first — the very bug that layout removed.
+    for (const key of ['model', 'effort']) {
+      if (new RegExp(`^${key}:`, 'm').test(block)) {
+        problems.push(
+          `${where} frontmatter must not set ${key} — it lives in ${LLM_SHARED_RELATIVE}; run team-builder-models to migrate`
+        )
+      }
+    }
   }
   if (problems.length > 0) {
     throw new Error(`Agent source invalid:\n- ${problems.join('\n- ')}`)
+  }
+}
+
+// Both LLM layers are checked before anything is written. Errors stop
+// generation; warnings — a local entry for an agent that no longer exists, a
+// dotted Claude version — are printed and generation goes on.
+function checkLlmLayers(layers, manifest, warn) {
+  const errors = []
+  for (const [layer, relative] of [
+    ['shared', LLM_SHARED_RELATIVE],
+    ['local', LLM_LOCAL_RELATIVE],
+  ]) {
+    // Only a missing file is skipped; a file holding null is invalid, not absent.
+    if (layers[layer] === undefined) continue
+    const result = validateLlmConfig(layers[layer], manifest, { layer })
+    errors.push(...result.errors.map(message => `${relative}: ${message}`))
+    for (const message of result.warnings) warn(`! ${relative}: ${message}`)
+  }
+  if (errors.length > 0) {
+    throw new Error(`LLM configuration invalid:\n- ${errors.join('\n- ')}`)
   }
 }
 
@@ -805,6 +868,8 @@ async function generate({ root, checkOnly, quiet = false }) {
   const manifest = JSON.parse(await readText(manifestPath))
   const validate = await loadValidate()
   validate(manifest)
+  const layers = await readLlmLayers(ctx.resolvedRoot)
+  checkLlmLayers(layers, manifest, warn)
   await checkAgentSources(ctx, manifest)
 
   const projectName = path.basename(ctx.resolvedRoot)
@@ -812,7 +877,7 @@ async function generate({ root, checkOnly, quiet = false }) {
   await warnMissingInstructionsRef(ctx, manifest, warn)
   await warnConstitutionMarkerDrift(ctx, manifest, warn)
   await syncProjectFiles(ctx, manifest)
-  await syncAgents(ctx, manifest, projectName)
+  await syncAgents(ctx, manifest, projectName, layers)
   await syncSkills(ctx, manifest)
 
   // Staleness is judged against the PREVIOUS ledger, then the new one is written.
@@ -930,9 +995,6 @@ async function runSelftest() {
         name: 'architect',
         targets: ['claude', 'codex', 'opencode'],
         description: 'Mimari kararlar icin.',
-        model: 'opus',
-        opencode_model: 'anthropic/claude-opus-4',
-        model_reasoning_effort: 'high',
         sandbox_mode: 'workspace-write',
         writesCode: false,
         nickname_candidates: ['Architect', 'ADR Lead'],
@@ -943,8 +1005,6 @@ async function runSelftest() {
         name: 'developer',
         targets: ['claude'],
         description: 'Kod yazar.',
-        model: 'sonnet',
-        model_reasoning_effort: 'high',
         sandbox_mode: 'workspace-write',
         writesCode: true,
         nickname_candidates: ['Dev'],
@@ -958,8 +1018,23 @@ async function runSelftest() {
     JSON.stringify(manifest, null, 2)
   )
 
+  // Model and effort for the fixture. The developer has no entry of its own
+  // and picks up the Claude default.
+  const llmConfig = {
+    defaults: { claude: { model: 'sonnet' } },
+    agents: {
+      architect: {
+        claude: { model: 'claude-opus-5-5', effort: 'high' },
+        codex: { model: 'gpt-5.6-terra', effort: 'high' },
+        opencode: { model: 'anthropic/claude-opus-5-5', effort: 'high' },
+      },
+    },
+  }
+  const llmPath = path.join(sourceRoot, 'llm.json')
+  await fs.writeFile(llmPath, JSON.stringify(llmConfig, null, 2))
+
   const architectBody =
-    '---\nname: architect\ndescription: Mimari kararlar icin.\nmodel: opus\n---\n\n# Architect\n\nSkill: .claude/skills/demo-skill/SKILL.md\nDelege: technical-architect ajanina Task tool ile delege et.\n'
+    '---\nname: architect\ndescription: Mimari kararlar icin.\n---\n\n# Architect\n\nSkill: .claude/skills/demo-skill/SKILL.md\nDelege: technical-architect ajanina Task tool ile delege et.\n'
   await fs.writeFile(path.join(sourceRoot, 'agents', 'architect.md'), architectBody)
 
   // The Claude and OpenCode bodies are this file verbatim, so a source md
@@ -1033,7 +1108,7 @@ async function runSelftest() {
     await fs.writeFile(sourcePath, good)
   }
 
-  const developerBody = '---\nname: developer\ndescription: Kod yazar.\nmodel: sonnet\n---\n\n# Developer\n\nKod yazar.\n'
+  const developerBody = '---\nname: developer\ndescription: Kod yazar.\n---\n\n# Developer\n\nKod yazar.\n'
   await fs.writeFile(path.join(sourceRoot, 'agents', 'developer.md'), developerBody)
 
   const claudeMd = `# CLAUDE\n\n@${INSTRUCTIONS_REF}\n\nProje talimati.\n`
@@ -1073,9 +1148,17 @@ async function runSelftest() {
   // Claude agent md (both agents target claude).
   assert(await exists('.claude/agents/architect.md'), '.claude/agents/architect.md missing')
   assert(await exists('.claude/agents/developer.md'), '.claude/agents/developer.md missing')
+  // The Claude file is the source with the resolved model and effort appended
+  // to its frontmatter — nothing else changes.
   assert(
-    normalizeText(await read('.claude/agents/architect.md')) === normalizeText(architectBody),
-    'architect claude md content mismatch (must be verbatim source)'
+    normalizeText(await read('.claude/agents/architect.md')) ===
+      normalizeText(architectBody.replace('\n---\n', '\nmodel: claude-opus-5-5\neffort: high\n---\n')),
+    'architect claude md must be the source plus the resolved model and effort'
+  )
+  assert(
+    normalizeText(await read('.claude/agents/developer.md')) ===
+      normalizeText(developerBody.replace('\n---\n', '\nmodel: sonnet\n---\n')),
+    'developer claude md must pick up the Claude default model and no effort'
   )
 
   // Codex targets only for architect (developer is claude-only).
@@ -1115,11 +1198,13 @@ async function runSelftest() {
   const toml = await read('.codex/agents/architect.toml')
   assert(toml.startsWith(GENERATED_HEADER), 'toml should start with generated header')
   assert(toml.includes('name = "architect"'), 'toml missing name')
-  assert(toml.includes('model = "opus"'), 'toml missing model line')
+  assert(toml.includes('model = "gpt-5.6-terra"'), 'toml must carry the codex model')
   assert(
     toml.includes('model_reasoning_effort = "high"'),
-    'toml missing model_reasoning_effort'
+    'toml must carry the codex effort'
   )
+  // The claude entry never reaches Codex — the bug that wrote "opus" here.
+  assert(!toml.includes('claude-opus-5-5'), 'the claude model must not reach the codex toml')
   assert(toml.includes('sandbox_mode = "workspace-write"'), 'toml missing sandbox_mode')
   // Both fields are optional and both are enums on the Codex side: emitting
   // `= ""` for an absent one makes Codex reject the agent rather than fall
@@ -1137,6 +1222,7 @@ async function runSelftest() {
     !bareToml.includes('sandbox_mode ='),
     'an absent sandbox_mode must be omitted, not emitted empty'
   )
+  assert(!bareToml.includes('model ='), 'no resolved model must mean no model line')
   assert(
     !/=\s*""/.test(bareToml.split('developer_instructions')[0]),
     'no TOML key may be emitted with an empty value'
@@ -1546,9 +1632,25 @@ async function runSelftest() {
   assert(ocAgent.startsWith('---\n'), 'opencode agent md must start with frontmatter')
   assert(ocAgent.includes('mode: primary'), 'lead should map to mode: primary')
   assert(
-    ocAgent.includes('model: anthropic/claude-opus-4'),
-    'opencode agent md should use opencode_model'
+    ocAgent.includes('model: anthropic/claude-opus-5-5'),
+    'opencode agent md must carry the opencode model'
   )
+  assert(
+    ocAgent.includes('reasoningEffort: high'),
+    'opencode agent md must carry the effort as reasoningEffort'
+  )
+  // Model names are written the documented way (`model: sonnet`); anything a
+  // YAML parser could read as syntax or as another type is quoted.
+  assert(yamlScalar('opus[1m]') === 'opus[1m]', 'a bracket suffix stays unquoted')
+  assert(
+    yamlScalar('arn:aws:bedrock:us-east-1:123456789012:application-inference-profile/abc') ===
+      'arn:aws:bedrock:us-east-1:123456789012:application-inference-profile/abc',
+    'an ARN stays unquoted'
+  )
+  assert(yamlScalar('*anchor') === '"*anchor"', 'a YAML indicator must be quoted')
+  // A Foundry deployment name is free text: it must reach Claude as a string.
+  assert(yamlScalar('001234') === '"001234"', 'a numeric-looking name must stay a string')
+  assert(yamlScalar('null') === '"null"', 'a null-looking name must stay a string')
   // Permissions follow sandbox_mode, not writesCode: this architect is
   // doc-only (writesCode:false) yet owns docs/, so it must be able to edit.
   assert(
@@ -1614,6 +1716,114 @@ async function runSelftest() {
     await exists('.opencode/skills/demo-skill/SKILL.md'),
     '.opencode/skills/demo-skill/SKILL.md missing (opencode skills mirror)'
   )
+
+  // --- LLM configuration ---
+  {
+    const claudeFile = '.claude/agents/architect.md'
+    const localPath = path.join(sourceRoot, 'llm.local.json')
+
+    // A local entry wins on this machine. It sets a model, so the shared
+    // effort — chosen for another model — is dropped.
+    await fs.writeFile(
+      localPath,
+      JSON.stringify({ agents: { architect: { claude: { model: 'sonnet' } } } })
+    )
+    await silentGenerate({ root: fixtureRoot, checkOnly: false })
+    const overridden = await read(claudeFile)
+    assert(
+      overridden.includes('model: sonnet') && !overridden.includes('effort:'),
+      'a local model must win and drop the shared effort'
+    )
+    await fs.rm(localPath)
+    await silentGenerate({ root: fixtureRoot, checkOnly: false })
+
+    // A claude-only entry must not leak into Codex or OpenCode.
+    await fs.writeFile(
+      llmPath,
+      JSON.stringify({ agents: { architect: { claude: { model: 'opus' } } } })
+    )
+    await silentGenerate({ root: fixtureRoot, checkOnly: false })
+    assert(
+      !(await read('.codex/agents/architect.toml')).includes('model ='),
+      'a claude entry must not reach codex'
+    )
+    assert(
+      !(await read('.opencode/agents/architect.md')).includes('model:'),
+      'a claude entry must not reach opencode'
+    )
+    await fs.writeFile(llmPath, JSON.stringify(llmConfig, null, 2))
+    await silentGenerate({ root: fixtureRoot, checkOnly: false })
+
+    // Errors stop generation before anything is written, and name the file.
+    for (const [label, file, body, expected] of [
+      ['an unknown key in llm.json', llmPath, JSON.stringify({ agent: {} }), 'bilinmeyen kök anahtar'],
+      ['broken JSON in llm.local.json', localPath, '{ broken', 'llm.local.json is not valid JSON'],
+      ['null in llm.local.json', localPath, 'null', 'llm.local.json: kök bir nesne olmalı'],
+    ]) {
+      const original = (await pathExists(file)) ? await readText(file) : null
+      await fs.writeFile(file, body)
+      let thrown = null
+      try {
+        await silentGenerate({ root: fixtureRoot, checkOnly: false })
+      } catch (error) {
+        thrown = error
+      }
+      assert(
+        thrown !== null && thrown.message.includes(expected),
+        `${label} must stop generation (got ${thrown ? thrown.message : 'no error'})`
+      )
+      if (original === null) await fs.rm(file)
+      else await fs.writeFile(file, original)
+    }
+
+    // A local entry for an agent that no longer exists warns and goes on.
+    await fs.writeFile(
+      localPath,
+      JSON.stringify({ agents: { ghost: { claude: { model: 'opus' } } } })
+    )
+    const ghostWarnings = await captureWarnings(fixtureRoot)
+    assert(
+      ghostWarnings.some(w => w.includes('llm.local.json') && w.includes('ghost')),
+      `an unknown local agent must warn, got: ${ghostWarnings.join(' | ') || '(none)'}`
+    )
+    await fs.rm(localPath)
+
+    // Model or effort in the role file stops generation: the model's only
+    // home is llm.json.
+    const architectPath = path.join(sourceRoot, 'agents', 'architect.md')
+    for (const key of ['model', 'effort']) {
+      await fs.writeFile(architectPath, architectBody.replace('\n---\n', `\n${key}: x\n---\n`))
+      let thrown = null
+      try {
+        await silentGenerate({ root: fixtureRoot, checkOnly: false })
+      } catch (error) {
+        thrown = error
+      }
+      assert(
+        thrown !== null && thrown.message.includes(`must not set ${key}`),
+        `${key} in the role file must stop generation (got ${thrown ? thrown.message : 'no error'})`
+      )
+    }
+    await fs.writeFile(architectPath, architectBody)
+
+    // An old manifest field stops generation and names the migration.
+    const manifestPath = path.join(sourceRoot, 'agents', 'manifest.json')
+    const legacy = JSON.parse(JSON.stringify(manifest))
+    legacy.agents[0].model = 'opus'
+    await fs.writeFile(manifestPath, JSON.stringify(legacy, null, 2))
+    let legacyError = null
+    try {
+      await silentGenerate({ root: fixtureRoot, checkOnly: false })
+    } catch (error) {
+      legacyError = error
+    }
+    assert(
+      legacyError !== null && legacyError.message.includes('team-builder-models'),
+      'a legacy manifest field must stop generation and name the migration'
+    )
+    await fs.writeFile(manifestPath, JSON.stringify(manifest, null, 2))
+    await silentGenerate({ root: fixtureRoot, checkOnly: false })
+  }
 
   // Project files.
   assert(await exists('CLAUDE.md'), 'CLAUDE.md missing')
@@ -1798,6 +2008,9 @@ async function runSelftest() {
     JSON.stringify(trimmedManifest, null, 2)
   )
   await fs.rm(path.join(sourceRoot, 'agents', 'architect.md'))
+  // The shared LLM file drops the removed agent as well: an entry for an agent
+  // that no longer exists is an error there.
+  await fs.writeFile(llmPath, JSON.stringify({ defaults: llmConfig.defaults }, null, 2))
 
   const staleTargets = [
     '.claude/agents/architect.md',
@@ -2137,7 +2350,6 @@ async function runOpencodeOnlySelftest() {
       {
         name: 'architect',
         description: 'Mimari kararlar icin.',
-        opencode_model: 'openai/gpt-5',
         writesCode: false,
         consults: [],
         extra_instructions: [],
@@ -2149,8 +2361,12 @@ async function runOpencodeOnlySelftest() {
     JSON.stringify(manifest, null, 2)
   )
   await fs.writeFile(
+    path.join(sourceRoot, 'llm.json'),
+    JSON.stringify({ agents: { architect: { opencode: { model: 'openai/gpt-5' } } } })
+  )
+  await fs.writeFile(
     path.join(sourceRoot, 'agents', 'architect.md'),
-    '---\nname: architect\ndescription: Mimari kararlar icin.\nmodel: opus\n---\n\n# Architect\n\nSkill: .claude/skills/demo-skill/SKILL.md\n'
+    '---\nname: architect\ndescription: Mimari kararlar icin.\n---\n\n# Architect\n\nSkill: .claude/skills/demo-skill/SKILL.md\n'
   )
   // Present in the source but must NOT be emitted: claude is not a target.
   await fs.writeFile(path.join(sourceRoot, 'project', 'CLAUDE.md'), '# CLAUDE\n')
@@ -2179,6 +2395,12 @@ async function runOpencodeOnlySelftest() {
   assert(
     await exists('.opencode/agents/architect.md'),
     'opencode-only: .opencode/agents/architect.md missing'
+  )
+  assert(
+    (await readText(path.join(fixtureRoot, '.opencode', 'agents', 'architect.md'))).includes(
+      'model: openai/gpt-5'
+    ),
+    'opencode-only: the agent must carry the model from llm.json'
   )
   assert(await exists('opencode.json'), 'opencode-only: opencode.json missing')
   // OpenCode validates opencode.json strictly: any key outside its schema — a
@@ -2283,5 +2505,4 @@ export {
   renderDeveloperInstructions,
   codexAgentDefinition,
   renderOpencodeAgentMd,
-  opencodeModel,
 }
