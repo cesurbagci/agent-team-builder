@@ -223,7 +223,11 @@ const PARSERS = { codex: parseCodexCatalog, opencode: parseOpencodeCatalog }
 // A missing CLI is silent — the expected case in CI. A CLI that is there but
 // fails, times out, or prints something unreadable yields one note, so a
 // check that did not run is never mistaken for one that passed.
-export async function readCatalogs(ecosystems, run = runCli) {
+// readCatalogs calls run(command, args, options); runCli takes the working
+// directory third, so the default forwards the options as its fourth argument.
+const runInCurrentDirectory = (command, args, options) => runCli(command, args, undefined, options)
+
+export async function readCatalogs(ecosystems, run = runInCurrentDirectory) {
   const catalogs = { notes: [] }
   for (const ecosystem of ecosystems) {
     if (!CATALOG_COMMANDS[ecosystem]) continue
@@ -542,6 +546,14 @@ async function runSelftest() {
   assert(
     bothStreams.includes('on-stderr') && stdoutOnly === '',
     `withStderr must add stderr and only then, got ${JSON.stringify({ bothStreams, stdoutOnly })}`
+  )
+  // readCatalogs' default runner hands the options to runCli, never as its cwd.
+  const viaDefault = await runInCurrentDirectory(process.execPath, toStderr, { withStderr: true }).catch(
+    error => `rejected: ${error.message}`
+  )
+  assert(
+    viaDefault.includes('on-stderr'),
+    `the default runner must forward options to runCli, got ${JSON.stringify(viaDefault)}`
   )
 
   // Not on PATH is ENOENT, which readCatalogs treats as missing. The command is
