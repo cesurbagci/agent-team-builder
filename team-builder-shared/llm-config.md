@@ -132,6 +132,8 @@ değişir, CI'da yoktur.
 - Uyarı durumları: Codex'te model katalogda yok, effort modelin desteklediklerinde yok,
   `upgrade` dolu (emeklilik tarihi ve yerine önerilen model); OpenCode'da model listede yok.
 - Gizli (`hide`) modeller katalogda sayılır.
+- Modeli çözümlenmemiş bir girdi denetlenmez: effort, hangi modelin çalışacağı (ekosistemin
+  varsayılanı) bilinmeden değerlendirilemez.
 - Her komut 10 saniye sınırla çalışır (ölçülen 1–2 s). CLI yoksa kontrol **sessizce**
   atlanır; CLI var ama hata verdi, zaman aşımına uğradı ya da okunamayan bir şey bastıysa
   **tek bilgi satırı** yazılır.
