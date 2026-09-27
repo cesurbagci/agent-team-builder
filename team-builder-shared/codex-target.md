@@ -54,7 +54,7 @@ Her codex hedefli agent için bir TOML üretilir. Üst satıra "bu dosya `.agent
 `sync-agent-config.mjs` bu bloğu manifest alanlarından derler. İçeriği (docLanguage dilinde):
 
 ```
-Sen <proje adı> projesinin Codex custom agent'i `<name>` rolüsün.
+Sen bu projenin Codex custom agent'i `<name>` rolüsün.
 
 İlk iş olarak `AGENTS.md` dosyasını ve `.codex/agent-definitions/<name>.md`
 dosyasını oku. `.codex/agent-definitions/<name>.md` içindeki rol talimatları

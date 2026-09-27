@@ -438,7 +438,7 @@ function renderOpencodeAgentMd(agent, manifest, source, settings = {}) {
 // developer_instructions template (manifest-driven; codex-target.md §1)
 // ---------------------------------------------------------------------------
 
-function renderDeveloperInstructions(agent, manifest, projectName) {
+function renderDeveloperInstructions(agent, manifest) {
   const docLanguage = manifest.docLanguage ?? 'tr'
   const constitution = manifest.constitution ?? {}
   const perAgentMemory = constitution.perAgentMemory !== false
@@ -447,7 +447,7 @@ function renderDeveloperInstructions(agent, manifest, projectName) {
 
   const lines = []
   lines.push(
-    `Sen ${projectName} projesinin Codex custom agent'i \`${agent.name}\` rolusun.`
+    `Sen bu projenin Codex custom agent'i \`${agent.name}\` rolusun.`
   )
   lines.push('')
   lines.push(
@@ -555,7 +555,7 @@ function renderDeveloperInstructions(agent, manifest, projectName) {
 
 // `settings` is the resolved { model?, effort? } for this agent in Codex — the
 // codex entry only. The claude entry never reaches this file.
-function renderCodexAgentToml(agent, manifest, projectName, settings = {}) {
+function renderCodexAgentToml(agent, manifest, settings = {}) {
   const modelLine = settings.model ? `model = ${tomlString(settings.model)}\n` : ''
   // These are enums on the Codex side, and emitting `= ""` for an absent one is
   // not "unset" — Codex rejects the agent outright ("reasoning_effort must not
@@ -566,7 +566,7 @@ function renderCodexAgentToml(agent, manifest, projectName, settings = {}) {
   const sandboxLine = agent.sandbox_mode
     ? `sandbox_mode = ${tomlString(agent.sandbox_mode)}\n`
     : ''
-  const developerInstructions = renderDeveloperInstructions(agent, manifest, projectName)
+  const developerInstructions = renderDeveloperInstructions(agent, manifest)
   return (
     GENERATED_HEADER +
     `name = ${tomlString(agent.name)}\n` +
@@ -743,7 +743,7 @@ async function syncProjectFiles(ctx, manifest) {
   }
 }
 
-async function syncAgents(ctx, manifest, projectName, layers) {
+async function syncAgents(ctx, manifest, layers) {
   const names = manifest.agents.map(agent => agent.name)
 
   for (const agent of manifest.agents) {
@@ -788,7 +788,6 @@ async function syncAgents(ctx, manifest, projectName, layers) {
         renderCodexAgentToml(
           agent,
           manifest,
-          projectName,
           resolve('codex', `.codex/agents/${tomlFileName}`)
         )
       )
@@ -1092,17 +1091,20 @@ async function generate({ root, checkOnly, quiet = false, catalogs = null, noLoc
   checkLlmLayers(layers, manifest, warn)
   await checkAgentSources(ctx, manifest)
 
-  const projectName = path.basename(ctx.resolvedRoot)
-
   await warnMissingInstructionsRef(ctx, manifest, warn)
   await warnConstitutionMarkerDrift(ctx, manifest, warn)
   await syncProjectFiles(ctx, manifest)
-  await syncAgents(ctx, manifest, projectName, layers)
-  if (ctx.localOverrides.length > 0) {
-    warn(
-      `! ${LLM_LOCAL_RELATIVE} changes these agent files on this machine: ${ctx.localOverrides.join(', ')}. ` +
-        "Leave them out of your commits unless the whole team should run these models; run sync with --no-local to write the team's version."
-    )
+  try {
+    await syncAgents(ctx, manifest, layers)
+  } finally {
+    // Also when a later write fails: files written before it may already
+    // carry this machine's values.
+    if (ctx.localOverrides.length > 0) {
+      warn(
+        `! ${LLM_LOCAL_RELATIVE} changes these agent files on this machine: ${ctx.localOverrides.join(', ')}. ` +
+          "Leave them out of your commits unless the whole team should run these models; run sync with --no-local to write the team's version."
+      )
+    }
   }
   await syncSkills(ctx, manifest)
   await syncGitignore(ctx, warn)
@@ -1411,6 +1413,13 @@ async function runSelftest() {
     'developer should not have codex toml'
   )
 
+  // Committed output must not depend on where the checkout lives: a clone in
+  // a differently named folder, or CI, would report drift.
+  assert(
+    !(await read('.codex/agents/architect.toml')).includes(path.basename(fixtureRoot)),
+    'the Codex agent must not carry the checkout folder name'
+  )
+
   // Codex agent-definition is transformed (paths + delegation rewrite).
   const codexDef = await read('.codex/agent-definitions/architect.md')
   assert(
@@ -1443,8 +1452,7 @@ async function runSelftest() {
   // back to its default.
   const bareToml = renderCodexAgentToml(
     { name: 'bare', description: 'd' },
-    manifest,
-    'demo'
+    manifest
   )
   assert(
     !bareToml.includes('model_reasoning_effort ='),
@@ -1491,14 +1499,13 @@ async function runSelftest() {
   }
   const ownerText = renderDeveloperInstructions(
     { name: 'architect', description: 'rol aciklamasi', writesCode: false },
-    ownedManifest,
-    'demo'
+    ownedManifest
   )
   assert(
     ownerText.includes('Yazma alanin `docs/**` altidir.'),
     'the docs owner must be granted its routed path'
   )
-  const devText = renderDeveloperInstructions({ name: 'dev' , description: 'rol aciklamasi',}, ownedManifest, 'demo')
+  const devText = renderDeveloperInstructions({ name: 'dev' , description: 'rol aciklamasi',}, ownedManifest)
   assert(
     devText.includes('`docs/**` altina yazma; orasi `architect` rolunun.'),
     'a developer must be kept out of the routed docs path'
@@ -1521,8 +1528,7 @@ async function runSelftest() {
   }
   const splitWriter = renderDeveloperInstructions(
     { name: 'doc-writer', description: 'rol aciklamasi', writesCode: false },
-    splitManifest,
-    'demo'
+    splitManifest
   )
   assert(
     splitWriter.includes('Yazma alanin `docs/guides/**` altidir.'),
@@ -1534,7 +1540,7 @@ async function runSelftest() {
     ),
     'a blanket prohibition must carve out the sub-path the same agent owns'
   )
-  const splitDev = renderDeveloperInstructions({ name: 'dev' , description: 'rol aciklamasi',}, splitManifest, 'demo')
+  const splitDev = renderDeveloperInstructions({ name: 'dev' , description: 'rol aciklamasi',}, splitManifest)
   assert(
     splitDev.includes('`docs/**` altina yazma; orasi `architect` rolunun.') &&
       splitDev.includes('`docs/guides/**` altina yazma; orasi `doc-writer` rolunun.'),
@@ -1563,8 +1569,7 @@ async function runSelftest() {
   }
   const middle = renderDeveloperInstructions(
     { name: 'doc-writer', description: 'rol aciklamasi', writesCode: false, sandbox_mode: 'workspace-write' },
-    threeDeep,
-    'demo'
+    threeDeep
   )
   assert(
     middle.includes(
@@ -1595,8 +1600,7 @@ async function runSelftest() {
   }
   const siblingWriter = renderDeveloperInstructions(
     { name: 'doc-writer', description: 'rol aciklamasi', writesCode: false },
-    siblingManifest,
-    'demo'
+    siblingManifest
   )
   assert(
     siblingWriter.includes('\`docs/arch/**\` altina yazma; orasi \`architect\` rolunun.'),
@@ -1623,8 +1627,7 @@ async function runSelftest() {
   }
   const perModuleDev = renderDeveloperInstructions(
     { name: 'dev' , description: 'rol aciklamasi',},
-    perModuleManifest,
-    'demo'
+    perModuleManifest
   )
   assert(
     perModuleDev.includes(
@@ -1651,13 +1654,12 @@ async function runSelftest() {
   assert(
     !renderDeveloperInstructions(
       { name: 'security-reviewer', description: 'rol aciklamasi', writesCode: false, sandbox_mode: 'read-only' },
-      readOnlyRouted,
-      'demo'
+      readOnlyRouted
     ).includes('Yazma alanin'),
     'a read-only role must never be granted a write area'
   )
   assert(
-    !renderDeveloperInstructions({ name: 'dev' , description: 'rol aciklamasi',}, readOnlyRouted, 'demo').includes(
+    !renderDeveloperInstructions({ name: 'dev' , description: 'rol aciklamasi',}, readOnlyRouted).includes(
       'src/auth/** altina yazma'
     ),
     'a developer must not be barred from a path whose routed role cannot write'
@@ -1671,8 +1673,7 @@ async function runSelftest() {
         docLanguage: 'tr',
         routing: [{ path: 'docs/**', role: 'ghost' }],
         agents: [{ name: 'ghost', description: 'rol aciklamasi', writesCode: false }],
-      },
-      'demo'
+      }
     ).includes('Yazma alanin'),
     'a non-writer with no declared sandbox must not be treated as an owner'
   )
@@ -1693,8 +1694,7 @@ async function runSelftest() {
   assert(
     renderDeveloperInstructions(
       { name: 'doc-writer', description: 'rol aciklamasi', writesCode: false, sandbox_mode: 'workspace-write' },
-      globNested,
-      'demo'
+      globNested
     ).includes(
       '\`modules/*/docs/**\` altina yazma (kendi yolun \`modules/pay/docs/guides/**\` haric)'
     ),
@@ -1711,8 +1711,7 @@ async function runSelftest() {
           { path: 'modules/*/docs/**', role: 'architect' },
           { path: 'modules/pay/sub/docs/guides/**', role: 'doc-writer' },
         ],
-      },
-      'demo'
+      }
     ).includes('haric'),
     'a single-star segment must not swallow a deeper path'
   )
@@ -1808,8 +1807,7 @@ async function runSelftest() {
           { name: 'architect', description: 'rol aciklamasi', writesCode: false, sandbox_mode: 'workspace-write' },
           { name: 'doc-writer', description: 'rol aciklamasi', writesCode: false, sandbox_mode: 'workspace-write' },
         ],
-      },
-      'demo'
+      }
     )
     assert(rendered.includes('haric') === wantCarve, why)
   }
@@ -1821,7 +1819,7 @@ async function runSelftest() {
     routing: [{ path: 'docsite/**', role: 'web' }, { path: 'docs/**' }],
     agents: [{ name: 'web' , description: 'rol aciklamasi',}, { name: 'dev' , description: 'rol aciklamasi',}],
   }
-  const lookalike = renderDeveloperInstructions({ name: 'dev' , description: 'rol aciklamasi',}, lookalikeManifest, 'demo')
+  const lookalike = renderDeveloperInstructions({ name: 'dev' , description: 'rol aciklamasi',}, lookalikeManifest)
   assert(
     !lookalike.includes('docsite'),
     'a directory owned by a code-writing role is not documentation'
@@ -1832,15 +1830,14 @@ async function runSelftest() {
   )
 
   const ownerlessManifest = { docLanguage: 'tr', routing: [], agents: [] }
-  const soloDev = renderDeveloperInstructions({ name: 'dev' , description: 'rol aciklamasi',}, ownerlessManifest, 'demo')
+  const soloDev = renderDeveloperInstructions({ name: 'dev' , description: 'rol aciklamasi',}, ownerlessManifest)
   assert(
     !/altina yazma; orasi/.test(soloDev),
     'without a docs owner a developer must not be barred from an unowned directory'
   )
   const soloReviewer = renderDeveloperInstructions(
     { name: 'reviewer', description: 'rol aciklamasi', writesCode: false },
-    ownerlessManifest,
-    'demo'
+    ownerlessManifest
   )
   assert(
     !soloReviewer.includes('Yazma alanin'),
@@ -1976,6 +1973,39 @@ async function runSelftest() {
         overrideWarning.includes('--no-local'),
       `a local override must name exactly the files it changes, got: ${overrideWarnings.join(' | ') || '(none)'}`
     )
+    // A write that fails after the overridden file was written must not
+    // swallow the warning. The Codex file is removed so that it has to be
+    // written, and its temp file cannot be opened.
+    {
+      await fs.rm(path.join(fixtureRoot, '.codex', 'agents', 'architect.toml'))
+      const originalOpen = fs.open
+      const codexDir = `${path.sep}.codex${path.sep}`
+      fs.open = (target, ...rest) =>
+        String(target).includes(codexDir) && String(target).endsWith('.tmp')
+          ? Promise.reject(Object.assign(new Error('simulated EACCES'), { code: 'EACCES' }))
+          : originalOpen(target, ...rest)
+      const failedRunWarnings = []
+      const originalWarn = console.warn
+      const originalLog = console.log
+      console.warn = (...a) => failedRunWarnings.push(a.join(' '))
+      console.log = () => {}
+      let failedRun = null
+      try {
+        await generate({ root: fixtureRoot, checkOnly: false, catalogs: NO_CATALOGS })
+      } catch (error) {
+        failedRun = error
+      } finally {
+        fs.open = originalOpen
+        console.warn = originalWarn
+        console.log = originalLog
+      }
+      assert(
+        failedRun !== null &&
+          failedRun.message.includes('simulated EACCES') &&
+          failedRunWarnings.some(w => w.includes('llm.local.json changes') && w.includes(claudeFile)),
+        `a failed sync must still name the overridden files, got: ${failedRunWarnings.join(' | ') || '(none)'}`
+      )
+    }
     // --no-local writes the team's version and does not even read the local
     // file: a broken one cannot stop it.
     await fs.writeFile(localPath, '{ broken')

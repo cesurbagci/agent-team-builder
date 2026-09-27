@@ -89,7 +89,9 @@ Hedeflenen her ekosistem için, CLI kuruluysa:
 6. **Setup'tan çağrıldıysan burada dur:** sync'i setup, bütün dosyaları yazdıktan sonra
    kendisi çalıştırır. Değilse sync çalıştır:
    `node ~/.claude/skills/team-builder-shared/sync-agent-config.mjs --root <proje>`.
-   Doğrulama hatası verirse düzelt ve tekrar çalıştır.
+   Bu makinede `llm.local.json` varsa `--no-local` ekle — sonuç takımın commit'i olacak
+   (`team-builder-sync`, *Commit'e gidecek bir üretim*). Doğrulama hatası verirse düzelt ve
+   tekrar çalıştır.
 7. Kullanıcıya söyle: "`llm.json` ve sync'in yeniden ürettiği ajan dosyaları commit edilmeli —
    takımın model seçimi bunlar. Ajanları yalnız kullanan takım arkadaşının bir şey kurması
    gerekmez; modeli ajan dosyasından alır." OpenCode hedefleniyorsa ve onu ortak dosyaya
@@ -146,10 +148,10 @@ ya da sync bir katalog uyarısı verdiğinde. Klondan sonra gerekmez: ajan dosya
    eski effort başka bir model için seçilmişti.
 3. Dosyayı yaz — var olan girdileri koru, yalnız değişeni güncelle — ve sync çalıştır.
 4. Ortak dosya değiştiyse `llm.json` ile birlikte sync'in yeniden ürettiği ajan dosyalarının da
-   commit edilmesi gerektiğini söyle: takım arkadaşları modeli bu dosyalardan alır. Sync bir ajan
-   dosyasının bu makinenin yerel değerini taşıdığını söylüyorsa, önce sync'i `--no-local` ile
-   çalıştır — dosyalar takımın hâline döner — ve kullanıcıya commit'ten sonra sync'i normal
-   çalıştırmasını söyle. Commit ve push yapma.
+   commit edilmesi gerektiğini söyle: takım arkadaşları modeli bu dosyalardan alır. Bu makinede
+   `llm.local.json` varsa sync'i ve doğrulamayı `--no-local` ile yap — dosyalar takımın hâline
+   döner — ve kullanıcıya commit'ten sonra sync'i normal çalıştırmasını söyle
+   (`team-builder-sync`, *Commit'e gidecek bir üretim*). Commit ve push yapma.
 
 ### Yenile — yeni model çıktı, model kalktı
 
@@ -203,8 +205,9 @@ Güncellenmiş team-builder bu yapıda sync'i durdurur.
    3. Her `.agent-source/agents/<ad>.md` frontmatter'ından `model:` ve `effort:`
       satırlarını sil. **Başka hiçbir satıra dokunma.**
    4. Sync çalıştır: `.gitignore` bloğunu yazar, ajan dosyalarını `llm.json`'daki değerlerle
-      yeniden üretir. Hiçbir dosya takipten çıkmaz; ajan dosyaları git'te kalır.
-   5. `--check` çalıştır; temiz çıkmalı.
+      yeniden üretir. Hiçbir dosya takipten çıkmaz; ajan dosyaları git'te kalır. Bu makinede
+      `llm.local.json` varsa `--no-local` ile çalıştır: göç takımın commit'idir.
+   5. `--check` çalıştır (4. adımda `--no-local` kullandıysan onunla); temiz çıkmalı.
 5. Kullanıcıya söyle:
    - Göçün tamamı **tek bir commit**tir ve git ile geri alınabilir. Commit'i sen yapma.
      Commit'e girmesi gerekenler: **yeni** `.agent-source/llm.json`, manifest, rol

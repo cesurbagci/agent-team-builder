@@ -227,8 +227,9 @@ değerle yazar ve değiştirdiği dosyaları
 
 - O dosyalar `git status`'ta değişmiş görünür. Takımın da o değerleri kullanması istenmedikçe
   commit'e katılmaz.
-- `--no-local` yerel dosyayı **hiç okumaz** ve takımın hâlini yazar — örneğin `llm.json`
-  değiştiğinde, commit'ten önce. Bozuk bir yerel dosya onu durduramaz.
+- `--no-local` yerel dosyayı **hiç okumaz** ve takımın hâlini yazar: yerel farkı olan bir
+  makinede commit'e gidecek her üretimde kullanılır, doğrulaması `--check --no-local`'dır.
+  Bozuk bir yerel dosya onu durduramaz.
 - `--check` de aynı kuralla karşılaştırır: yerel dosyası olan makinede yerel değerlerle,
   olmayanda (CI) takımın değerleriyle. Yanlışlıkla commit edilmiş bir yerel değer bu yüzden
   CI'daki `--check`'te kayma olarak görünür.

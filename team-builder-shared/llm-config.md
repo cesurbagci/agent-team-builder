@@ -76,8 +76,9 @@ girmeyen tek dosya `.agent-source/llm.local.json`'dur.
   dosyayı yerel değerle yazar ve değiştirdiği dosyaları listeler
   (`! .agent-source/llm.local.json changes these agent files: …`). O dosyalar `git status`'ta
   değişmiş görünür; takımın da o değerleri kullanması istenmedikçe commit'e katılmaz.
-- `--no-local`: yerel dosya **hiç okunmaz**, takımın hâli yazılır. `llm.json` değiştiğinde,
-  yerel farkı olan bir makineden commit etmeden önce kullanılır. Bozuk bir yerel dosya onu
+- `--no-local`: yerel dosya **hiç okunmaz**, takımın hâli yazılır. Yerel farkı olan bir
+  makinede commit'e gidecek her üretimde kullanılır (`llm.json`, manifest, rol dosyası ya da
+  preset değiştiğinde); doğrulaması da `--check --no-local`'dır. Bozuk bir yerel dosya onu
   durduramaz.
 - `--check` diskteki dosyaları bu makinenin çözümlemesiyle karşılaştırır. CI'da yerel dosya
   yoktur; yanlışlıkla commit edilmiş bir yerel değer orada kayma olarak görünür.

@@ -101,13 +101,21 @@ Ajan dosyaları git'tedir ve `llm.json`'daki takım değerleriyle üretilir. Bu 
 `llm.local.json` varsa sync onun değerlerini uygular ve değiştirdiği ajan dosyalarını
 `! .agent-source/llm.local.json changes these agent files …` satırında listeler. Kullanıcıya
 söyle: takımın da bu modelleri kullanması istenmiyorsa bu dosyaları **commit'e katmasın**.
-Takımın hâlini yazmak gerekiyorsa (örneğin `llm.json` değişti ve commit edilecek), sync'i
-`--no-local` ile çalıştır; yerel dosya hiç okunmaz. Commit'ten sonra sync'i normal çalıştır.
+
+**Commit'e gidecek bir üretim** — `llm.json`, manifest, rol dosyası ya da bir preset değişti ve
+sonuç commit edilecek — bu makinede `llm.local.json` varsa takımın hâliyle yapılır:
+
+1. `sync --no-local` ile üret; yerel dosya hiç okunmaz.
+2. Adım 4'teki doğrulamayı da `--check --no-local` ile yap. Düz `--check` yerel değerleri
+   bekler ve takımın dosyalarını kayma sayar; "tekrar üret" demek yerel değerleri geri getirir.
+3. Kullanıcı commit ettikten sonra sync'i normal çalıştırması gerektiğini söyle; yerel
+   değerler geri gelir.
 
 ### 4. Drift-free doğrula (`--check`)
 
 Generate'in temiz ve idempotent olduğunu teyit et: hiçbir şey yazmadan farkı
-kontrol et. Sync'ten hemen sonra `--check` **temiz** (exit 0) olmalıdır.
+kontrol et. Sync'ten hemen sonra `--check` **temiz** (exit 0) olmalıdır. Sync'i
+`--no-local` ile çalıştırdıysan `--check`'e de `--no-local` ekle.
 
 ```bash
 node ~/.claude/skills/team-builder-shared/sync-agent-config.mjs --root <proje> --check

@@ -44,7 +44,9 @@ Hangi preset olursa olsun sıra aynıdır:
    — geçersiz bir manifest'le ilerlersen 6. adımdaki `sync` onu üretilen dosyalara da
    taşır ve geri alınacak iş büyür.
 6. **`sync` çalıştır.** `team-builder-sync` skill'ini çağır ya da doğrudan
-   `node ~/.claude/skills/team-builder-shared/sync-agent-config.mjs` koştur.
+   `node ~/.claude/skills/team-builder-shared/sync-agent-config.mjs` koştur. Sonuç commit
+   edileceği için bu makinede `llm.local.json` varsa `--no-local` ile çalıştır ve doğrula
+   (`team-builder-sync`, *Commit'e gidecek bir üretim*).
 7. **Doğrula ve raporla.** Doğrulama şu ikisidir:
    `node ~/.claude/skills/team-builder-shared/validate-manifest.mjs` ile manifest'i
    denetle, ve `instructions.md`'de beklediğin blokların bulunup bulunmadığını gör
