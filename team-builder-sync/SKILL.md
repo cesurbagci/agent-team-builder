@@ -27,6 +27,10 @@ Referans dokümanlar (kurulu yol): `~/.claude/skills/team-builder-shared/` altı
 
 - `.agent-source/` altındaki bir rol md'si, manifest.json veya project/* dosyası
   değiştirildi → generated hedefleri tazelemek için **sync**.
+- Repo yeni klonlandı ya da ajan dosyalarını takipten çıkaran commit çekildi → ajan
+  dosyaları (`.claude/agents/`, `.codex/agents/`, `.opencode/agents/`) git'te olmadığı için
+  diskte yoktur; **sync** onları üretir.
+- `.agent-source/llm.json` ya da `llm.local.json` değişti → **sync**.
 - Generated dosyaların kaynakla uyumlu olup olmadığını (CI/PR öncesi) doğrulamak →
   **drift kontrol** (`--check`).
 - Bir generated dosyanın elle düzenlendiğinden şüpheleniliyor → `--check` farkı
@@ -79,6 +83,9 @@ node ~/.claude/skills/team-builder-shared/validate-manifest.mjs --selftest
 Doğrulama hata verirse: **dur**, hatayı kullanıcıya raporla, `.agent-source/` düzelt.
 Generate'e geçme.
 
+`llm.json` ve `llm.local.json`'ı ayrıca doğrulamana gerek yok: sync onları üretimden önce
+kendisi doğrular ve hata varsa durur.
+
 ### 3. Generate (sync)
 
 Manifest geçerliyse generated hedefleri kaynaktan üret:
@@ -88,7 +95,11 @@ node ~/.claude/skills/team-builder-shared/sync-agent-config.mjs --root <proje>
 ```
 
 Generator idempotenttir: kaynak değişmemişse hiçbir dosya yeniden yazılmaz.
-Kaynakta artık karşılığı olmayan generated dosyalar (orphan) temizlenir.
+Kaynakta artık karşılığı olmayan generated dosyalar **silinmez**; `(stale)` olarak
+raporlanır ve silmek kullanıcıya kalır. Bayat bir ajan dosyası (`.claude/agents/`,
+`.codex/agents/`, `.opencode/agents/`) artık `.gitignore` bloğunda değildir: silinmeden
+`git add -A` yapılırsa bu makinenin model seçimiyle commit'e girer. Kullanıcıya bunu söyle
+ve dosyayı silmesini öner.
 `.claude/settings.local.json` dokunulmaz.
 
 ### 4. Drift-free doğrula (`--check`)
@@ -104,6 +115,8 @@ echo "DRIFT EXIT=$?"
 - Exit 0 → kaynak ile generated senkron. Beklenen durum.
 - Exit ≠ 0 → drift var. Generator mismatch yollarını listeler. Bu, ya sync'in
   çalışmadığını ya da bir generated dosyanın elle değiştirildiğini gösterir.
+- `i <yol> is not generated yet …` satırları kayma değildir: o dosyalar git'e girmeyen
+  yerel çıktıdır ve bu makinede henüz üretilmemiştir. Sync çalıştır.
 
 ### 5. Raporla
 
@@ -111,6 +124,8 @@ Kullanıcıya kısaca bildir:
 - Manifest doğrulama sonucu.
 - Hangi hedeflerin üretildiği/güncellendiği (veya hiç değişmediği — idempotent).
 - `--check` sonucu (drift-free mi, değilse hangi dosyalar).
+- `! … — run team-builder-models` biçimindeki uyarılar: bir model bu makinenin kataloğunda
+  yok, effort desteklenmiyor ya da model kalkıyor. Kullanıcıya `team-builder-models`'i öner.
 - Hatırlatma: **generated dosyaları elle düzenleme; kaynak `.agent-source/`'tur.**
 
 ## Sadece Drift Kontrol İstendiğinde

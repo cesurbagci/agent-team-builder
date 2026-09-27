@@ -10,7 +10,7 @@ description: Bir projede governance kuralları gömülü kalıcı agent takımı
 Bu skill **takım KONFİGÜRASYONU kurmak** içindir (bir kez; dosya üretir) — **iş yaptırmak için değil.**
 
 - Kullanıcı bir **işi** takımla yaptırmak istiyorsa ya da **çalışan bir native agent team başlatmak** istiyorsa (ör. "şu özelliği takımla yap", yalın "takım kur/oluştur" ile bir görev kastediyorsa): **DUR, bu skill'i çalıştırma.** Kısaca söyle: "Bu, Claude'un yerleşik agent teams özelliğiyle (takımı bir göreve koşmak) yapılır; ben yalnız takım konfigürasyonunu kuran araçım. İşi anlatırsan lider takımı başlatır; takım **konfigürasyonunu** kurmak/değiştirmek istersen devam edeyim." Niyeti netleştir.
-- Projede zaten kurulu takım varsa (Adım 1) edit/add/sync'e yönlendir.
+- Projede zaten kurulu takım varsa (Adım 1) var olan skill'lere yönlendir: model ve effort için `team-builder-models`, anayasa preset'leri için `team-builder-upgrade`, yeniden üretim için `team-builder-sync`.
 - Yalnızca kullanıcı gerçekten **konfigürasyon kurmak/iskelemek** istiyorsa sihirbaza devam et.
 
 ## Genel Bakış
@@ -62,7 +62,7 @@ Sihirbaz çok sorulu; soruları **güvenle** sor:
 - Emin değilsen **düz metin** sor. UX'i şık yapmaya çalışırken aracı geçersiz parametreyle çağırma.
 - **JARGON YASAĞI + önce açıkla:** Kullanıcıya **alan adı / teknik terim gösterme** (`codeDocSync`, `enforcement`, `glob`, `targets`, `layout` vb.). Her kavramı **önce bir cümle + somut örnekle** anlat, **sonra** sor. Kullanıcı terimi bilmiyor olabilir; "ADR nedir", "kod-doküman senkronu nedir" gibi şeyleri kısaca açıkla. Seçenekleri günlük dille ("şimdilik boş bırak", "sana taslak önereyim") yaz, kod/JSON ile değil.
 - **DAHİLİ REFERANSLARI GİZLE:** Kullanıcıya **asla** "referans proje", "altın standart", dosya adı (`governance-defaults.md`, "KARAR 4") gibi iç kaynakları söyleme. Bunlar senin rehberin; kullanıcı için yalnızca **sade öneri** sun ("önerilen model: opus" yeter, gerekçe olarak iç kaynak gösterme).
-- **GERÇEK WIZARD ol — toplu döküm yok:** Her adımı **tek tek, etkileşimli** ilerlet. Büyük metin tabloları basıp tek bir serbest-metin onayı isteme. Özellikle roller: **her agent'ı SIRAYLA, tek tek yapılandır** (önce rol 1'in model/effort/skill'lerini sor-onayla, sonra rol 2'ye geç). 4 rolün ayarını birden basıp "hepsi tamam mı?" deme.
+- **GERÇEK WIZARD ol — toplu döküm yok:** Her adımı **tek tek, etkileşimli** ilerlet. Büyük metin tabloları basıp tek bir serbest-metin onayı isteme. Özellikle roller: **her agent'ı SIRAYLA, tek tek yapılandır** (önce rol 1'in hedef/skill'lerini sor-onayla, sonra rol 2'ye geç). 4 rolün ayarını birden basıp "hepsi tamam mı?" deme.
 
 ## Sihirbaz Akışı (10 Adım)
 
@@ -74,7 +74,7 @@ Adımları **bu sırayla** uygula. Her adımda kullanıcıya sor, cevabı al, so
 
 1. Hedef proje kökünü tespit et (bulunulan çalışma dizini).
 2. `.agent-source/agents/manifest.json` var mı bak.
-   - **Varsa:** Takım zaten kurulu. Kullanıcıyı uyar: "Mevcut takıma üye eklemek için `/team-builder-add`, düzenlemek için `/team-builder-edit`, generated dosyaları tazeleyip drift kontrol için `/team-builder-sync`." Üzerine yazmayı kullanıcı açıkça istemedikçe **DEVAM ETME**.
+   - **Varsa:** Takım zaten kurulu. Kullanıcıyı uyar: "Model ve effort değiştirmek için `/team-builder-models`, anayasa preset'lerini açıp kapatmak için `/team-builder-upgrade`, generated dosyaları tazeleyip drift kontrol için `/team-builder-sync`. Rol eklemek ya da düzenlemek için henüz bir skill yok: `.agent-source/agents/manifest.json`'ı ve `.agent-source/agents/<ad>.md`'yi elle düzenleyip sync çalıştır." Üzerine yazmayı kullanıcı açıkça istemedikçe **DEVAM ETME**.
 3. Yoksa **yarım kalmış kurulum var mı bak** (`~/.claude/skills/team-builder-shared/wizard-state.md`): `.claude/team-builder-state.json` varsa → kullanıcıya sade sor: "Bu projede yarım kalmış bir takım kurulumu var (en son: <adım>, <n> rol yapılandırıldı). **Devam mı, baştan mı?**"
    - **Devam** → state'i yükle; tamamlanmış cevapları TEKRAR SORMA; kısa "şu ana kadar seçtiklerin" özeti ver; `currentStep`/`currentAgentIndex`'ten sonraki adımdan sürdür.
    - **Baştan** → state dosyasını sil, sıfırdan.
@@ -140,10 +140,8 @@ Adımları **bu sırayla** uygula. Her adımda kullanıcıya sor, cevabı al, so
 
    **(a)** "Şimdi **<rol>** rolünü ayarlıyoruz (X/N). Görevi: <tek cümle>." diye başla.
    **(b) Hedef(ler)** — Adım 2'de birden çok ekosistem seçildiyse: bu rol hangilerinde üretilsin (claude / codex / opencode / kombinasyon; varsayılan = `targetsDefault`). Tek ekosistem varsa bu soruyu atla. → manifest `targets`.
-   **(c) Model(ler)** — rolün **hedeflerine göre** sor ve öner:
-      - Claude veya Codex hedefliyse: **opus / sonnet / haiku** (önerilen önceden işaretli) → manifest `model`. (Codex TOML aynı değeri kullanır.)
-      - OpenCode hedefliyse: **`provider/model`** formatında OpenCode modeli sor ve **öner** — `model`'e göre `anthropic/claude-opus-4` / `…claude-sonnet-4-5` / `…claude-haiku-4-5` öner; kullanıcı başka provider'a (`openai/gpt-5`, `google/gemini-2.5-pro` vb.) değiştirebilir → manifest `opencode_model`.
-   **(d) Effort** sor (tekli seçim): düşük / orta / yüksek — önerilen işaretli.
+   **(c) Model** — burada **sorma.** Bütün roller yapılandırıldıktan sonra, dosyalar yazılmadan önce `~/.claude/skills/team-builder-models/SKILL.md`'nin **Akış 1 — Ortak dosyayı kur** bölümünü izle: her rol için modeli ve effort'u o makinenin kataloğundan sorar ve `.agent-source/llm.json`'ı yazar. Sync'i o akış çalıştırmaz; setup'ın son adımı çalıştırır. Manifest'e ve rol dosyasına **model yazma** — tek yeri `llm.json`'dır (`~/.claude/skills/team-builder-shared/llm-config.md`).
+   **(d) Effort** — model gibi, Akış 1'de sorulur; burada sorma.
    **(e) Kod yazsın mı + kime danışır** — varsayılanı söyle, onaylat/değiştir (architect eklendiyse developer → architect'e danışır; **architect eklenmediyse `consults` boş kalır ve belirsizlikte kullanıcıya sorulur**; architect/reviewer kod yazmaz).
    **(f) Skill'ler** — `skill-recommend.md` §4 **ZORUNLU FORMATINA birebir uy.** Bu role uygun **yüklü + public** skill'leri öner. **Hiçbir skill'i yalnız "isim — açıklama" ile gösterme**; her skill **iki satır** olmalı:
       ```
@@ -187,7 +185,7 @@ Adımları **bu sırayla** uygula. Her adımda kullanıcıya sor, cevabı al, so
 Seçilenler somut çıktıya döner (`quality-dimensions.md`):
 - **Reviewer'ın denetim eksenleri** seçili boyutlardan oluşur (agent-md-rich.md reviewer bölümü).
 - **Somut kısıt üretilenler:** `code-design` → **büyüyen dosya yasağı** (`constraints/file-size.md`: max satır, varsayılan **800** — eşiği kullanıcıya sor; fonksiyon/nesting/DRY), `security` → secrets/girdi doğrulama kısıtı, `testing` → coverage hedefi (varsayılan %80, sor). Bu kısıtlar Adım 8'de `templates/constraint.md` standardıyla yazılır.
-- **Rol/skill iması:** `security`→ security rolü + `security-review`; `ui-ux`→ UI developer + `frontend-design`/`swift-architecture-performance`; `testing`→ qa + `tdd-workflow`. Seçilen boyut için ilgili rol Adım 5'te eklenmediyse kullanıcıya hatırlat ("güvenliği seçtin ama security rolü yok — eklemek ister misin? `/team-builder-add`").
+- **Rol/skill iması:** `security`→ security rolü + `security-review`; `ui-ux`→ UI developer + `frontend-design`/`swift-architecture-performance`; `testing`→ qa + `tdd-workflow`. Seçilen boyut için ilgili rol Adım 5'te eklenmediyse kullanıcıya hatırlat ("güvenliği seçtin ama security rolü yok — eklemek ister misin?"). Evet derse Adım 5'e dön, rolü ekle ve buraya geri gel.
 - `manifest.focus[]`'a yaz (örn. `["performance","code-design","security"]`).
 
 **7B) Anayasa presetleri (sade dille sor)** — `~/.claude/skills/team-builder-shared/constitution.md` kurallarını kullan. **İlk dört kuralı** default AÇIK olarak, **sade ve günlük dille** sun; kullanıcı kapatmak istediğini seçer. **Henüz var olmayan role atıf yapma** — açıklamayı Adım 5'te seçilen takıma göre uyarla (örn. reviewer eklenmediyse "otomatik denetleyen reviewer yok, kural yine de agent talimatlarına yazılır" de).
@@ -283,6 +281,7 @@ Tüm cevaplar toplandı; şimdi kaynağı yaz, doğrula ve generate et. Sırayla
 
 - `.agent-source/skills/<skill>/SKILL.md` — repo skill kaynakları (varsa).
 - `.agent-source/README.md` — "generated'ı elleme; burayı güncelle + sync çalıştır" notu.
+- `.agent-source/llm.json` — model ve effort; Adım 3(c)'deki Akış 1 yazar. Ajan dosyaları ve defter git'e girmez; `.gitignore` bloğunu sync yazar.
 - **Plan kapısı açıksa** (`constitution.planGate: true`) şunları da üret — hepsi
   `docLanguage` dilinde, `~/.claude/skills/team-builder-shared/plan-gate.md` sözleşmesine
   göre:
@@ -335,7 +334,7 @@ Tüm cevaplar toplandı; şimdi kaynağı yaz, doğrula ve generate et. Sırayla
 - `claude --version`'ı kontrol et; deneysel özelliğin desteklenmediği bir sürümse kullanıcıyı uyar (ayar yine de yazılır, sürüm güncellenince aktif olur). Flag adı/sürüm değişmiş olabilir — emin değilsen bunu söyle.
 - `~/.claude/teams/` ve `~/.claude/tasks/` Claude tarafından runtime'da otomatik üretilir; **bunları YAZMA**.
 
-**8f. Durum kaydını temizle:** Üretim (ve varsa native enablement) başarıyla bittiğine göre `.claude/team-builder-state.json`'ı **sil** — kurulum tamamlandı, bundan sonra `/team-builder-add` · `/team-builder-edit` · `/team-builder-sync`.
+**8f. Durum kaydını temizle:** Üretim (ve varsa native enablement) başarıyla bittiğine göre `.claude/team-builder-state.json`'ı **sil** — kurulum tamamlandı, bundan sonra `/team-builder-models` · `/team-builder-upgrade` · `/team-builder-sync`.
 
 ### Adım 9 — Özet + sıradaki adımlar
 
@@ -348,7 +347,7 @@ Tüm cevaplar toplandı; şimdi kaynağı yaz, doğrula ve generate et. Sırayla
   yaptırmadan önce plan yazılacak, [denetleyici varsa: <ad> gözden geçirecek,] sen
   onaylayacaksın. Onaylı işler `.agent-work/approved/` altında birikir; 'havuzda ne var'
   diye sorabilirsin." Kapalıysa bu satırı **hiç yazma** — var olmayan bir akışa atıf yapma.
-- **Sıradaki adımlar:** üye eklemek için `/team-builder-add`, takımı düzenlemek için `/team-builder-edit`, yeniden generate + drift kontrol için `/team-builder-sync`. **Hatırlat:** generated dosyalar elle değiştirilmez; her değişiklik `.agent-source/` üzerinde yapılır, sonra sync.
+- **Sıradaki adımlar:** model ve effort için `/team-builder-models`, anayasa preset'leri için `/team-builder-upgrade`, yeniden generate + drift kontrol için `/team-builder-sync`. Rol eklemek ya da düzenlemek için henüz bir skill yok: `.agent-source/agents/manifest.json`'ı ve `.agent-source/agents/<ad>.md`'yi elle düzenleyip sync çalıştır. **Hatırlat:** generated dosyalar elle değiştirilmez; her değişiklik `.agent-source/` üzerinde yapılır, sonra sync.
 
 ### Adım 10 — Mimari dokümanları birlikte doldurmayı TEKLİF ET
 

@@ -49,10 +49,12 @@ and bakes the rules the team must follow (the "constitution") into each agent's 
 |---|---|
 | `/team-builder-setup` | Full wizard: targets (Claude/Codex/OpenCode), topology, roles, routing, constitution presets (including the optional plan gate) → `.agent-source/` + generate. At the end it offers to fill in architecture docs with you. |
 | `/team-builder-sync` | Re-generates the generated files from `.agent-source/` / runs a **drift** check. |
+| `/team-builder-upgrade` | Turns constitution presets (including the plan gate) on or off after setup, and migrates older projects to the single instructions file. |
+| `/team-builder-models` | Chooses the model and effort each agent runs with, per ecosystem: the shared `.agent-source/llm.json`, this machine's `llm.local.json`, refreshing new or retiring models, and migrating older projects. |
 | `/architecture-advisor` | Analyzes the project, proposes ADR / architecture constraints / design, and writes them with you step by step under `docs/<arch-root>/`. Also works standalone. |
 
 `team-builder-shared/` holds the shared references the skills depend on, plus the generator
-(`sync-agent-config.mjs`) and the manifest validator (`validate-manifest.mjs`).
+(`sync-agent-config.mjs`) and the validators (`validate-manifest.mjs`, `validate-llm.mjs`).
 
 ## Requirements
 
@@ -116,8 +118,8 @@ subfolder structure) into your global skills directory:
 
 ```bash
 # macOS / Linux — Claude
-cp -R team-builder-setup team-builder-sync architecture-advisor team-builder-shared \
-  ~/.claude/skills/
+cp -R team-builder-setup team-builder-sync team-builder-upgrade team-builder-models \
+  architecture-advisor team-builder-shared ~/.claude/skills/
 ```
 
 > **Important:** `team-builder-shared/` contains the shared references the skills depend
@@ -141,6 +143,8 @@ appear in the skill list:
 ```
 /team-builder-setup
 /team-builder-sync
+/team-builder-upgrade
+/team-builder-models
 /architecture-advisor
 ```
 
@@ -202,12 +206,12 @@ The single source of truth is `.agent-source/`:
 
 ```bash
 # macOS / Linux
-rm -rf ~/.claude/skills/{team-builder-setup,team-builder-sync,architecture-advisor,team-builder-shared}
+rm -rf ~/.claude/skills/{team-builder-setup,team-builder-sync,team-builder-upgrade,team-builder-models,architecture-advisor,team-builder-shared}
 ```
 
 ```powershell
 # Windows
-'team-builder-setup','team-builder-sync','architecture-advisor','team-builder-shared' |
+'team-builder-setup','team-builder-sync','team-builder-upgrade','team-builder-models','architecture-advisor','team-builder-shared' |
   ForEach-Object { Remove-Item -Recurse -Force "$HOME\.claude\skills\$_" }
 ```
 
@@ -257,10 +261,12 @@ tanımlar ve takımın uyması gereken kuralları (anayasa) her agent'ın talima
 |---|---|
 | `/team-builder-setup` | Tam sihirbaz: hedefler (Claude/Codex/OpenCode), topoloji, roller, routing, anayasa presetleri (isteğe bağlı plan kapısı dahil) → `.agent-source/` + generate. Sonunda mimari dokümanları birlikte doldurmayı teklif eder. |
 | `/team-builder-sync` | `.agent-source/`'tan generated dosyaları yeniden üretir / **drift** (sapma) kontrolü yapar. |
+| `/team-builder-upgrade` | Kurulumdan sonra anayasa preset'lerini (plan kapısı dahil) açar ya da kapatır; eski projeleri tek talimat dosyasına göç ettirir. |
+| `/team-builder-models` | Her agent'ın hangi model ve effort'la çalışacağını ekosistem başına ayarlar: ortak `.agent-source/llm.json`, bu makinenin `llm.local.json`'u, yeni çıkan ya da kalkan modellerin yenilenmesi ve eski projelerin göçü. |
 | `/architecture-advisor` | Projeyi analiz edip ADR / mimari kısıt / tasarım önerir ve kullanıcıyla adım adım `docs/<arch-root>/` altına yazar. Takımdan bağımsız da çalışır. |
 
 `team-builder-shared/`, skill'lerin dayandığı paylaşılan referansları + generator'ı
-(`sync-agent-config.mjs`) ve manifest doğrulayıcıyı (`validate-manifest.mjs`) barındırır.
+(`sync-agent-config.mjs`) ve doğrulayıcıları (`validate-manifest.mjs`, `validate-llm.mjs`) barındırır.
 
 ## Gereksinimler
 
@@ -324,8 +330,8 @@ bozmadan) global skills dizinine kopyala:
 
 ```bash
 # macOS / Linux — Claude
-cp -R team-builder-setup team-builder-sync architecture-advisor team-builder-shared \
-  ~/.claude/skills/
+cp -R team-builder-setup team-builder-sync team-builder-upgrade team-builder-models \
+  architecture-advisor team-builder-shared ~/.claude/skills/
 ```
 
 > **Önemli:** `team-builder-shared/` paylaşılan referansları içerir; skill'ler ona dayanır —
@@ -349,6 +355,8 @@ göründüğünü kontrol et:
 ```
 /team-builder-setup
 /team-builder-sync
+/team-builder-upgrade
+/team-builder-models
 /architecture-advisor
 ```
 
@@ -411,12 +419,12 @@ kurulumu üzerine yazar).
 
 ```bash
 # macOS / Linux
-rm -rf ~/.claude/skills/{team-builder-setup,team-builder-sync,architecture-advisor,team-builder-shared}
+rm -rf ~/.claude/skills/{team-builder-setup,team-builder-sync,team-builder-upgrade,team-builder-models,architecture-advisor,team-builder-shared}
 ```
 
 ```powershell
 # Windows
-'team-builder-setup','team-builder-sync','architecture-advisor','team-builder-shared' |
+'team-builder-setup','team-builder-sync','team-builder-upgrade','team-builder-models','architecture-advisor','team-builder-shared' |
   ForEach-Object { Remove-Item -Recurse -Force "$HOME\.claude\skills\$_" }
 ```
 

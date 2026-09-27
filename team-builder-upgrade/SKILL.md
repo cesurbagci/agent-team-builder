@@ -1,6 +1,6 @@
 ---
 name: team-builder-upgrade
-description: Kurulmuş bir projede anayasa preset'lerini (geçici çözüm yok, kod-doküman senkronizasyonu, rol başına hafıza, dil standardı, plan kapısı) açar veya kapatır; plan kapısının artefaktlarını kurar ya da bırakır; eski yapıdaki projeleri tek talimat dosyasına göç ettirir. Tetikleyiciler — "plan kapısını aç", "preset aç", "preset kapat", "anayasa değiştir", "takımı yükselt", "talimatları tek dosyaya taşı", "projeyi yeni yapıya geçir". Yeni rol/routing/ekosistem eklemek için kullanma; o setup'ın işidir.
+description: Kurulmuş bir projede anayasa preset'lerini (geçici çözüm yok, kod-doküman senkronizasyonu, rol başına hafıza, dil standardı, plan kapısı) açar veya kapatır; plan kapısının artefaktlarını kurar ya da bırakır; eski yapıdaki projeleri tek talimat dosyasına göç ettirir. Tetikleyiciler — "plan kapısını aç", "preset aç", "preset kapat", "anayasa değiştir", "takımı yükselt", "talimatları tek dosyaya taşı", "projeyi yeni yapıya geçir". Yeni rol/routing/ekosistem eklemek için kullanma; o setup'ın işidir. Model ya da effort değiştirmek için de kullanma; o team-builder-models'in işidir.
 ---
 
 # team-builder-upgrade
@@ -9,7 +9,7 @@ Kurulmuş bir projede **anayasa preset'lerini** açar/kapatır. Kurulum bir kez 
 (`team-builder-setup`), `sync` ince bir sarmalayıcıdır (`team-builder-sync`); bu skill
 ikisinin arasındaki boşluğu doldurur: kurulumdan sonra fikir değişince.
 
-**Kapsam dışı:** rol ekleme/çıkarma, routing değiştirme, yeni ekosistem hedefleme.
+**Kapsam dışı:** rol ekleme/çıkarma, routing değiştirme, yeni ekosistem hedefleme, model ve effort (`team-builder-models`).
 Bunlar setup'ın soru akışının tamamını gerektirir — kullanıcı isterse setup'a yönlendir.
 
 ## Beş preset, üç sınıf
@@ -129,9 +129,9 @@ açma ve kapatma ayrı ayrı anlatılır.
    `.agent-source/agents/<name>.md` rol talimatını yaz, sonra `sync` çalıştır. Bu sırayla:
    önce manifest, sonra md, sonra sync — ters sıra `sync`'in daha yazılmamış bir role
    atıf bulmasına yol açar. **`team-builder-setup`'a yönlendirme** — zaten kurulu bir
-   projede o skill Adım 1'de **DEVAM ETME** der ve var olmayan `/team-builder-add` ile
-   `/team-builder-edit` komutlarına yönlendirir; rol eklemek bu skill'in de işi
-   **değildir**, yukarıdaki elle-düzenleme tek yoldur.
+   projede o skill Adım 1'de **DEVAM ETME** der ve rol eklemek için bir skill olmadığını
+   söyler; rol eklemek bu skill'in de işi **değildir**, yukarıdaki elle-düzenleme tek
+   yoldur.
 2. **Manifest'i yaz:** `constitution.planGate: true` **ve** kök `planGate` nesnesi
    (`planReviewer`, `codeReviewer` — ikisi de zorunlu, değer ad ya da `null`).
 3. **Bloğu ekle:** `<!-- c:planGate -->` … `<!-- /c:planGate -->`, şablondan render
