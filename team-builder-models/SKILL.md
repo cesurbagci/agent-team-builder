@@ -85,8 +85,8 @@ Hedeflenen her ekosistem için, CLI kuruluysa:
    kendisi çalıştırır. Değilse sync çalıştır:
    `node ~/.claude/skills/team-builder-shared/sync-agent-config.mjs --root <proje>`.
    Doğrulama hatası verirse düzelt ve tekrar çalıştır.
-7. Kullanıcıya söyle: "`llm.json` commit edilmeli — takımın model seçimi o." OpenCode'u
-   ortak dosyaya yazmadıysan ekle: "Her makinede bir kez `team-builder-models` çalıştırın;
+7. Kullanıcıya söyle: "`llm.json` commit edilmeli — takımın model seçimi o." OpenCode
+   hedefleniyorsa ve onu ortak dosyaya yazmadıysan ekle: "Her makinede bir kez `team-builder-models` çalıştırın;
    OpenCode modelini o makine seçer." Setup'tan çağrıldıysan bunu setup'ın özeti söyler.
    **Commit ve push'u sen yapma.**
 
@@ -109,8 +109,9 @@ sync bir katalog uyarısı verdiğinde.
    model)"
 6. `.agent-source/llm.local.json`'a **yalnız farkları** yaz: 3–5. adımlarda çözülenler ve
    istenenler. Dosya varsa **var olan girdileri koru** — yalnız değişenleri güncelle ya da
-   ekle; dosya git'e girmediği için silinen bir girdi geri gelmez. Hiç fark yoksa **dosyayı
-   oluşturma**.
+   ekle; dosya git'e girmediği için silinen bir girdi geri gelmez. Kullanıcı bir agent'ı
+   takımın seçimine döndürmek isterse o yerel girdiyi sil, ortak değeri kopyalama. Hiç fark
+   yoksa **dosyayı oluşturma**.
 7. Sync çalıştır. Uyarı kalmadıysa bitti.
 
 `llm.local.json` git'e girmez; `.gitignore` bloğunu sync yazar, ona dokunma.
@@ -122,6 +123,8 @@ sync bir katalog uyarısı verdiğinde.
 1. **Önce sor: kimin için?** "Bu değişiklik takım için mi (herkes etkilenir, commit gerekir),
    yalnız bu makine için mi?" Cevap netleşmeden yazma.
    - Takım → `llm.json`. Yalnız bu makine → `llm.local.json`.
+   - Bu makineyi takımın seçimine döndürmek, yerel girdiyi **silmektir**. Ortak değeri yerel
+     dosyaya kopyalama: kopya, takımın sonraki değişikliklerini bu makinede durdurur.
 2. Yeni modeli seçtir (katalog ya da takma adlar). Model değiştiyse effort'u **yeniden sor** —
    eski effort başka bir model için seçilmişti.
 3. Dosyayı yaz — var olan girdileri koru, yalnız değişeni güncelle — ve sync çalıştır.

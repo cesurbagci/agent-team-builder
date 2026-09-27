@@ -189,10 +189,11 @@ The single source of truth is `.agent-source/`:
   source and the generated files.
 - Each generated file starts with the header
   `# This file is generated from .agent-source. Run sync.`
-- **Agent files are generated on each machine and not tracked by git.** `.claude/agents/`,
-  `.codex/agents/`, `.opencode/agents/`, the ledger and `.agent-source/llm.local.json` are
-  listed in a `.gitignore` block that sync manages. After cloning, install team-builder and run
-  `/team-builder-sync` to generate them.
+- **Agent files are generated on each machine and not tracked by git.** The generated files in
+  `.claude/agents/`, `.codex/agents/` and `.opencode/agents/`, the ledger and
+  `.agent-source/llm.local.json` are listed one by one in a `.gitignore` block that sync
+  manages; agent files you write there yourself stay in git. After cloning, install
+  team-builder and run `/team-builder-sync` to generate them.
 - **Models live in `.agent-source/llm.json`** (committed): the model and effort each agent runs
   with, per ecosystem. A machine can override them in `.agent-source/llm.local.json`.
   `/team-builder-models` sets both up.
@@ -209,7 +210,8 @@ The single source of truth is `.agent-source/`:
 
 **Update:** `git pull`, then re-run the install script (it overwrites the existing install).
 Projects set up with an older version keep model settings in the manifest; the updated sync
-stops on them and points to `/team-builder-models`, which migrates a project in one commit.
+stops on them and points to `/team-builder-models`, which prepares the migration as one commit
+for you to make.
 Everyone on the team should update — older versions do not read `llm.json`.
 
 **Uninstall:** remove the skill folders from your global directory.
@@ -412,9 +414,10 @@ Tek gerçek kaynak `.agent-source/`'tur:
 - Her generated dosyanın başına `# This file is generated from .agent-source. Run sync.`
   header'ı yazılır.
 - **Ajan dosyaları her makinede üretilir ve git'e girmez.** `.claude/agents/`,
-  `.codex/agents/`, `.opencode/agents/`, defter ve `.agent-source/llm.local.json`, sync'in
-  yönettiği bir `.gitignore` bloğunda listelenir. Repoyu klonladıktan sonra team-builder'ı kur
-  ve `/team-builder-sync` çalıştır; dosyalar üretilir.
+  `.codex/agents/` ve `.opencode/agents/` altındaki üretilen dosyalar, defter ve
+  `.agent-source/llm.local.json`, sync'in yönettiği bir `.gitignore` bloğunda tek tek
+  listelenir; oraya kendi yazdığın agent dosyaları git'te kalır. Repoyu klonladıktan sonra
+  team-builder'ı kur ve `/team-builder-sync` çalıştır; dosyalar üretilir.
 - **Modeller `.agent-source/llm.json`'dadır** (commit edilir): her agent'ın ekosistem başına
   hangi model ve effort'la çalışacağı. Bir makine bunları `.agent-source/llm.local.json`'da
   ezebilir. İkisini de `/team-builder-models` kurar.
@@ -431,8 +434,8 @@ Tek gerçek kaynak `.agent-source/`'tur:
 
 **Güncelleme:** repoyu `git pull` ile çek, install script'ini yeniden çalıştır (mevcut
 kurulumu üzerine yazar). Eski sürümle kurulmuş projeler model ayarlarını manifest'te tutar;
-güncellenmiş sync onlarda durur ve `/team-builder-models`'i gösterir — o, projeyi tek bir
-commit'le göç ettirir. Takımdaki herkes güncellemeli; eski sürümler `llm.json`'ı okumaz.
+güncellenmiş sync onlarda durur ve `/team-builder-models`'i gösterir — o, göçü senin
+atacağın tek bir commit olarak hazırlar. Takımdaki herkes güncellemeli; eski sürümler `llm.json`'ı okumaz.
 
 **Kaldırma:** skill klasörlerini global dizinden sil.
 
