@@ -36,10 +36,12 @@ async function readLayer(root, relative, read) {
 // file can hold and validation must reject — and resolution then treats every
 // value it would have held as unset. `read` lets sync read through its
 // containment check; it must reject a missing file with code ENOENT.
-export async function readLlmLayers(root, { read = readFileText } = {}) {
+// `local: false` leaves the local file unread, as if it did not exist: sync
+// --no-local writes the team's version even when that file is broken.
+export async function readLlmLayers(root, { read = readFileText, local = true } = {}) {
   return {
     shared: await readLayer(root, LLM_SHARED_RELATIVE, read),
-    local: await readLayer(root, LLM_LOCAL_RELATIVE, read),
+    local: local ? await readLayer(root, LLM_LOCAL_RELATIVE, read) : undefined,
   }
 }
 

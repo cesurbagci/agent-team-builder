@@ -2,6 +2,9 @@
 
 - **Tarih:** 2026-09-27
 - **Durum:** Uygulandı — `docs/superpowers/plans/2026-09-27-llm-config.md`
+- **Revizyon 1 (2026-09-27, kullanıcı kararı):** ajan dosyaları ve defter yeniden git'te;
+  git dışında yalnız `llm.local.json` kalır. Aşağıdaki L2, L5 ve Kararlar 6, 7, 8, 17 bu
+  revizyonla değişti — bkz. *Revizyon 1*.
 - **Kapsam:** Model ve effort seçiminin agent tanımından ayrılması; ortak dosya + kişisel
   dosya; sağlayıcı kataloğuna dayalı uyarı ve güncelleme; mevcut projelerin göçü
 
@@ -455,6 +458,30 @@ eski yapıdaki bir fixture projenin göçü (L-R16, L-R17). Ek olarak bu makined
 `codex debug models` ve `opencode models` ile bir çalıştırma, ve üretilen bir OpenCode ajanının
 `opencode debug agent <ad>` ile `options.reasoningEffort` taşıdığının görülmesi.
 
+## Revizyon 1 — Ajan dosyaları git'te
+
+**Neden.** Ajan dosyalarını git dışına almak, team-builder kurmayan takım arkadaşını
+bozuyordu: göç commit'ini çekince git ajan dosyalarını diskinden siliyordu, yeni klonda hiç
+yoktular, biri bir ajanı değiştirdiğinde de ötekiler sync çalıştırana kadar eski ajanla
+çalışıyordu. Ajanları yalnız kullananlar team-builder komutu çalıştırmaz.
+
+**Yeni davranış.**
+- Ajan dosyaları ve defter commit edilir. `.gitignore` bloğunda yalnız
+  `/.agent-source/llm.local.json` durur.
+- Sync `llm.local.json`'u uygulamaya devam eder. Yerel değerin değiştirdiği ajan dosyalarını
+  bir uyarı satırında listeler; kullanıcı onları commit'e katmaz.
+- `--no-local` yerel dosyayı hiç okumaz ve takımın hâlini yazar (yerel farkı olan bir
+  makineden `llm.json` değişikliğini commit etmeden önce).
+- `--check` bu makinenin çözümlemesiyle karşılaştırır; eksik ajan dosyası ve eksik defter
+  kaymadır. CI'da yerel dosya olmadığı için yanlışlıkla commit edilmiş yerel değer orada
+  kayma olarak görünür.
+- `CLAUDE.md` ve `AGENTS.md` yalnız standart üretim başlığını taşır.
+- Göç hiçbir dosyayı takipten çıkarmaz; commit'i çeken takım arkadaşının bir şey yapması
+  gerekmez.
+
+**Bedel.** Yerel farkı olan makinede o ajan dosyaları `git status`'ta değişmiş görünür;
+çekilen bir commit aynı dosyayı değiştiriyorsa önce geri alınması gerekir.
+
 ## Kararlar
 
 | # | Karar | Gerekçe |
@@ -464,9 +491,9 @@ eski yapıdaki bir fixture projenin göçü (L-R16, L-R17). Ek olarak bu makined
 | 3 | Yerel dosyanın adı `llm.local.json`, makine adı yok | `.gitignore`'da olduğu için zaten makineye özel; makine adı kararsız |
 | 4 | Ekosistem başına açık eşleme, çeviri tablosu yok | Model ad alanları ekosistemler arasında farklı; tablo eskir |
 | 5 | Model değişen katmanın altındaki effort devralınmaz | Effort geçerliliği modele bağlı (katalogda ölçüldü) |
-| 6 | Ajan dosyaları ve defter yerel üretimdir | Commit edilen dosyaya kişisel değer yazmak çalışma ağacını kirletir; Claude'da proje ajanını ezen commit dışı dosya yok |
-| 7 | `.gitignore` dosya bazında, işaretli blokta, manifest'ten | Elle yazılmış ajanlar desteklenen durum; blok herkeste aynı |
-| 8 | Defter yerel | Commit edilen defter, kaldırılan ajanı takım arkadaşında sessizce çalışır bırakır |
+| 6 | ~~Ajan dosyaları ve defter yerel üretimdir~~ **Revizyon 1:** git'tedir; yerel farkı olan makine değişen dosyaları commit etmez | Ajanları yalnız kullanan, team-builder kurmadan çalışabilmeli |
+| 7 | `.gitignore` işaretli blokta; **Revizyon 1:** yalnız `llm.local.json` | Blok herkeste aynı |
+| 8 | ~~Defter yerel~~ **Revizyon 1:** defter git'te | Ajan dosyaları git'teyken yeni klon da bayat dosyaları görmeli |
 | 9 | Biçim doğrulanır, üyelik doğrulanmaz | Claude sağlayıcıya özgü kimlikleri kabul ediyor; kilitler bugün geçerli değerleri reddediyor |
 | 10 | Katalog kontrolü yalnız uyarır | Katalog makineye ve hesaba bağlı; CI'da yok |
 | 11 | OpenCode yedek haritası silinir | Kodda sabit sürüm adları eskiyor; model yoksa OpenCode'un kendi kuralı işler |
@@ -475,7 +502,7 @@ eski yapıdaki bir fixture projenin göçü (L-R16, L-R17). Ek olarak bu makined
 | 14 | Göç zorunlu ve tek adımlık | "Eski mod" ya bilinen hataları yaşatır ya modelleri uyarısız değiştirir |
 | 15 | Göç bugün çalışanı korur, bilinen yanlışları korumaz | Davranışı koruyan ama hatayı taşımayan tek yol |
 | 16 | Skill commit ve push yapmaz | Paylaşılan repoya kendiliğinden gönderim riskli |
-| 17 | `--check` eksik yerel üretimi kayma saymaz | CI'da ve taze klonda bu dosyalar hiç yok; saymak `--check`'i her zaman kırmızı yapardı |
+| 17 | ~~`--check` eksik yerel üretimi kayma saymaz~~ **Revizyon 1:** yerel üretim yok; eksik dosya kaymadır | Her üretilen dosya git'te |
 
 ## Kapsam dışı
 

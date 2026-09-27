@@ -50,9 +50,9 @@ Kaynaktan üretilen, elle düzenlenmeyen dosyalar:
 | `agents/<role>.md` + manifest | `.opencode/agents/<role>.md` | `targets` içinde `opencode` |
 | `skills/<skill>/SKILL.md` | `.agents/skills/` (her zaman) + Claude hedefi varsa `.claude/skills/` + OpenCode hedefi varsa `.opencode/skills/` | varsa |
 
-Ajan dosyaları (`.claude/agents/`, `.codex/agents/`, `.opencode/agents/`) ve defter
-**git'e girmez** — çözümlenmiş modeli taşırlar ve o model bu makinenin `llm.local.json`'undan
-gelebilir. Sync onları `.gitignore`'daki işaretli blokta dosya dosya listeler (bkz. §11).
+Ajan dosyaları (`.claude/agents/`, `.codex/agents/`, `.opencode/agents/`) git'tedir ve
+`llm.json`'daki takım değerlerini taşır. Bir makinenin `llm.local.json`'u bu değerleri o
+makinede değiştirebilir; o dosyalar commit'e katılmaz (bkz. §11).
 
 Codex agent-definition'ı üretilirken kaynak gövdesi dönüştürülür (örn.
 `.claude/skills/...` yolları `.agents/skills/...` olur; Claude'a özgü Task-tool
@@ -70,11 +70,6 @@ Her generated dosyanın başına sabit bir header yazılır:
 - Header beklenen içeriğin parçasıdır; bu yüzden `--check` header eksik/yanlış ise
   drift sayar.
 
-`CLAUDE.md` ve `AGENTS.md` bir satır daha taşır: ajan dosyalarının yerelde üretildiğini ve
-eksiklerse team-builder kurulup `team-builder-sync` skill'inin çalıştırılması gerektiğini
-söyler. Bu iki dosya git'tedir; repoyu yeni
-klonlayan ya da ajan dosyalarını takipten çıkaran commit'i çeken kişi önce onları okur.
-
 ## 5. `--check` Drift Davranışı
 
 `--check` modunda generator:
@@ -82,10 +77,7 @@ klonlayan ya da ajan dosyalarını takipten çıkaran commit'i çeken kişi önc
 - **Hiçbir dosya yazmaz, silmez, dizin oluşturmaz** (yan etki yok).
 - Her hedef için beklenen içeriği üretir ve diskteki içerikle karşılaştırır.
 - Fark bulduğu her dosyayı `mismatches` listesine ekler. Drift kaynakları:
-  1. Generated dosyanın içeriği beklenenden farklı (veya dosya hiç yok). **İstisna:**
-     git'e girmeyen yerel çıktı (§11) hiç yoksa bu kayma **değildir** — CI'da ve taze
-     klonda bu dosyalar yoktur. `i <yol> is not generated yet …` bilgi satırıyla
-     söylenir, çıkış kodunu etkilemez. Var olup farklı olan yerel çıktı ise kaymadır.
+  1. Generated dosyanın içeriği beklenenden farklı (veya dosya hiç yok).
   2. Defterde kayıtlı olup bu turda üretilmeyen, hâlâ diskte duran bayat generated
      dosya (bkz. §8).
   3. `.agent-source/agents/` altında manifest'te listelenmeyen `<role>.md` kaynağı.
@@ -169,7 +161,9 @@ güvenli olduğu anlamına gelmez; silme yolunu güvenli kılmak için gereken s
 (yol containment, dosya türü kontrolü, case-insensitive yeniden adlandırma çakışması,
 geçici I/O hatasının "üretilmedi" sanılması) sağladığı faydadan pahalıdır.
 
-Bunun yerine sync bir **sahiplik defteri** tutar: `.agent-source/generated-files.json`. Defter bu makineye aittir ve **git'e girmez** (§11).
+Bunun yerine sync bir **sahiplik defteri** tutar: `.agent-source/generated-files.json`. Defter
+git'e girer: yeni klonlanan bir makine de önceden üretilmiş, artık üretilmeyen dosyaları bayat
+olarak görür.
 **Normal sync modunda**, her başarılı çalışma şunların birleşimini (repo köküne göre,
 POSIX ayraçlı, sıralı) oraya yazar: bu turda ürettiği tüm generated yollar **artı**
 önceki defterde olup artık üretilmeyen ama hâlâ diskte duran yollar. **`--check` modu
@@ -195,8 +189,7 @@ düşer ve bir daha hiç görünmez — `--check` yeşil yanarken dosya diskte k
   görünmez kalır.
 - **`--check` modunda:** defter **bozuksa** diskteki içerik beklenen birleşimden farklı
   olur; defter yolu normal drift mismatch'i olarak raporlanır ve `--check` exit 1 ile
-  çıkar. Defter **hiç yoksa** bu kayma değildir: defter git'e girmeyen yerel çıktıdır ve
-  CI'da ya da taze klonda bulunmaz (§5, §11).
+  çıkar. Defter **hiç yoksa** da kaymadır: defter git'tedir.
 - `--check` defter dosyasının içeriğini **değiştirmez**.
 - Bayat dosyaları silmek kullanıcıya kalmıştır.
 
@@ -222,16 +215,27 @@ Uyarı **`ctx.mismatches`'e girmez** — oraya girseydi `--check` düşerdi, yan
 olurduk. Bunun bedeli: yalnız `--check` çalıştıran bir CI eksik referansı görmez.
 Bilinçli bir tercihtir; eklemeyi teklif etmek etkileşimli skill'lerin işidir.
 
-## 11. Git'e girmeyen çıktı ve `.gitignore` bloğu
+## 11. Yerel model farkları ve `.gitignore` bloğu
 
-Git'e girmeyen yerel çıktı: defter, `llm.local.json` ve her agent için etkin hedeflerine
-göre `.claude/agents/<ad>.md`, `.codex/agents/<ad>.toml`, `.opencode/agents/<ad>.md`.
-Liste yalnız manifest'ten hesaplanır; her makinede aynıdır.
+Sync'in yazdığı her şey git'e girer; ajan dosyaları ve defter dahil. Git'e girmeyen tek dosya
+bu makinenin `llm.local.json`'udur.
 
-Sync bu listeyi `.gitignore`'da işaretli bir blokta tutar:
+Ajan dosyaları `llm.json`'daki takım değerleriyle üretilir. Bir makinede `llm.local.json` bir
+ajanın modelini ya da effort'unu değiştiriyorsa sync o makinede o ajanın dosyasını yerel
+değerle yazar ve değiştirdiği dosyaları
+`! .agent-source/llm.local.json changes these agent files …` satırında listeler:
 
-- Her yol ayrı satırda, başında `/` ile — **dizin değil dosya**. Kullanıcının aynı
-  dizinlere elle yazdığı agent'lar git'te kalmalıdır.
+- O dosyalar `git status`'ta değişmiş görünür. Takımın da o değerleri kullanması istenmedikçe
+  commit'e katılmaz.
+- `--no-local` yerel dosyayı **hiç okumaz** ve takımın hâlini yazar — örneğin `llm.json`
+  değiştiğinde, commit'ten önce. Bozuk bir yerel dosya onu durduramaz.
+- `--check` de aynı kuralla karşılaştırır: yerel dosyası olan makinede yerel değerlerle,
+  olmayanda (CI) takımın değerleriyle. Yanlışlıkla commit edilmiş bir yerel değer bu yüzden
+  CI'daki `--check`'te kayma olarak görünür.
+
+Sync `llm.local.json`'u `.gitignore`'da işaretli bir blokta tutar:
+
+- Her yol ayrı satırda, başında `/` ile.
 - Blok varsa yerinde yenilenir; yoksa dosyanın sonuna bir boş satırla eklenir; `.gitignore`
   yoksa yalnız blokla oluşturulur. **Bloğun dışına dokunulmaz.**
 - Başlangıç işareti olup bitiş işareti yoksa sync durur: değiştirilecek aralık tanımsızdır.

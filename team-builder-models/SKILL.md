@@ -25,8 +25,9 @@ manifest'i — bir rolü kaldırırken `routing`, `consults` ve `lead` atıflar�
    `model:` veya `effort:` satırı varsa → **Göç** bölümüne git. Göç bitmeden başka akış
    çalışmaz; sync zaten durur.
 3. `.agent-source/llm.json` yoksa → **Akış 1**.
-4. Aksi halde isteğe göre: yeni makine ya da klon sonrası → **Akış 2**; bir modeli ya da
-   effort'u değiştirmek, yeni çıkan ya da kalkan bir model → **Akış 3**.
+4. Aksi halde isteğe göre: bu makinede takımdan farklı bir model ya da bir katalog uyarısı →
+   **Akış 2**; bir modeli ya da effort'u değiştirmek, yeni çıkan ya da kalkan bir model →
+   **Akış 3**.
 
 ## Katalogları oku
 
@@ -89,15 +90,17 @@ Hedeflenen her ekosistem için, CLI kuruluysa:
    kendisi çalıştırır. Değilse sync çalıştır:
    `node ~/.claude/skills/team-builder-shared/sync-agent-config.mjs --root <proje>`.
    Doğrulama hatası verirse düzelt ve tekrar çalıştır.
-7. Kullanıcıya söyle: "`llm.json` commit edilmeli — takımın model seçimi o." OpenCode
-   hedefleniyorsa ve onu ortak dosyaya yazmadıysan ekle: "Her makinede bir kez `team-builder-models` çalıştırın;
-   OpenCode modelini o makine seçer." Setup'tan çağrıldıysan bunu setup'ın özeti söyler.
-   **Commit ve push'u sen yapma.**
+7. Kullanıcıya söyle: "`llm.json` ve sync'in yeniden ürettiği ajan dosyaları commit edilmeli —
+   takımın model seçimi bunlar. Ajanları yalnız kullanan takım arkadaşının bir şey kurması
+   gerekmez; modeli ajan dosyasından alır." OpenCode hedefleniyorsa ve onu ortak dosyaya
+   yazmadıysan ekle: "OpenCode ajanları OpenCode'un varsayılan modeliyle çalışır. Başka model
+   isteyen makine `team-builder-models` ile kendi yerel dosyasına yazar." Setup'tan
+   çağrıldıysan bunu setup'ın özeti söyler. **Commit ve push'u sen yapma.**
 
 ## Akış 2 — Bu makineyi hazırla
 
-Repo yeni klonlandığında, ajan dosyalarını takipten çıkaran göç commit'i çekildiğinde, ya da
-sync bir katalog uyarısı verdiğinde.
+Bu makinede takımdan farklı bir model gerektiğinde (örneğin başka bir OpenCode sağlayıcısı),
+ya da sync bir katalog uyarısı verdiğinde. Klondan sonra gerekmez: ajan dosyaları git'ten gelir.
 
 1. `.agent-source/llm.json`'ı (ve varsa `llm.local.json`'ı) oku; her agent ve hedef
    ekosistem için **çözümlenmiş** değeri hesapla (`llm-config.md`, *Çözümleme*).
@@ -116,7 +119,12 @@ sync bir katalog uyarısı verdiğinde.
    ekle; dosya git'e girmediği için silinen bir girdi geri gelmez. Kullanıcı bir agent'ı
    takımın seçimine döndürmek isterse *Değiştir*'in 1. adımındaki gibi yap. Hiç fark
    yoksa **dosyayı oluşturma**.
-7. Sync çalıştır. Uyarı kalmadıysa bitti.
+7. Sync çalıştır. Sync, yerel dosyanın değiştirdiği ajan dosyalarını listeler. Kullanıcıya
+   söyle:
+   - Bu dosyalar artık git'teki hâlinden farklı. Takımın da bu modelleri kullanması
+     istenmiyorsa **commit'e katma**; `git status`'ta değişmiş görünmeleri beklenen durumdur.
+   - `git pull` bu dosyalardan birini de değiştiriyorsa git çekmeyi durdurur: önce onları geri
+     al (`git checkout -- <dosyalar>`), çek, sonra sync'i yeniden çalıştır.
 
 `llm.local.json` git'e girmez; `.gitignore` bloğunu sync yazar, ona dokunma.
 
@@ -137,7 +145,11 @@ sync bir katalog uyarısı verdiğinde.
 2. Yeni modeli seçtir (katalog ya da takma adlar). Model değiştiyse effort'u **yeniden sor** —
    eski effort başka bir model için seçilmişti.
 3. Dosyayı yaz — var olan girdileri koru, yalnız değişeni güncelle — ve sync çalıştır.
-4. Ortak dosya değiştiyse commit edilmesi gerektiğini söyle; commit ve push yapma.
+4. Ortak dosya değiştiyse `llm.json` ile birlikte sync'in yeniden ürettiği ajan dosyalarının da
+   commit edilmesi gerektiğini söyle: takım arkadaşları modeli bu dosyalardan alır. Sync bir ajan
+   dosyasının bu makinenin yerel değerini taşıdığını söylüyorsa, önce sync'i `--no-local` ile
+   çalıştır — dosyalar takımın hâline döner — ve kullanıcıya commit'ten sonra sync'i normal
+   çalıştırmasını söyle. Commit ve push yapma.
 
 ### Yenile — yeni model çıktı, model kalktı
 
@@ -190,31 +202,22 @@ Güncellenmiş team-builder bu yapıda sync'i durdurur.
       alanlarını sil.
    3. Her `.agent-source/agents/<ad>.md` frontmatter'ından `model:` ve `effort:`
       satırlarını sil. **Başka hiçbir satıra dokunma.**
-   4. Proje bir git deposuysa üretilen ajan dosyalarını ve defteri takipten çıkar; diskteki
-      dosyalar yerinde kalır:
-
-      ```bash
-      git -C <proje> rm --cached --ignore-unmatch -q .agent-source/generated-files.json <ajan dosyaları>
-      ```
-
-      Ajan dosyalarının listesini manifest'ten kur: her agent için etkin hedeflerine göre
-      `.claude/agents/<ad>.md`, `.codex/agents/<ad>.toml`, `.opencode/agents/<ad>.md`.
-      **Kullanıcının elle yazdığı agent dosyalarını listeye koyma** — manifest'te olmayan bir
-      dosya kullanıcınındır.
-   5. Sync çalıştır: `.gitignore` bloğunu yazar, ajan dosyalarını yeniden üretir.
-   6. `--check` çalıştır; temiz çıkmalı.
+   4. Sync çalıştır: `.gitignore` bloğunu yazar, ajan dosyalarını `llm.json`'daki değerlerle
+      yeniden üretir. Hiçbir dosya takipten çıkmaz; ajan dosyaları git'te kalır.
+   5. `--check` çalıştır; temiz çıkmalı.
 5. Kullanıcıya söyle:
    - Göçün tamamı **tek bir commit**tir ve git ile geri alınabilir. Commit'i sen yapma.
      Commit'e girmesi gerekenler: **yeni** `.agent-source/llm.json`, manifest, rol
-     dosyaları, `.gitignore`, sync'in ürettiği ve git'e giren dosyalar (örneğin
-     `.codex/agent-definitions/`) ve takipten çıkarılan dosyalar. Yeni dosyalar (`llm.json`,
+     dosyaları, `.gitignore` ve sync'in yeniden ürettiği dosyalar (ajan dosyaları, defter,
+     `.codex/agent-definitions/` gibi). Yeni dosyalar (`llm.json`,
      önceden yoksa `.gitignore`) henüz takip
      edilmediği için `git commit -a` onları **almaz**; `llm.json` unutulursa takım sessizce
      varsayılan modellerle çalışır.
-   - **Bu commit'i çeken her takım arkadaşı bir kez sync çalıştırmalı:** git, takibi
-     bırakılan dosyaları commit'i çekenin diskinden siler.
-   - Takımdaki herkes team-builder'ın yeni sürümünü kurmalı; eski sürüm `llm.json`'ı
-     tanımaz.
+   - Commit'i çeken takım arkadaşının bir şey yapması gerekmez: güncel ajan dosyaları
+     git'ten gelir.
+   - team-builder komutlarını çalıştıran herkes yeni sürümü kurmalı: eski sürüm `llm.json`'ı
+     tanımaz ve sync'i çalıştırırsa ajan dosyalarından model satırlarını siler. Ajanları yalnız
+     kullananların bir şey kurması gerekmez.
 
 ## Yapma
 

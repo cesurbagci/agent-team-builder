@@ -281,7 +281,7 @@ Tüm cevaplar toplandı; şimdi kaynağı yaz, doğrula ve generate et. Sırayla
 
 - `.agent-source/skills/<skill>/SKILL.md` — repo skill kaynakları (varsa).
 - `.agent-source/README.md` — "generated'ı elleme; burayı güncelle + sync çalıştır" notu.
-- `.agent-source/llm.json` — model ve effort; Adım 5'in 3(c) maddesindeki Akış 1 yazar. Ajan dosyaları ve defter git'e girmez; `.gitignore` bloğunu sync yazar.
+- `.agent-source/llm.json` — model ve effort; Adım 5'in 3(c) maddesindeki Akış 1 yazar. Ajan dosyaları bu değerlerle üretilir; onlar ve defter git'e girer. Yalnız `llm.local.json` girmez; `.gitignore` bloğunu sync yazar.
 - **Plan kapısı açıksa** (`constitution.planGate: true`) şunları da üret — hepsi
   `docLanguage` dilinde, `~/.claude/skills/team-builder-shared/plan-gate.md` sözleşmesine
   göre:
@@ -343,7 +343,7 @@ Tüm cevaplar toplandı; şimdi kaynağı yaz, doğrula ve generate et. Sırayla
 - **Ne üretildi:** seçilen hedefler (Adım 2'de ne seçildiyse — yalnız onları yaz), docLanguage, arch-root + layout, açık anayasa presetleri, routing satır sayısı, üye sayısı/rolleri, `lead`.
 - **Üretilen yollar:** canonical kaynak `.agent-source/` (manifest.json + agents/*.md + project/* + skills + llm.json); generated hedefler **yalnız seçilenler için** — (Claude ise) `CLAUDE.md` + `.claude/agents/*.md`, (Codex ise) `AGENTS.md` + `.codex/*`, (OpenCode ise) `AGENTS.md` + `opencode.json` + `.opencode/*`; mimari iskelet `docs/<arch-root>/...`.
 - **Doğrulama sonucu:** manifest geçerli; sync drift temiz.
-- **Takım için:** `.agent-source/llm.json` commit edilmeli — takımın model seçimi o. Üretilen ajan dosyaları (`.claude/agents/`, `.codex/agents/`, `.opencode/agents/` altında) git'e girmez — oraya elle yazılan agent dosyaları git'te kalır: takım arkadaşları repoyu klonladıktan sonra team-builder'ı kurup `/team-builder-sync` çalıştırmalı. OpenCode hedefleniyorsa ve modeli ortak dosyaya yazılmadıysa her makinede bir kez `/team-builder-models` çalıştırılmalı; OpenCode modelini o makine seçer. Commit ve push'u sen yapma.
+- **Takım için:** `.agent-source/llm.json` ve üretilen ajan dosyaları (`.claude/agents/`, `.codex/agents/`, `.opencode/agents/` altında) commit edilmeli — takımın model seçimi bunlar. Takım arkadaşlarının ajanları kullanmak için team-builder kurması gerekmez; yalnız takımı ya da modelleri değiştirecek olan kurar. OpenCode hedefleniyorsa ve modeli ortak dosyaya yazılmadıysa OpenCode ajanları OpenCode'un varsayılan modeliyle çalışır; başka model isteyen makine `/team-builder-models` ile kendi yerel dosyasına yazar ve değişen ajan dosyalarını commit etmez. Commit ve push'u sen yapma.
 - **Plan kapısı açıksa** özete bir satır ekle ve **sade dille** anlat: "Bundan sonra bir iş
   yaptırmadan önce plan yazılacak, [denetleyici varsa: <ad> gözden geçirecek,] sen
   onaylayacaksın. Onaylı işler `.agent-work/approved/` altında birikir; 'havuzda ne var'
