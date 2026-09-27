@@ -149,7 +149,7 @@ function createContext({ root, checkOnly }) {
   const resolveRoot = (...segments) => path.join(resolvedRoot, ...segments)
   const resolveSource = (...segments) => path.join(sourceRoot, ...segments)
 
-  async function writeExpected(filePath, expected, { track = true } = {}) {
+  async function writeExpected(filePath, expected, { track = true, keepLineEndings = false } = {}) {
     const relative = toPosix(filePath)
     if (track) {
       produced.add(relative)
@@ -170,7 +170,7 @@ function createContext({ root, checkOnly }) {
       return
     }
     await fs.mkdir(path.dirname(filePath), { recursive: true })
-    await fs.writeFile(filePath, normalizedExpected)
+    await fs.writeFile(filePath, keepLineEndings ? expected : normalizedExpected)
     writes.push(toPosix(filePath))
   }
 
@@ -748,13 +748,15 @@ function localOutputPaths(manifest) {
 
 // One file per line, never a directory: users keep hand-written agents in these
 // same directories and those must stay in git. Everything outside the markers
-// is left exactly as it was.
+// is left exactly as it was, line endings included: the block takes the file's
+// own line ending, so a CRLF .gitignore is not rewritten line by line.
 function renderGitignore(existing, paths) {
-  const block = [GITIGNORE_BEGIN, ...paths.map(p => `/${p}`), GITIGNORE_END].join('\n') + '\n'
+  const eol = existing.includes('\r\n') ? '\r\n' : '\n'
+  const block = [GITIGNORE_BEGIN, ...paths.map(p => `/${p}`), GITIGNORE_END].join(eol) + eol
   const start = existing.indexOf(GITIGNORE_BEGIN)
   if (start === -1) {
     if (existing === '') return block
-    return existing + (existing.endsWith('\n') ? '\n' : '\n\n') + block
+    return existing + (existing.endsWith('\n') ? eol : eol + eol) + block
   }
   const end = existing.indexOf(GITIGNORE_END, start)
   if (end === -1) {
@@ -762,7 +764,7 @@ function renderGitignore(existing, paths) {
       `.gitignore has "${GITIGNORE_BEGIN}" without "${GITIGNORE_END}" — restore the end marker by hand`
     )
   }
-  const after = existing.slice(end + GITIGNORE_END.length).replace(/^\n/, '')
+  const after = existing.slice(end + GITIGNORE_END.length).replace(/^\r?\n/, '')
   return existing.slice(0, start) + block + after
 }
 
@@ -770,11 +772,9 @@ function renderGitignore(existing, paths) {
 // is not a generated target, so it stays out of the ledger.
 async function syncGitignore(ctx, manifest) {
   const gitignorePath = ctx.resolveRoot('.gitignore')
-  const existing = (await pathExists(gitignorePath))
-    ? normalizeText(await readText(gitignorePath))
-    : ''
+  const existing = (await pathExists(gitignorePath)) ? await readText(gitignorePath) : ''
   const expected = renderGitignore(existing, localOutputPaths(manifest))
-  await ctx.writeExpected(gitignorePath, expected, { track: false })
+  await ctx.writeExpected(gitignorePath, expected, { track: false, keepLineEndings: true })
 }
 
 // Whether a previously-generated LEDGER ENTRY should still count as present.
@@ -2034,6 +2034,41 @@ async function runSelftest() {
       normalizeText(await readText(gitignorePath)) === `node_modules/\n\n${expectedBlock}`,
       'a missing block must be appended, not replace the file'
     )
+
+    // A .gitignore without a final newline gets one before the blank line.
+    await fs.writeFile(gitignorePath, 'node_modules/')
+    await silentGenerate({ root: fixtureRoot, checkOnly: false })
+    assert(
+      (await readText(gitignorePath)) === `node_modules/\n\n${expectedBlock}`,
+      'a file without a final newline must get one before the blank line'
+    )
+
+    // A CRLF .gitignore stays CRLF: the user's lines are not rewritten and the
+    // block is written in the file's own line ending.
+    const crlfBlock = expectedBlock.replace(/\n/g, '\r\n')
+    await fs.writeFile(gitignorePath, 'node_modules/\r\n')
+    await silentGenerate({ root: fixtureRoot, checkOnly: false })
+    assert(
+      (await readText(gitignorePath)) === `node_modules/\r\n\r\n${crlfBlock}`,
+      `a CRLF .gitignore must stay CRLF, got ${JSON.stringify(await readText(gitignorePath))}`
+    )
+    // A stale block in a CRLF file is replaced without touching the lines around it.
+    await fs.writeFile(
+      gitignorePath,
+      `node_modules/\r\n${crlfBlock.replace('/.claude/agents/developer.md\r\n', '')}dist/\r\n`
+    )
+    await silentGenerate({ root: fixtureRoot, checkOnly: false })
+    assert(
+      (await readText(gitignorePath)) === `node_modules/\r\n${crlfBlock}dist/\r\n`,
+      'a stale block in a CRLF file must be replaced without touching the lines around it'
+    )
+    // Line endings alone are not drift.
+    const crlfCheck = await silentGenerate({ root: fixtureRoot, checkOnly: true })
+    assert(
+      !crlfCheck.mismatches.includes('.gitignore'),
+      `a CRLF .gitignore with a current block must pass --check, got ${JSON.stringify(crlfCheck.mismatches)}`
+    )
+    await fs.writeFile(gitignorePath, `node_modules/\n\n${expectedBlock}`)
 
     // The local LLM file changes what the agent files say, never which files
     // exist — so the block is the same on every machine.
