@@ -13,7 +13,8 @@
 //
 // CLI: node sync-agent-config.mjs [--check] [--root <dir>] [--selftest]
 
-import { promises as fs } from 'node:fs'
+import { randomUUID } from 'node:crypto'
+import { constants as fsConstants, promises as fs } from 'node:fs'
 import path from 'node:path'
 import os from 'node:os'
 import { fileURLToPath } from 'node:url'
@@ -81,6 +82,60 @@ export const CONSTITUTION_PRESETS = [
 
 function normalizeText(text) {
   return text.replace(/\r\n/g, '\n')
+}
+
+// Sync writes only inside the project. A checked-out repository can hold
+// symbolic links — as a generated file, or as a directory on the way to one —
+// that point anywhere; writing through one would put the repository's text
+// into a file outside it, a shell startup file for instance. So the nearest
+// existing directory above a target must resolve inside the project…
+async function assertInsideProject(directory, realRoot, relative) {
+  let existing = directory
+  while (!(await pathExists(existing))) existing = path.dirname(existing)
+  const real = await fs.realpath(existing)
+  if (real !== realRoot && !real.startsWith(realRoot + path.sep)) {
+    throw new Error(
+      `Refusing to write ${relative}: ${existing} resolves to ${real}, outside the project — is a directory in the checkout a symbolic link?`
+    )
+  }
+}
+
+// …and the file itself is replaced by renaming a freshly created sibling over
+// it: a link with that name is replaced, never followed — also a link that
+// appears after the check above. The sibling takes over an existing file's
+// mode, so a mirrored script keeps its executable bit.
+async function replaceFile(filePath, data) {
+  const temporary = path.join(
+    path.dirname(filePath),
+    `.${path.basename(filePath)}.${randomUUID()}.tmp`
+  )
+  await fs.writeFile(temporary, data, { flag: 'wx' })
+  try {
+    const previous = await fs.lstat(filePath).catch(() => null)
+    if (previous?.isFile()) await fs.chmod(temporary, previous.mode & 0o7777)
+    await fs.rename(temporary, filePath)
+  } catch (error) {
+    await fs.rm(temporary, { force: true })
+    // Windows refuses to replace a file another process holds open. A regular
+    // file — not a link — can still be rewritten in place.
+    const busy = ['EPERM', 'EACCES', 'EBUSY'].includes(error.code)
+    if (process.platform === 'win32' && busy && !(await isSymbolicLink(filePath))) {
+      await fs.writeFile(filePath, data)
+      return
+    }
+    throw error
+  }
+}
+
+// Reads a file without following a symbolic link at its own name, where the
+// platform can (O_NOFOLLOW): a link rejects with ELOOP (EMLINK on FreeBSD).
+async function readTextNoFollow(filePath) {
+  const handle = await fs.open(filePath, fsConstants.O_RDONLY | (fsConstants.O_NOFOLLOW ?? 0))
+  try {
+    return await handle.readFile('utf8')
+  } finally {
+    await handle.close()
+  }
 }
 
 async function pathExists(filePath) {
@@ -151,6 +206,9 @@ function createContext({ root, checkOnly }) {
 
   const resolveRoot = (...segments) => path.join(resolvedRoot, ...segments)
   const resolveSource = (...segments) => path.join(sourceRoot, ...segments)
+  // Where the project really is, resolved once, for the containment check.
+  let realRootPromise = null
+  const realRoot = () => (realRootPromise ??= fs.realpath(resolvedRoot))
 
   async function writeExpected(filePath, expected, { track = true, keepLineEndings = false } = {}) {
     const relative = toPosix(filePath)
@@ -172,8 +230,12 @@ function createContext({ root, checkOnly }) {
       mismatches.push(relative)
       return
     }
-    await fs.mkdir(path.dirname(filePath), { recursive: true })
-    await fs.writeFile(filePath, keepLineEndings ? expected : normalizedExpected)
+    const directory = path.dirname(filePath)
+    await assertInsideProject(directory, await realRoot(), relative)
+    await fs.mkdir(directory, { recursive: true })
+    // Again: a directory created above may have been swapped for a link.
+    await assertInsideProject(directory, await realRoot(), relative)
+    await replaceFile(filePath, keepLineEndings ? expected : normalizedExpected)
     writes.push(toPosix(filePath))
   }
 
@@ -785,15 +847,22 @@ function renderGitignore(existing, paths) {
 // is not a generated target, so it stays out of the ledger.
 async function syncGitignore(ctx, manifest, warn) {
   const gitignorePath = ctx.resolveRoot('.gitignore')
-  // A checked-out .gitignore can be a symbolic link to anywhere; writing through
-  // it would change a file outside the project. Sync leaves it alone.
-  if (await isSymbolicLink(gitignorePath)) {
+  // A checked-out .gitignore can be a symbolic link to anywhere. Sync leaves
+  // it alone: reading through it would copy that file's text into the project,
+  // and the block would be written back over it.
+  const skipLink = () =>
     warn(
       '! .gitignore is a symbolic link, so sync does not write through it: the agent files and the ledger are not ignored by git. Replace the link with a file and run sync.'
     )
-    return
+  if (await isSymbolicLink(gitignorePath)) return skipLink()
+  let existing = ''
+  try {
+    existing = await readTextNoFollow(gitignorePath)
+  } catch (error) {
+    // A link that appeared after the check above.
+    if (error.code === 'ELOOP' || error.code === 'EMLINK') return skipLink()
+    if (error.code !== 'ENOENT') throw error
   }
-  const existing = (await pathExists(gitignorePath)) ? await readText(gitignorePath) : ''
   const expected = renderGitignore(existing, localOutputPaths(manifest))
   await ctx.writeExpected(gitignorePath, expected, { track: false, keepLineEndings: true })
 }
@@ -2718,10 +2787,97 @@ async function runSelftest() {
   await fs.rm(fixtureRoot, { recursive: true, force: true })
 
   await runOpencodeOnlySelftest()
+  await runWriteContainmentSelftest()
 
   // Reset exitCode (the --check drift runs above set process.exitCode = 1).
   process.exitCode = 0
   console.log('SELFTEST PASS')
+}
+
+// Writes stay inside the project. A generated file that is a symbolic link is
+// replaced, never written through; a directory that resolves outside the
+// project stops sync before anything lands there. Creating links needs extra
+// rights on Windows, so this runs elsewhere.
+async function runWriteContainmentSelftest() {
+  if (process.platform === 'win32') return
+  const base = await fs.mkdtemp(path.join(os.tmpdir(), 'tb-sync-contain-'))
+  const project = path.join(base, 'project')
+  const outside = path.join(base, 'outside')
+  try {
+    await fs.mkdir(path.join(project, '.agent-source', 'agents'), { recursive: true })
+    await fs.mkdir(path.join(project, '.agent-source', 'project'), { recursive: true })
+    await fs.mkdir(outside)
+    const containManifest = {
+      targetsDefault: ['claude'],
+      docLanguage: 'tr',
+      lead: 'dev',
+      agents: [
+        {
+          name: 'dev',
+          description: 'Kod yazar.',
+          writesCode: true,
+          sandbox_mode: 'workspace-write',
+          consults: [],
+          extra_instructions: [],
+        },
+      ],
+    }
+    await fs.writeFile(
+      path.join(project, '.agent-source', 'agents', 'manifest.json'),
+      JSON.stringify(containManifest)
+    )
+    await fs.writeFile(
+      path.join(project, '.agent-source', 'agents', 'dev.md'),
+      '---\nname: dev\ndescription: Kod yazar.\n---\n\n# Dev\n'
+    )
+    await fs.writeFile(path.join(project, '.agent-source', 'project', 'CLAUDE.md'), 'echo REPOSITORY_TEXT\n')
+
+    // A generated file that is a link: its target stays as it was.
+    const victim = path.join(outside, 'rcfile')
+    await fs.writeFile(victim, 'keep me\n')
+    await fs.symlink(victim, path.join(project, 'CLAUDE.md'))
+    await silentGenerate({ root: project, checkOnly: false })
+    assert(
+      (await readText(victim)) === 'keep me\n',
+      'sync must not write through a generated file that is a symbolic link'
+    )
+    assert(
+      (await fs.lstat(path.join(project, 'CLAUDE.md'))).isFile() &&
+        (await readText(path.join(project, 'CLAUDE.md'))).includes('REPOSITORY_TEXT'),
+      'the link must be replaced by the generated file'
+    )
+
+    // A directory on the way that resolves outside the project stops sync.
+    await fs.rm(path.join(project, '.claude'), { recursive: true, force: true })
+    await fs.symlink(outside, path.join(project, '.claude'))
+    let refused = null
+    try {
+      await silentGenerate({ root: project, checkOnly: false })
+    } catch (error) {
+      refused = error
+    }
+    assert(
+      refused !== null && refused.message.includes('outside the project'),
+      `a directory that resolves outside the project must stop sync, got ${refused ? refused.message : 'no error'}`
+    )
+    assert(!(await pathExists(path.join(outside, 'agents'))), 'nothing may be created outside the project')
+
+    // The no-follow read refuses a link at its own name.
+    const link = path.join(base, 'link')
+    await fs.symlink(victim, link)
+    let loop = null
+    try {
+      await readTextNoFollow(link)
+    } catch (error) {
+      loop = error
+    }
+    assert(
+      loop !== null && ['ELOOP', 'EMLINK'].includes(loop.code),
+      `readTextNoFollow must refuse a symbolic link, got ${loop ? loop.code : 'its text'}`
+    )
+  } finally {
+    await fs.rm(base, { recursive: true, force: true })
+  }
 }
 
 // OpenCode-only project: no ecosystem is implied, so nothing Claude-specific

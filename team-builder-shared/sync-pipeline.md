@@ -113,6 +113,22 @@ Kaynak değişmeden sync tekrar çalıştırılırsa:
   kasıtlı ve kalıcı bir rapordur. `--check` yalnızca defterde diskte duran
   bayat yol kalmadığında temiz çıkar.
 
+## 6b. Yazmalar proje içinde kalır
+
+Sync'in çalıştığı repo klonlanmış bir repodur; içinde, üretilen bir dosyanın ya da ona giden
+bir dizinin yerinde proje dışını gösteren bir sembolik bağ olabilir. Bağın içinden yazmak
+repodaki metni proje dışındaki bir dosyaya — örneğin bir kabuk başlangıç dosyasına — koyardı.
+
+- Bir hedefin üstündeki, var olan en yakın dizin, bağlar çözülünce proje kökünün içine
+  çıkmıyorsa sync o dosyayı yazmadan **durur** (hata). Kontrol dizin oluşturulmadan önce ve
+  sonra yapılır.
+- Dosyanın kendisi, yanında yeni açılan geçici bir dosyanın yeniden adlandırılmasıyla
+  değiştirilir: o isimdeki bir bağ izlenmez, yerine gerçek dosya konur; bağın hedefi değişmez.
+  Var olan dosyanın izinleri korunur. Windows'ta açık tutulan bir dosya yeniden
+  adlandırılamazsa, bağ değilse yerinde yazılır.
+- `.gitignore` sembolik bağsa okunmaz ve yazılmaz; sync uyarır (§11). Okuma, destekleyen
+  platformlarda bağı izlemeyen bir açılışla yapılır.
+
 ## 7. `.claude/settings.local.json` Muafiyeti
 
 `.claude/settings.local.json` **canonical değildir**:
