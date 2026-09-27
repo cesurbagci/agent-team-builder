@@ -134,9 +134,12 @@ değişir, CI'da yoktur.
 - Gizli (`hide`) modeller katalogda sayılır.
 - Modeli çözümlenmemiş bir girdi denetlenmez: effort, hangi modelin çalışacağı (ekosistemin
   varsayılanı) bilinmeden değerlendirilemez.
-- Komut yalnız `PATH`'in mutlak dizinlerinde aranır, çalışma dizininde (proje kökünde)
-  asla: repoya konmuş bir `codex.exe` sync'te çalışmaz. Windows'ta `PATHEXT` uzantıları
-  denenir; npm'in `.cmd` sarmalayıcıları kabukla çalıştırılır — argümanlar sabittir.
+- Komut yalnız `PATH`'in tam nitelikli dizinlerinde aranır, çalışma dizininde (proje
+  kökünde) asla. CLI'nın kendi aramaları da aynı `PATH`'le çalışır — npm'in kurduğu CLI
+  `node`'u arar —, Windows'ta ayrıca `NoDefaultCurrentDirectoryInExePath` ile: repoya konmuş
+  bir `codex.exe` ya da `node.exe` sync'te çalışmaz. Windows'ta `PATHEXT` sırası izlenir ama
+  yalnız `.COM`/`.EXE`/`.BAT`/`.CMD`; npm'in `.cmd` sarmalayıcıları kabukla çalıştırılır —
+  argümanlar sabittir.
 - Her komut 10 saniye sınırla çalışır (ölçülen 1–2 s). CLI yoksa kontrol **sessizce**
   atlanır; CLI var ama hata verdi, zaman aşımına uğradı ya da okunamayan bir şey bastıysa
   **tek bilgi satırı** yazılır.

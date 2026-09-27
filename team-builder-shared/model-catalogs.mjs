@@ -11,6 +11,7 @@
 
 import { execFile } from 'node:child_process'
 import fs from 'node:fs'
+import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -23,37 +24,85 @@ const CATALOG_COMMANDS = {
   opencode: ['opencode', ['models']],
 }
 
-// The catalog CLIs are looked up on PATH only, never in the working directory:
-// Windows would otherwise try the working directory first, and that is the
-// project root, so a `codex.exe` committed to a repository would run on sync.
-// An empty or relative PATH entry means the working directory too, so those
-// entries are skipped on every platform.
+// A catalog CLI runs with the project root as its working directory, so no
+// lookup may reach the working directory — not ours for the CLI, and not the
+// CLI's own (npm's Windows shim runs `node`; on POSIX, `#!/usr/bin/env node`).
+// Windows tries the working directory first; an empty or relative PATH entry
+// means it on every platform; on Windows `\bin` is relative to the drive.
+
+const WINDOWS_EXECUTABLE_EXTENSIONS = ['.COM', '.EXE', '.BAT', '.CMD']
+
+// Environment variable names are case-insensitive on Windows (`Path`).
+function envValue(env, name, platform) {
+  if (platform !== 'win32') return env[name]
+  const key = Object.keys(env).find(candidate => candidate.toUpperCase() === name.toUpperCase())
+  return key === undefined ? undefined : env[key]
+}
+
+function isFullyQualified(dir, platform) {
+  if (platform === 'win32') return /^[A-Za-z]:[\\/]/.test(dir) || /^\\\\[^\\]/.test(dir)
+  return path.posix.isAbsolute(dir)
+}
+
+// The PATH directories that are safe to search, in order. Windows allows a
+// quoted entry; the quotes are not part of the directory.
+function pathEntries(env, platform) {
+  const delimiter = platform === 'win32' ? ';' : ':'
+  return (envValue(env, 'PATH', platform) ?? '')
+    .split(delimiter)
+    .map(dir => (platform === 'win32' ? dir.replace(/^"(.*)"$/, '$1') : dir))
+    .filter(dir => isFullyQualified(dir, platform))
+}
+
+// PATHEXT order, but only what CreateProcess or cmd.exe can start: a `.JS` or
+// `.VBS` earlier on PATH would otherwise hide the real wrapper.
+function windowsExtensions(env) {
+  const listed = (envValue(env, 'PATHEXT', 'win32') || '')
+    .split(';')
+    .map(extension => extension.trim().toUpperCase())
+    .filter(extension => WINDOWS_EXECUTABLE_EXTENSIONS.includes(extension))
+  return listed.length > 0 ? listed : WINDOWS_EXECUTABLE_EXTENSIONS
+}
+
 export function resolveCommand(
   command,
-  { env = process.env, platform = process.platform, isFile = isRegularFile } = {}
+  { env = process.env, platform = process.platform, isFile = isExecutableFile } = {}
 ) {
+  if (isFullyQualified(command, platform)) return isFile(command, platform) ? command : null
   const pathApi = platform === 'win32' ? path.win32 : path.posix
-  if (pathApi.isAbsolute(command)) return isFile(command) ? command : null
-  const dirs = (env.PATH ?? env.Path ?? '')
-    .split(pathApi.delimiter)
-    .filter(dir => dir !== '' && pathApi.isAbsolute(dir))
-  const extensions =
-    platform === 'win32' ? (env.PATHEXT ?? '.COM;.EXE;.BAT;.CMD').split(';').filter(Boolean) : ['']
-  for (const dir of dirs) {
+  const extensions = platform === 'win32' ? windowsExtensions(env) : ['']
+  for (const dir of pathEntries(env, platform)) {
     for (const extension of extensions) {
       const candidate = pathApi.join(dir, command + extension)
-      if (isFile(candidate)) return candidate
+      if (isFile(candidate, platform)) return candidate
     }
   }
   return null
 }
 
-function isRegularFile(file) {
+// Like execvp: a file that cannot be executed does not hide a later one.
+function isExecutableFile(file, platform) {
   try {
-    return fs.statSync(file).isFile()
+    if (!fs.statSync(file).isFile()) return false
+    if (platform !== 'win32') fs.accessSync(file, fs.constants.X_OK)
+    return true
   } catch {
     return false
   }
+}
+
+// The CLI's own lookups get the same fully qualified PATH. On Windows,
+// NoDefaultCurrentDirectoryInExePath stops cmd.exe and CreateProcess from
+// trying the working directory first.
+export function childEnv(env = process.env, platform = process.platform) {
+  const child = {}
+  for (const [key, value] of Object.entries(env)) {
+    const isPath = platform === 'win32' ? key.toUpperCase() === 'PATH' : key === 'PATH'
+    if (!isPath) child[key] = value
+  }
+  child.PATH = pathEntries(env, platform).join(platform === 'win32' ? ';' : ':')
+  if (platform === 'win32') child.NoDefaultCurrentDirectoryInExePath = '1'
+  return child
 }
 
 // npm installs CLIs on Windows as .cmd wrappers, which only run through cmd.exe.
@@ -61,28 +110,47 @@ export function needsShell(file, platform = process.platform) {
   return platform === 'win32' && /\.(cmd|bat)$/i.test(file)
 }
 
+// Without ComSpec, Node would start a bare `cmd.exe` — looked up in the working
+// directory first.
+function windowsShell(env) {
+  const comspec = envValue(env, 'ComSpec', 'win32')
+  if (comspec && isFullyQualified(comspec, 'win32')) return comspec
+  return path.win32.join(envValue(env, 'SystemRoot', 'win32') || 'C:\\Windows', 'System32', 'cmd.exe')
+}
+
+function execToString(file, args, options) {
+  return new Promise((resolve, reject) => {
+    execFile(file, args, options, (error, stdout) => (error ? reject(error) : resolve(stdout)))
+  })
+}
+
 // cwd: the project root. A catalog can depend on the project's own config
 // (OpenCode adds the providers in its opencode.json), and sync may be started
 // from anywhere with --root. A CLI that is not on PATH is reported as ENOENT,
 // which readCatalogs treats as "not installed".
-export function runCli(command, args, cwd, { resolveFile = resolveCommand } = {}) {
-  const file = resolveFile(command)
+export function runCli(
+  command,
+  args,
+  cwd,
+  { resolveFile = resolveCommand, env = process.env, platform = process.platform } = {}
+) {
+  const file = resolveFile(command, { env, platform })
   if (file === null) {
     const missing = new Error(`${command} is not on PATH`)
     missing.code = 'ENOENT'
     return Promise.reject(missing)
   }
-  // Through the shell the arguments are constants, so nothing can be injected;
-  // the path is quoted because it may contain spaces.
-  const viaShell = needsShell(file)
-  return new Promise((resolve, reject) => {
-    execFile(
-      viaShell ? `"${file}"` : file,
-      args,
-      { cwd, shell: viaShell, timeout: CATALOG_TIMEOUT_MS, maxBuffer: 64 * 1024 * 1024 },
-      (error, stdout) => (error ? reject(error) : resolve(stdout))
-    )
-  })
+  const options = {
+    cwd,
+    env: childEnv(env, platform),
+    timeout: CATALOG_TIMEOUT_MS,
+    maxBuffer: 64 * 1024 * 1024,
+  }
+  if (!needsShell(file, platform)) return execToString(file, args, options)
+  // One command line: passing args together with `shell` is deprecated
+  // (DEP0190). The arguments are constants, so nothing can be injected; the
+  // path is quoted because it may contain spaces.
+  return execToString(`"${file}" ${args.join(' ')}`, [], { ...options, shell: windowsShell(env) })
 }
 
 // `codex debug models` prints { models: [{ slug, supported_reasoning_levels:
@@ -331,9 +399,67 @@ async function runSelftest() {
       !needsShell('/usr/local/bin/codex.cmd', 'linux'),
     'only a Windows .cmd/.bat wrapper needs the shell'
   )
+  // Windows: a quoted entry is a directory; `\bin` (drive-relative) is not; a
+  // .JS earlier in PATHEXT is not something execFile can start.
+  const toolsFiles = new Set(['c:\\tools\\codex.cmd', '\\bin\\codex.exe', 'c:\\scripts\\codex.js'])
+  const windowsLookup = (PATH, PATHEXT = '.COM;.EXE;.BAT;.CMD') =>
+    resolveCommand('codex', {
+      env: { Path: PATH, PATHEXT },
+      platform: 'win32',
+      isFile: file => toolsFiles.has(file.toLowerCase()),
+    })
+  assert(
+    windowsLookup('"C:\\Tools"') === 'C:\\Tools\\codex.CMD',
+    'a quoted Windows PATH entry must be searched without its quotes'
+  )
+  assert(windowsLookup('\\bin') === null, 'a drive-relative Windows PATH entry must be skipped')
+  assert(
+    windowsLookup('C:\\scripts;C:\\Tools', '.JS;.CMD') === 'C:\\Tools\\codex.CMD',
+    'a PATHEXT extension execFile cannot start must not hide the real wrapper'
+  )
+
+  // The CLI's own lookups get the same PATH: npm's Windows shim runs `node`,
+  // and `#!/usr/bin/env node` searches PATH too.
+  const posixChild = childEnv({ PATH: '/usr/bin::./bin:relative:/opt/tools', HOME: '/h' }, 'linux')
+  assert(
+    posixChild.PATH === '/usr/bin:/opt/tools' &&
+      posixChild.HOME === '/h' &&
+      !('NoDefaultCurrentDirectoryInExePath' in posixChild),
+    `the child PATH must keep only fully qualified entries, got ${JSON.stringify(posixChild)}`
+  )
+  const windowsChild = childEnv({ Path: 'C:\\Windows;.;"C:\\Tools";\\bin' }, 'win32')
+  assert(
+    windowsChild.PATH === 'C:\\Windows;C:\\Tools' &&
+      !('Path' in windowsChild) &&
+      windowsChild.NoDefaultCurrentDirectoryInExePath === '1',
+    `the Windows child must not search the working directory, got ${JSON.stringify(windowsChild)}`
+  )
+
+  // runCli starts the file resolveFile found, never the bare command, and hands
+  // it the filtered PATH. Node stands in for the CLI.
+  const nodeDir = path.dirname(process.execPath)
+  const withoutPath = Object.fromEntries(
+    Object.entries(process.env).filter(([key]) => key.toUpperCase() !== 'PATH')
+  )
+  const childPath = await runCli(
+    'no-such-catalog-cli',
+    ['-e', 'process.stdout.write(process.env.PATH)'],
+    here,
+    {
+      resolveFile: () => process.execPath,
+      env: { ...withoutPath, PATH: ['', nodeDir, 'relative'].join(path.delimiter) },
+    }
+  )
+  assert(
+    childPath === nodeDir,
+    `runCli must start the resolved file with the filtered PATH, got ${JSON.stringify(childPath)}`
+  )
+
+  // Not on PATH is ENOENT, which readCatalogs treats as missing. The command is
+  // node, so a regression that falls back to the bare command runs nothing real.
   let notOnPath = null
   try {
-    await runCli('codex', ['debug', 'models'], here, { resolveFile: () => null })
+    await runCli(process.execPath, ['-e', ''], here, { resolveFile: () => null })
   } catch (error) {
     notOnPath = error
   }
@@ -341,6 +467,24 @@ async function runSelftest() {
     notOnPath !== null && notOnPath.code === 'ENOENT',
     'a CLI that is not on PATH must reject with ENOENT, which readCatalogs treats as missing'
   )
+
+  // Like execvp, a file that cannot be executed does not hide a later one.
+  if (process.platform !== 'win32') {
+    const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'tb-catalog-'))
+    try {
+      const [first, second] = ['a', 'b'].map(name => path.join(scratch, name))
+      for (const dir of [first, second]) fs.mkdirSync(dir)
+      fs.writeFileSync(path.join(first, 'fake-cli'), '', { mode: 0o644 })
+      fs.writeFileSync(path.join(second, 'fake-cli'), '', { mode: 0o755 })
+      assert(
+        resolveCommand('fake-cli', { env: { PATH: `${first}:${second}` }, platform: process.platform }) ===
+          path.join(second, 'fake-cli'),
+        'a non-executable file earlier on PATH must not hide an executable one'
+      )
+    } finally {
+      fs.rmSync(scratch, { recursive: true, force: true })
+    }
+  }
 
   const warn = entries => catalogWarnings(entries, both)
 
