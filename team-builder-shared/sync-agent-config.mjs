@@ -265,8 +265,11 @@ function createContext({ root, checkOnly }) {
 
   // The resolved path is read without following a link at its name, so the
   // file cannot be swapped for one between the check and the read.
+  // Line endings are normalized here, once for every source: a checkout with
+  // core.autocrlf=true holds CRLF files, and the frontmatter checks and
+  // renderers read LF. Output is written LF anyway.
   async function readSourceText(sourcePath) {
-    return readTextNoFollow(await assertSourceInside(sourcePath))
+    return normalizeText(await readTextNoFollow(await assertSourceInside(sourcePath)))
   }
 
   async function copyExpected(sourcePath, targetPath, transform = text => text) {
@@ -2231,6 +2234,26 @@ async function runSelftest() {
     JSON.stringify(ledger.files) === JSON.stringify(expectedLedger),
     `ledger must equal the full sorted target list\n  got:      ${JSON.stringify(ledger.files)}\n  expected: ${JSON.stringify(expectedLedger)}`
   )
+
+  // CRLF sources are as valid as LF ones and produce the same output.
+  {
+    const architectSource = path.join(sourceRoot, 'agents', 'architect.md')
+    const lfSource = await readText(architectSource)
+    const lfAgent = await read('.claude/agents/architect.md')
+    await fs.writeFile(architectSource, lfSource.replace(/\n/g, '\r\n'))
+    await silentGenerate({ root: fixtureRoot, checkOnly: false })
+    assert(
+      (await read('.claude/agents/architect.md')) === lfAgent,
+      'a CRLF role file must produce the same agent file as its LF version'
+    )
+    const crlfSourceCheck = await silentGenerate({ root: fixtureRoot, checkOnly: true })
+    assert(
+      crlfSourceCheck.ok === true,
+      `a CRLF role file must pass --check, got ${JSON.stringify(crlfSourceCheck.mismatches)}`
+    )
+    await fs.writeFile(architectSource, lfSource)
+    await silentGenerate({ root: fixtureRoot, checkOnly: false })
+  }
 
   // --check should be clean right after generate (idempotent).
   const checkClean = await silentGenerate({ root: fixtureRoot, checkOnly: true })
