@@ -10,6 +10,7 @@
 // CLI: node model-catalogs.mjs --selftest
 
 import { execFile } from 'node:child_process'
+import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -22,15 +23,63 @@ const CATALOG_COMMANDS = {
   opencode: ['opencode', ['models']],
 }
 
+// The catalog CLIs are looked up on PATH only, never in the working directory:
+// Windows would otherwise try the working directory first, and that is the
+// project root, so a `codex.exe` committed to a repository would run on sync.
+// An empty or relative PATH entry means the working directory too, so those
+// entries are skipped on every platform.
+export function resolveCommand(
+  command,
+  { env = process.env, platform = process.platform, isFile = isRegularFile } = {}
+) {
+  const pathApi = platform === 'win32' ? path.win32 : path.posix
+  if (pathApi.isAbsolute(command)) return isFile(command) ? command : null
+  const dirs = (env.PATH ?? env.Path ?? '')
+    .split(pathApi.delimiter)
+    .filter(dir => dir !== '' && pathApi.isAbsolute(dir))
+  const extensions =
+    platform === 'win32' ? (env.PATHEXT ?? '.COM;.EXE;.BAT;.CMD').split(';').filter(Boolean) : ['']
+  for (const dir of dirs) {
+    for (const extension of extensions) {
+      const candidate = pathApi.join(dir, command + extension)
+      if (isFile(candidate)) return candidate
+    }
+  }
+  return null
+}
+
+function isRegularFile(file) {
+  try {
+    return fs.statSync(file).isFile()
+  } catch {
+    return false
+  }
+}
+
+// npm installs CLIs on Windows as .cmd wrappers, which only run through cmd.exe.
+export function needsShell(file, platform = process.platform) {
+  return platform === 'win32' && /\.(cmd|bat)$/i.test(file)
+}
+
 // cwd: the project root. A catalog can depend on the project's own config
 // (OpenCode adds the providers in its opencode.json), and sync may be started
-// from anywhere with --root.
-export function runCli(command, args, cwd) {
+// from anywhere with --root. A CLI that is not on PATH is reported as ENOENT,
+// which readCatalogs treats as "not installed".
+export function runCli(command, args, cwd, { resolveFile = resolveCommand } = {}) {
+  const file = resolveFile(command)
+  if (file === null) {
+    const missing = new Error(`${command} is not on PATH`)
+    missing.code = 'ENOENT'
+    return Promise.reject(missing)
+  }
+  // Through the shell the arguments are constants, so nothing can be injected;
+  // the path is quoted because it may contain spaces.
+  const viaShell = needsShell(file)
   return new Promise((resolve, reject) => {
     execFile(
-      command,
+      viaShell ? `"${file}"` : file,
       args,
-      { cwd, timeout: CATALOG_TIMEOUT_MS, maxBuffer: 64 * 1024 * 1024 },
+      { cwd, shell: viaShell, timeout: CATALOG_TIMEOUT_MS, maxBuffer: 64 * 1024 * 1024 },
       (error, stdout) => (error ? reject(error) : resolve(stdout))
     )
   })
@@ -248,6 +297,50 @@ async function runSelftest() {
   const here = path.dirname(fileURLToPath(import.meta.url))
   const ranIn = await runCli(process.execPath, ['-e', 'process.stdout.write(process.cwd())'], here)
   assert(ranIn === here, `runCli must run in the directory it is given, got ${ranIn}`)
+
+  // PATH lookup never reaches the working directory: empty and relative PATH
+  // entries are skipped, and Windows tries each PATHEXT extension.
+  const posixFiles = new Set(['codex', 'bin/codex', 'relative/codex', '/opt/tools/codex'])
+  assert(
+    resolveCommand('codex', {
+      env: { PATH: '/usr/bin::./bin:relative:/opt/tools' },
+      platform: 'linux',
+      isFile: file => posixFiles.has(file),
+    }) === '/opt/tools/codex',
+    'resolveCommand must skip empty and relative PATH entries'
+  )
+  // Windows file names are case-insensitive, so the fake file system is too.
+  const npmDir = 'C:\\Users\\me\\AppData\\Roaming\\npm'
+  const windowsFiles = new Set(['codex.exe', `${npmDir}\\codex.cmd`.toLowerCase()])
+  assert(
+    resolveCommand('codex', {
+      env: { PATH: `C:\\Windows;.;${npmDir}`, PATHEXT: '.COM;.EXE;.BAT;.CMD' },
+      platform: 'win32',
+      isFile: file => windowsFiles.has(file.toLowerCase()),
+    }) === `${npmDir}\\codex.CMD`,
+    'resolveCommand must find an npm .cmd wrapper through PATHEXT and never the working directory'
+  )
+  assert(
+    resolveCommand('codex', { env: { PATH: '/usr/bin' }, platform: 'linux', isFile: () => false }) ===
+      null,
+    'a command that is not on PATH must resolve to null'
+  )
+  assert(
+    needsShell(`${npmDir}\\codex.CMD`, 'win32') &&
+      !needsShell(`${npmDir}\\codex.exe`, 'win32') &&
+      !needsShell('/usr/local/bin/codex.cmd', 'linux'),
+    'only a Windows .cmd/.bat wrapper needs the shell'
+  )
+  let notOnPath = null
+  try {
+    await runCli('codex', ['debug', 'models'], here, { resolveFile: () => null })
+  } catch (error) {
+    notOnPath = error
+  }
+  assert(
+    notOnPath !== null && notOnPath.code === 'ENOENT',
+    'a CLI that is not on PATH must reject with ENOENT, which readCatalogs treats as missing'
+  )
 
   const warn = entries => catalogWarnings(entries, both)
 

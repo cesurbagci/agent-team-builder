@@ -235,6 +235,9 @@ Anthropic API'de adı kendisi doğruluyor.
 - Her komut sync başına en fazla bir kez, **10 saniye** sınırla çalışır (ölçülen 1–2 s).
 - Komutlar **proje kökünde** çalışır, sync'in başlatıldığı dizinde değil: katalog projenin
   yapılandırmasına bağlıdır (OpenCode, projenin `opencode.json`'undaki sağlayıcıları ekler).
+- Komutun kendisi yalnız `PATH`'in mutlak dizinlerinde aranır, çalışma dizininde asla —
+  Windows önce çalışma dizinine bakardı ve orası proje köküdür. Windows'ta `PATHEXT`
+  uzantıları denenir; `.cmd`/`.bat` sarmalayıcıları kabukla çalışır (argümanlar sabit).
 - CLI yoksa kontrol **sessizce** atlanır (CI'da beklenen durum). CLI var ama hata verdi,
   zaman aşımına uğradı ya da çıktı çözümlenemediyse **tek bilgi satırı** yazılır ve kontrol
   atlanır.
