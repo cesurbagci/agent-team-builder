@@ -242,7 +242,7 @@ function createContext({ root, checkOnly }) {
   // A source whose text is copied into generated output must be inside the
   // project too: a checked-out link — the file itself or a directory above it —
   // would otherwise copy a private file from elsewhere into the repository.
-  async function readSourceText(sourcePath) {
+  async function assertSourceInside(sourcePath) {
     const real = await fs.realpath(sourcePath)
     const root = await realRoot()
     if (real !== root && !real.startsWith(root + path.sep)) {
@@ -250,7 +250,13 @@ function createContext({ root, checkOnly }) {
         `Refusing to read ${toPosix(sourcePath)}: it resolves to ${real}, outside the project — is it a symbolic link?`
       )
     }
-    return readText(real)
+    return real
+  }
+
+  // The resolved path is read without following a link at its name, so the
+  // file cannot be swapped for one between the check and the read.
+  async function readSourceText(sourcePath) {
+    return readTextNoFollow(await assertSourceInside(sourcePath))
   }
 
   async function copyExpected(sourcePath, targetPath, transform = text => text) {
@@ -273,6 +279,8 @@ function createContext({ root, checkOnly }) {
     resolveSource,
     writeExpected,
     copyExpected,
+    assertSourceInside,
+    readSourceText,
   }
 }
 
@@ -1062,9 +1070,15 @@ async function generate({ root, checkOnly, quiet = false, catalogs = null }) {
   if (!(await pathExists(manifestPath))) {
     throw new Error(`Manifest not found: ${manifestPath}`)
   }
-  const manifest = JSON.parse(await readText(manifestPath))
+  // The manifest's strings reach generated files (descriptions, instructions),
+  // and llm.json's values do too, so both are sources like any other.
+  const manifest = JSON.parse(await ctx.readSourceText(manifestPath))
   const validate = await loadValidate()
   validate(manifest)
+  for (const relative of [LLM_SHARED_RELATIVE, LLM_LOCAL_RELATIVE]) {
+    const layerPath = ctx.resolveRoot(...relative.split('/'))
+    if (await pathExists(layerPath)) await ctx.assertSourceInside(layerPath)
+  }
   const layers = await readLlmLayers(ctx.resolvedRoot)
   checkLlmLayers(layers, manifest, warn)
   await checkAgentSources(ctx, manifest)
@@ -2918,6 +2932,62 @@ async function runWriteContainmentSelftest() {
       (await readText(mirror)) === 'echo two\n' && ((await fs.stat(mirror)).mode & 0o777) === 0o755,
       `a rewritten file must keep its mode, got ${((await fs.stat(mirror)).mode & 0o777).toString(8)}`
     )
+
+    // The swap race, simulated: resolution saw the path before a link replaced
+    // it, so the read itself must refuse the link.
+    const swapped = path.join(await fs.realpath(project), '.agent-source', 'project', 'swapped.md')
+    await fs.symlink(secret, swapped)
+    const raceContext = createContext({ root: project, checkOnly: false })
+    const realRealpath = fs.realpath
+    fs.realpath = async target => (target === swapped ? swapped : realRealpath(target))
+    let raced = null
+    try {
+      await raceContext.readSourceText(swapped)
+    } catch (error) {
+      raced = error
+    } finally {
+      fs.realpath = realRealpath
+    }
+    assert(
+      raced !== null && ['ELOOP', 'EMLINK'].includes(raced.code),
+      `a source swapped for a link after the check must not be read, got ${raced ? raced.code : 'its text'}`
+    )
+    await fs.rm(swapped)
+
+    // The manifest is a source too: its strings reach the Codex instructions.
+    const manifestFile = path.join(project, '.agent-source', 'agents', 'manifest.json')
+    const outsideManifest = path.join(outside, 'manifest.json')
+    await fs.copyFile(manifestFile, outsideManifest)
+    await fs.rm(manifestFile)
+    await fs.symlink(outsideManifest, manifestFile)
+    let manifestRefused = null
+    try {
+      await silentGenerate({ root: project, checkOnly: false })
+    } catch (error) {
+      manifestRefused = error
+    }
+    assert(
+      manifestRefused !== null && manifestRefused.message.includes('outside the project'),
+      `a manifest linking outside the project must stop sync, got ${manifestRefused ? manifestRefused.message : 'no error'}`
+    )
+    await fs.rm(manifestFile)
+    await fs.copyFile(outsideManifest, manifestFile)
+
+    // So is llm.json: its values reach the agent files.
+    const llmFile = path.join(project, '.agent-source', 'llm.json')
+    await fs.writeFile(path.join(outside, 'llm.json'), '{ "defaults": { "claude": { "model": "opus" } } }\n')
+    await fs.symlink(path.join(outside, 'llm.json'), llmFile)
+    let llmRefused = null
+    try {
+      await silentGenerate({ root: project, checkOnly: false })
+    } catch (error) {
+      llmRefused = error
+    }
+    assert(
+      llmRefused !== null && llmRefused.message.includes('outside the project'),
+      `an llm.json linking outside the project must stop sync, got ${llmRefused ? llmRefused.message : 'no error'}`
+    )
+    await fs.rm(llmFile)
 
     // A directory on the way that resolves outside the project stops sync.
     await fs.rm(path.join(project, '.claude'), { recursive: true, force: true })

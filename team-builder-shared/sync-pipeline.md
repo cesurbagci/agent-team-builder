@@ -127,9 +127,11 @@ repodaki metni proje dışındaki bir dosyaya — örneğin bir kabuk başlangı
   Var olan dosyanın izinleri korunur. Yeniden adlandırma başarısız olursa (örneğin Windows'ta
   dosyayı açık tutan bir süreç varsa) sync hata verir; yerinde yazmaz, çünkü yerinde yazmak bir
   bağı yeniden izlerdi.
-- İçeriği üretilen bir dosyaya kopyalanan kaynak (`.agent-source/project/*`, rol dosyaları,
-  `skills/`), bağlar çözülünce proje içinde değilse sync **durur**: yoksa repodaki bir bağ,
-  makinedeki özel bir dosyayı repoya kopyalatırdı.
+- İçeriği ya da değerleri üretilen bir dosyaya geçen kaynak (`.agent-source/project/*`, rol
+  dosyaları, `skills/`, manifest, `llm.json` ve `llm.local.json`), bağlar çözülünce proje içinde
+  değilse sync **durur**: yoksa repodaki bir bağ, makinedeki özel bir dosyayı repoya
+  kopyalatırdı. Çözülen yol bağ izlenmeden okunur; kontrolden sonra bağa çevrilen bir dosya
+  okunmaz.
 - `.gitignore` sembolik bağsa okunmaz ve yazılmaz; sync uyarır (§11). Okuma, destekleyen
   platformlarda bağı izlemeyen bir açılışla yapılır.
 
