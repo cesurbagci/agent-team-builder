@@ -945,7 +945,7 @@ async function warnAgainstCatalogs(ctx, catalogs, log, warn) {
         .map(entry => entry.ecosystem)
     ),
   ]
-  const inProject = (command, args) => runCli(command, args, ctx.resolvedRoot)
+  const inProject = (command, args, options) => runCli(command, args, ctx.resolvedRoot, options)
   const machine = catalogs ?? (await readCatalogs(ecosystems, inProject))
   for (const note of machine.notes ?? []) log(`i ${note}`)
   for (const message of catalogWarnings(ctx.resolvedModels, machine)) warn(`! ${message}`)

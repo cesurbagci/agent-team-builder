@@ -220,7 +220,7 @@ yükseltme blokları bu işaretlere göre ekleyip çıkarır.
 ## 13. Model kataloğu uyarıları
 
 Üretimden sonra sync, çözümlenmiş modelleri bu makinenin kataloğuyla karşılaştırır
-(`llm-config.md`, *Katalog*): Codex'te `codex debug models`, OpenCode'da `opencode models`.
+(`llm-config.md`, *Katalog*): Codex'te `codex debug models`, OpenCode'da `opencode models --pure`.
 Katalogda olmayan model, modelin desteklemediği effort ve emekliliği duyurulmuş model
 **uyarıdır**; `--check` modunda da uyarıdır ve çıkış kodunu etkilemez. CLI yoksa kontrol
 sessizce atlanır; CLI hata verirse tek bilgi satırı yazılır. Her uyarı

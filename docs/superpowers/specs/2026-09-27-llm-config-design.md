@@ -227,12 +227,15 @@ Anthropic API'de adı kendisi doğruluyor.
 | Ekosistem | Komut | Uyarı verilen durumlar |
 |---|---|---|
 | Codex | `codex debug models` | Model katalogda yok · effort modelin `supported_reasoning_levels`'ında yok · `upgrade` dolu → emeklilik tarihi ve yerine önerilen model |
-| OpenCode | `opencode models` | Model listede yok (sağlayıcı bu makinede yapılandırılmamış olabilir) |
+| OpenCode | `opencode models --pure` | Model listede yok (sağlayıcı bu makinede yapılandırılmamış olabilir) |
 | Claude | — | Katalog yok; kontrol yapılmaz |
 
 - Yalnız uyarır; çıkış kodunu etkilemez — `--check` modunda da. Kataloglar makineye ve
   hesaba göre değişir, CI'da yoktur.
 - Her komut sync başına en fazla bir kez, **10 saniye** sınırla çalışır (ölçülen 1–2 s).
+- OpenCode `--pure` ile çalışır: onsuz `opencode models` projenin `.opencode/plugins/`'ini yükler
+  ve repodaki kod sync'te çalışır (OpenCode 1.14.39 ile denendi). `--pure`'u tanımayan sürümde
+  kontrol, yardım metnine bakılarak atlanır — yardım eklenti yüklemez.
 - Komutlar **proje kökünde** çalışır, sync'in başlatıldığı dizinde değil: katalog projenin
   yapılandırmasına bağlıdır (OpenCode, projenin `opencode.json`'undaki sağlayıcıları ekler).
 - Komut yalnız `PATH`'in tam nitelikli dizinlerinde aranır, çalışma dizininde asla —

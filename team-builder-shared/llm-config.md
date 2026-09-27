@@ -126,12 +126,15 @@ değişir, CI'da yoktur.
 | Ekosistem | Komut | Verdiği |
 |---|---|---|
 | Codex | `codex debug models` | JSON; her model için `slug`, `visibility` (`list`/`hide`), `default_reasoning_level`, `supported_reasoning_levels`, `upgrade` (`model`, `retirement_at`, `migration_markdown`) |
-| OpenCode | `opencode models` | Satır başına `sağlayıcı/model` — yalnız bu makinede yapılandırılmış sağlayıcılar |
+| OpenCode | `opencode models --pure` | Satır başına `sağlayıcı/model` — yalnız bu makinede yapılandırılmış sağlayıcılar |
 | Claude | — | Katalog komutu yok |
 
 - Uyarı durumları: Codex'te model katalogda yok, effort modelin desteklediklerinde yok,
   `upgrade` dolu (emeklilik tarihi ve yerine önerilen model); OpenCode'da model listede yok.
 - Gizli (`hide`) modeller katalogda sayılır.
+- OpenCode hep `--pure` ile çalıştırılır: onsuz `opencode models` projenin `.opencode/plugins/`'ini
+  yükler ve repodaki kod sync'te çalışır. `--pure`'u tanımayan bir sürümde (önce yardım metnine
+  bakılır) kontrol tek bilgi satırıyla atlanır.
 - Modeli çözümlenmemiş bir girdi denetlenmez: effort, hangi modelin çalışacağı (ekosistemin
   varsayılanı) bilinmeden değerlendirilemez.
 - Komut yalnız `PATH`'in tam nitelikli dizinlerinde aranır, çalışma dizininde (proje

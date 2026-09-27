@@ -21,7 +21,15 @@ export const CATALOG_TIMEOUT_MS = 10_000
 
 const CATALOG_COMMANDS = {
   codex: ['codex', ['debug', 'models']],
-  opencode: ['opencode', ['models']],
+  // Without --pure, `opencode models` loads the project's .opencode/plugins:
+  // repository code would run on every sync (seen with OpenCode 1.14.39).
+  opencode: ['opencode', ['models', '--pure']],
+}
+
+// A version that cannot list models without loading project plugins is not
+// run at all. Its help text is read first; printing help loads no plugins.
+const SAFE_MODE = {
+  opencode: { args: ['models', '--help'], flag: '--pure' },
 }
 
 // A catalog CLI runs with the project root as its working directory, so no
@@ -123,9 +131,13 @@ function windowsShell(env) {
   return path.win32.join(root, 'System32', 'cmd.exe')
 }
 
-function execToString(file, args, options) {
+// withStderr: some CLIs print help to stderr (OpenCode does), so a caller that
+// reads help asks for both streams.
+function execToString(file, args, options, withStderr) {
   return new Promise((resolve, reject) => {
-    execFile(file, args, options, (error, stdout) => (error ? reject(error) : resolve(stdout)))
+    execFile(file, args, options, (error, stdout, stderr) =>
+      error ? reject(error) : resolve(withStderr ? stdout + stderr : stdout)
+    )
   })
 }
 
@@ -137,7 +149,12 @@ export function runCli(
   command,
   args,
   cwd,
-  { resolveFile = resolveCommand, env = process.env, platform = process.platform } = {}
+  {
+    resolveFile = resolveCommand,
+    env = process.env,
+    platform = process.platform,
+    withStderr = false,
+  } = {}
 ) {
   const file = resolveFile(command, { env, platform })
   if (file === null) {
@@ -151,11 +168,16 @@ export function runCli(
     timeout: CATALOG_TIMEOUT_MS,
     maxBuffer: 64 * 1024 * 1024,
   }
-  if (!needsShell(file, platform)) return execToString(file, args, options)
+  if (!needsShell(file, platform)) return execToString(file, args, options, withStderr)
   // One command line: passing args together with `shell` is deprecated
   // (DEP0190). The arguments are constants, so nothing can be injected; the
   // path is quoted because it may contain spaces.
-  return execToString(`"${file}" ${args.join(' ')}`, [], { ...options, shell: windowsShell(env) })
+  return execToString(
+    `"${file}" ${args.join(' ')}`,
+    [],
+    { ...options, shell: windowsShell(env) },
+    withStderr
+  )
 }
 
 // `codex debug models` prints { models: [{ slug, supported_reasoning_levels:
@@ -207,8 +229,18 @@ export async function readCatalogs(ecosystems, run = runCli) {
     if (!CATALOG_COMMANDS[ecosystem]) continue
     const [command, args] = CATALOG_COMMANDS[ecosystem]
     const label = `${command} ${args.join(' ')}`
+    const safeMode = SAFE_MODE[ecosystem]
     let stdout
     try {
+      if (safeMode) {
+        const help = await run(command, safeMode.args, { withStderr: true })
+        if (!help.includes(safeMode.flag)) {
+          catalogs.notes.push(
+            `${command} has no ${safeMode.flag}, so listing models would load the project's plugins; ${ecosystem} catalog check skipped — update ${command}`
+          )
+          continue
+        }
+      }
       stdout = await run(command, args)
     } catch (error) {
       if (error?.code === 'ENOENT') continue
@@ -303,11 +335,22 @@ const CODEX_FIXTURE = JSON.stringify({
 })
 const OPENCODE_FIXTURE = 'opencode/big-pickle\nanthropic/claude-opus-5-5\n'
 
+const CURRENT_OPENCODE_HELP =
+  'opencode models [provider]\n      --pure        run without external plugins [boolean]\n'
+
 // A stand-in for runCli: a string is stdout, an Error is thrown, and a
-// command with no entry behaves like a CLI that is not installed.
-function fakeRun(outputs) {
-  return async command => {
-    const output = outputs[command]
+// command with no entry behaves like a CLI that is not installed. A help call
+// answers `outputs['<command> --help']`, by default a current OpenCode's help.
+// Every call is recorded in `calls` as "<command> <args…>".
+function fakeRun(outputs, calls = []) {
+  return async (command, args = [], options = {}) => {
+    calls.push([command, ...args].join(' ') + (options.withStderr ? ' [stderr]' : ''))
+    const helpKey = `${command} --help`
+    let output = outputs[command]
+    if (args.includes('--help')) {
+      if (helpKey in outputs) output = outputs[helpKey]
+      else if (typeof output === 'string') output = CURRENT_OPENCODE_HELP
+    }
     if (output instanceof Error) throw output
     if (output === undefined) {
       throw Object.assign(new Error(`spawn ${command} ENOENT`), { code: 'ENOENT' })
@@ -327,6 +370,33 @@ async function runSelftest() {
     'the opencode catalog must be parsed'
   )
   assert(both.notes.length === 0, `no notes when both CLIs answer, got ${JSON.stringify(both.notes)}`)
+
+  // `opencode models` loads the project's .opencode/plugins unless --pure is
+  // given, so it is always read with --pure — and a version without --pure is
+  // not run at all.
+  const pureCalls = []
+  await readCatalogs(['opencode'], fakeRun({ opencode: OPENCODE_FIXTURE }, pureCalls))
+  assert(
+    pureCalls.includes('opencode models --pure') &&
+      !pureCalls.includes('opencode models') &&
+      pureCalls.includes('opencode models --help [stderr]'),
+    `opencode must be read with --pure, got ${JSON.stringify(pureCalls)}`
+  )
+  const oldCalls = []
+  const oldOpencode = await readCatalogs(
+    ['opencode'],
+    fakeRun(
+      { opencode: OPENCODE_FIXTURE, 'opencode --help': 'opencode models [provider]\n  --verbose\n' },
+      oldCalls
+    )
+  )
+  assert(
+    !oldOpencode.opencode &&
+      oldOpencode.notes.length === 1 &&
+      oldOpencode.notes[0].includes('--pure') &&
+      oldCalls.every(call => call.includes('--help')),
+    `an OpenCode without --pure must not be run, got ${JSON.stringify({ notes: oldOpencode.notes, oldCalls })}`
+  )
 
   const missing = await readCatalogs(['codex', 'opencode'], fakeRun({}))
   assert(
@@ -462,6 +532,16 @@ async function runSelftest() {
   assert(
     childPath === nodeDir,
     `runCli must start the resolved file with the filtered PATH, got ${JSON.stringify(childPath)}`
+  )
+
+  // Help can arrive on stderr (OpenCode prints it there); withStderr asks for
+  // both streams, and the default stays stdout only.
+  const toStderr = ['-e', 'process.stderr.write("on-stderr")']
+  const bothStreams = await runCli('x', toStderr, here, { resolveFile: () => process.execPath, withStderr: true })
+  const stdoutOnly = await runCli('x', toStderr, here, { resolveFile: () => process.execPath })
+  assert(
+    bothStreams.includes('on-stderr') && stdoutOnly === '',
+    `withStderr must add stderr and only then, got ${JSON.stringify({ bothStreams, stdoutOnly })}`
   )
 
   // Not on PATH is ENOENT, which readCatalogs treats as missing. The command is
