@@ -11,7 +11,8 @@ biçimi, çözümleme kuralı, doğrulama, katalog komutları —
 yalnız prosedürdür.
 
 **Kapsam dışı:** rol eklemek/çıkarmak, routing ve hedef ekosistem (kurulu projede skill'i yok:
-manifest'i, rol dosyasını ve `llm.json`'daki girdilerini elle düzenleyip sync çalıştır), anayasa preset'leri
+manifest'i — bir rolü kaldırırken `routing`, `consults` ve `lead` atıfları dahil —, rol dosyasını ve
+`llm.json`'daki girdilerini elle düzenleyip sync çalıştır), anayasa preset'leri
 (`team-builder-upgrade`).
 
 ## Önce durumu tespit et
