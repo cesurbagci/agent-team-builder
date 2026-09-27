@@ -12,14 +12,13 @@ Bir rol için "ekleyelim mi?" → EVET ise sırayla:
 ## Adımlar
 
 1. **Governance varsayılanlarını göster → kabul/değiştir.**
-   `governance-defaults.md`'den o rolün varsayılanlarını GÖSTER: `model`,
-   `model_reasoning_effort`, `sandbox_mode`, `writesCode`, `color`, varsayılan kurallar
-   (`rules[]`), `consults` (architect takımdaysa developer için `["architect"]`, **yoksa boş `[]`**). Kullanıcı kabul eder/düzenler.
+   `governance-defaults.md`'den o rolün varsayılanlarını GÖSTER: `sandbox_mode`,
+   `writesCode`, `color`, varsayılan kurallar
+   (`rules[]`), `consults` (architect takımdaysa developer için `["architect"]`, **yoksa boş `[]`**). Kullanıcı kabul eder/düzenler. Model ve effort burada **sorulmaz**: bütün roller bittikten sonra `team-builder-models`'in Akış 1'i sorar ve `.agent-source/llm.json`'a yazar.
 
 2. **Hedefleri sor (`targets`).**
    Bu agent hangi ekosistem(ler)de üretilsin: `claude`, `codex`, `opencode` veya bir
-   kombinasyonu. Belirtilmezse manifest `targetsDefault` uygulanır. `opencode` hedefliyse
-   ek olarak **`opencode_model`** (provider/model) sorulur. Bkz. `codex-target.md`,
+   kombinasyonu. Belirtilmezse manifest `targetsDefault` uygulanır. Bkz. `codex-target.md`,
    `opencode-target.md`.
 
 3. **`writesCode` ve `consults`'u teyit et.**
@@ -44,8 +43,9 @@ Bir rol için "ekleyelim mi?" → EVET ise sırayla:
 
 6. **Manifest'e agent ekle.**
    `manifest.agents[]`'a `manifest-schema.md`'ye uygun obje ekle. Codex metadata dahil:
-   `name, description, targets, model, model_reasoning_effort, sandbox_mode, writesCode,
-   color, nickname_candidates, skills, consults, rules, extra_instructions`.
+   `name, description, targets, sandbox_mode, writesCode, color, nickname_candidates,
+   skills, consults, rules, extra_instructions`. **`model`, `model_reasoning_effort`,
+   `opencode_model` yazma** — eski alanlardır, doğrulayıcı reddeder; model `llm.json`'a gider.
 
 7. **Agent-source md yaz.**
    `.agent-source/agents/<name>.md` dosyasını `agent-md-rich.md` kalıbıyla üret (frontmatter

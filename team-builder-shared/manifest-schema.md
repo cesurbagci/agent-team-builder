@@ -1,7 +1,7 @@
 # manifest.json Şeması (v2)
 
 > Referans doküman. `.agent-source/agents/manifest.json` dosyasının v2 şemasını tanımlar.
-> Çekirdek alan adları üretimde çalışan bir referans kurulumla uyumludur (`targets`, `model`, `model_reasoning_effort`,
+> Çekirdek alan adları üretimde çalışan bir referans kurulumla uyumludur (`targets`,
 > `sandbox_mode`, `nickname_candidates`, `extra_instructions`) + v2 eklemeleri
 > (`routing`, `codeDocSync`, `constitution`, `skills[{name,enforcement}]`,
 > `docLanguage`, `architectureDocs`, `lead`).
@@ -53,9 +53,6 @@ Generated dosyalar **elle değiştirilmez**; kaynak burasıdır.
 | `name` | `string` | **Evet** | Agent adı. Generated dosya adlarının (`<name>.md`, `<name>.toml`) ve routing/lead referanslarının temeli. **Portatif slug olmalı:** `^[a-z0-9]+(?:-[a-z0-9]+)*$`. Adlar dosya yollarına doğrudan gömüldüğü için eğik çizgi, ters bölü, boşluk ve kontrol karakteri yasaktır. Tekillik **büyük/küçük harf duyarsız** karşılaştırılır (`Dev` ve `dev` çakışır). |
 | `description` | `string` | **Evet** | Agent'ın ne zaman kullanılacağı. Claude frontmatter `description` + Codex TOML + OpenCode frontmatter `description`'ına yansır. **Zorunludur:** Codex açıklaması olmayan bir subagent'ı reddeder, OpenCode ise boş bir anahtar alır. |
 | `targets` | `string[]` | Hayır | Hedef ekosistemler: `{claude, codex, opencode}` alt kümesi, boş olamaz. Verilmezse `targetsDefault` uygulanır. `claude` → `.claude/agents/<name>.md`; `codex` → `.codex/agent-definitions/<name>.md` + `.codex/agents/<name>.toml`; `opencode` → `.opencode/agents/<name>.md`. |
-| `model` | `string` | Hayır | `claude` hedefli agent'larda model: `opus`, `sonnet`, `haiku`. Codex agent'larında Codex modeli (örn. `gpt-5.5`) da olabilir. |
-| `opencode_model` | `string` | Hayır | `opencode` hedefli agent'ın modeli, **`provider/model` formatında** (örn. `anthropic/claude-sonnet-4-5`, `openai/gpt-5`). Verilmezse `model` (opus/sonnet/haiku) Anthropic ID'lerine fallback haritasıyla map'lenir. |
-| `model_reasoning_effort` | `string` | Hayır | Reasoning effort: `low`, `medium`, `high`. Codex TOML'una ve (Claude için) effort bilgisine yansır. |
 | `sandbox_mode` | `string` | Hayır | Sandbox modu: **yalnız `read-only` ya da `workspace-write`**. Reviewer gibi salt-okunur roller `read-only`; sahiplendiği dizine yazan doc-only roller (architect, doc-writer) `workspace-write`. Codex'in `danger-full-access` değeri **kabul edilmez** — bu alan OpenCode'un `permission.edit` iznini de belirler ve `read-only` dışındaki her değer "yazabilir" demektir; sandbox disiplinini bütünüyle kaldıran bir mod bu araçta üretilmez. |
 | `writesCode` | `boolean` | Hayır | Agent kod yazar mı. `false` → agent md'de "Kod yazma" net kuralı (architect, reviewer). Default: `true`. |
 | `color` | `string` | Hayır | Claude frontmatter rengi (örn. `purple`, `blue`). |
@@ -66,6 +63,10 @@ Generated dosyalar **elle değiştirilmez**; kaynak burasıdır.
 | `consults` | `string[]` | Hayır | Bu agent'ın danışması gereken diğer agent `name`'leri (örn. developer → `["architect"]`). |
 | `rules` | `string[]` | Hayır | Agent md gövdesine işlenen kısa kural cümleleri. |
 | `extra_instructions` | `string[]` | Hayır | Codex `developer_instructions` + agent md'ye eklenen ek serbest talimatlar (memory, domain sınırı, mimari sevk vb.). |
+
+> **Model ve effort bu şemada yoktur.** `.agent-source/llm.json`'da, ekosistem başına
+> tutulur (bkz. `llm-config.md`). `model`, `model_reasoning_effort` ve `opencode_model`
+> **eski alanlardır**: doğrulayıcı onları göç mesajıyla reddeder.
 
 ### Doğrulama kuralları (validate-manifest.mjs ile birebir)
 
@@ -78,9 +79,7 @@ Generated dosyalar **elle değiştirilmez**; kaynak burasıdır.
   (`performance`, `code-design`, `ui-ux`, `accessibility`, `security`, `testing`).
 - Kap tipleri doğru olmalı: `constitution` ve `planGate` nesne, `routing` ve `codeDocSync`
   dizi, `routing[]`/`codeDocSync[]` öğeleri nesne.
-- `model` (verildiyse, claude hedefli agent'ta) `{opus, sonnet, haiku}` içinde olmalı.
-- `opencode_model` (verildiyse) `provider/model` formatında string olmalı. `opencode` hedefli bir agent'ta ne `opencode_model` ne `model` yoksa hata verilir (fallback haritası da çalışamaz).
-- `model_reasoning_effort` (verildiyse) `{low, medium, high}` içinde olmalı.
+- Agent'ta `model`, `model_reasoning_effort` ya da `opencode_model` bulunmamalı — bu alanlar `llm.json`'a taşındı; bulunursa hata `team-builder-models` göçünü gösterir.
 - Her `skills[].enforcement` `{mandatory, when-needed}` içinde olmalı.
 - `lead` verildiyse bir agent `name`'i olmalı.
 - `routing[].path` dolu bir **string** olmalı (generator yolları `typeof === "string"` ile eşler; sayı gibi bir değer doğrulamayı geçip üretimde sessizce düşerdi) ve `routing[].role` dolu olmalı; `routing[].role` bir agent `name`'i olmalı.
@@ -154,9 +153,6 @@ Generated dosyalar **elle değiştirilmez**; kaynak burasıdır.
       "name": "architect",
       "targets": ["claude", "codex", "opencode"],
       "description": "Mimari kararlar, ADR'lar, API kontratı ve standart belirsizlikleri için kullanılır. Production kod yazmaz; docs/mimari altında kalıcı karar üretir.",
-      "model": "opus",
-      "opencode_model": "anthropic/claude-opus-4",
-      "model_reasoning_effort": "high",
       "sandbox_mode": "workspace-write",
       "writesCode": false,
       "color": "purple",
@@ -176,8 +172,6 @@ Generated dosyalar **elle değiştirilmez**; kaynak burasıdır.
       "name": "backend-developer",
       "targets": ["claude", "codex"],
       "description": "Main process, IPC handler, native entegrasyon ve backend paket değişiklikleri için kullanılır.",
-      "model": "sonnet",
-      "model_reasoning_effort": "high",
       "sandbox_mode": "workspace-write",
       "writesCode": true,
       "color": "blue",
@@ -196,8 +190,6 @@ Generated dosyalar **elle değiştirilmez**; kaynak burasıdır.
       "name": "frontend-developer",
       "targets": ["claude", "codex"],
       "description": "Renderer React kodu, UI, navigation, state ve design system uygulaması için kullanılır.",
-      "model": "sonnet",
-      "model_reasoning_effort": "high",
       "sandbox_mode": "workspace-write",
       "writesCode": true,
       "color": "green",
@@ -217,8 +209,6 @@ Generated dosyalar **elle değiştirilmez**; kaynak burasıdır.
       "name": "reviewer",
       "targets": ["claude", "codex"],
       "description": "Kod değişikliği sonrası read-only review yapar; mimari ihlal, workaround, doküman senkronizasyonu, güvenlik ve test kalitesi bulgularını raporlar.",
-      "model": "opus",
-      "model_reasoning_effort": "high",
       "sandbox_mode": "read-only",
       "writesCode": false,
       "color": "red",

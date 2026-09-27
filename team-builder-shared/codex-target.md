@@ -33,11 +33,12 @@ dosyalar elle değiştirilmez; kaynak `.agent-source/`'tur. Drift `--check` ile 
 Her codex hedefli agent için bir TOML üretilir. Üst satıra "bu dosya `.agent-source`'tan
 üretildi, `sync:agents` çalıştır" notu eklenir.
 
-| TOML alanı | manifest kaynağı | Not |
+| TOML alanı | Kaynak | Not |
 |---|---|---|
 | `name` | `agents[].name` | Agent adı. |
 | `description` | `agents[].description` | Ne zaman kullanılacağı. |
-| `model_reasoning_effort` | `agents[].model_reasoning_effort` | `low\|medium\|high`. |
+| `model` | `llm.json` → `codex` girdisi | Çözümlenmiş model (bkz. `llm-config.md`). Yoksa satır yazılmaz, Codex varsayılanı geçerli. |
+| `model_reasoning_effort` | `llm.json` → `codex` girdisi | Çözümlenmiş effort. Yoksa satır yazılmaz. Geçerli seviyeler modele bağlı — `codex debug models`. |
 | `sandbox_mode` | `agents[].sandbox_mode` | Yalnız `read-only\|workspace-write` (`danger-full-access` kabul edilmez — bkz. `manifest-schema.md`). Reviewer gibi salt-okunur roller `read-only`; sahiplendiği dizine yazan doc-only roller `workspace-write`. |
 | `nickname_candidates` | `agents[].nickname_candidates` | Kullanıcı dostu takma adlar. |
 | `developer_instructions` | manifest + project'ten **derlenir** | Çok satırlı `"""..."""` blok. Aşağıdaki template. |
@@ -45,9 +46,8 @@ Her codex hedefli agent için bir TOML üretilir. Üst satıra "bu dosya `.agent
 > Claude'a özgü frontmatter alanları (`tools`, `memory`, `color`) Codex TOML'una
 > **yazılmaz**. Codex tarafı bunları konfigürasyon olarak yorumlamaz.
 >
-> **`model` bu listede değildir** — o Codex TOML'una **yazılır** (`sync-agent-config.mjs`
-> `model = "..."` satırını üretir ve kendi selftest'i bunu doğrular). Yukarıdaki alan
-> tablosunda satırı bulunmaması bir eksikliktir, kural değil.
+> `claude` girdisi Codex'e **hiçbir koşulda** gitmez. Eskiden manifest'in tek `model`
+> alanı bir Claude takma adını (`"opus"`) Codex TOML'una da yazıyordu.
 
 ### `developer_instructions` template'i
 

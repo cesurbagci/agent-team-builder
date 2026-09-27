@@ -25,12 +25,13 @@ kaynağın `.agent-source/` olduğunu görür.
 ```
 .agent-source/                      # TEK CANONICAL KAYNAK — generated dosyalar elle değiştirilmez
 ├── README.md                       # "generated'ı elleme, burayı güncelle + sync çalıştır"
-├── generated-files.json            # sync defteri (GENERATED — ağaçtaki tek generated dosya)
+├── generated-files.json            # sync defteri (GENERATED — ağaçtaki tek generated dosya; git'e girmez)
+├── llm.json                        # model + effort, ekosistem başına (commit edilir) — llm-config.md
+├── llm.local.json                  # bu makinenin farkları (git'e girmez; ortak dosyayı ezer)
 ├── agents/
-│   ├── <role>.md                   # rol talimatının TAM gövdesi (tool-bağımsız, verbatim kopyalanır)
-│   └── manifest.json               # rol metadata: targets[], model, model_reasoning_effort,
-│                                   #   sandbox_mode, nickname_candidates[], routing, codeDocSync,
-│                                   #   constitution, extra_instructions[]
+│   ├── <role>.md                   # rol talimatının TAM gövdesi (tool-bağımsız; model/effort TAŞIMAZ)
+│   └── manifest.json               # rol metadata: targets[], sandbox_mode, nickname_candidates[],
+│                                   #   routing, codeDocSync, constitution, extra_instructions[]
 ├── project/
 │   ├── instructions.md             # ORTAK talimat kaynağı — kopyalanmaz, hedefler referans verir
 │   ├── CLAUDE.md                   # Claude'a özgü + instructions.md referansı
@@ -53,11 +54,13 @@ GENERATED'dır**; elle düzenlenmez, kaynaktan üretilir.
 
 | Kaynak (`.agent-source/`) | Generated Hedef(ler) | Koşul |
 |---|---|---|
-| `agents/<role>.md` | `.claude/agents/<role>.md` | agent `targets` içinde `claude` varsa |
+| `agents/<role>.md` + `llm.json` | `.claude/agents/<role>.md` (git'e girmez) | agent `targets` içinde `claude` varsa; frontmatter'a çözümlenmiş `model`/`effort` eklenir |
 | `agents/<role>.md` | `.codex/agent-definitions/<role>.md` | agent `targets` içinde `codex` varsa (verbatim kopya) |
-| `agents/manifest.json` | `.codex/agents/<role>.toml` | `codex` target'lı agent'lar için (metadata + `developer_instructions`) |
-| `agents/<role>.md` + manifest | `.opencode/agents/<role>.md` | agent `targets` içinde `opencode` varsa (OpenCode frontmatter + kaynak gövde) |
+| `agents/manifest.json` + `llm.json` | `.codex/agents/<role>.toml` (git'e girmez) | `codex` target'lı agent'lar için (metadata + `developer_instructions` + çözümlenmiş model/effort) |
+| `agents/<role>.md` + manifest + `llm.json` | `.opencode/agents/<role>.md` (git'e girmez) | agent `targets` içinde `opencode` varsa (OpenCode frontmatter + kaynak gövde) |
 | `project/instructions.md` | *(kopyalanmaz — hedefler referans verir)* | Her zaman |
+| `llm.json` + `llm.local.json` | *(kopyalanmaz — ajan dosyalarına çözümlenir)* | Her zaman (ikisi de isteğe bağlı) |
+| *(kaynak yok — sync'in yönettiği blok)* | `.gitignore` içindeki işaretli blok | Her zaman — git'e girmeyen çıktının dosya dosya listesi |
 | `project/CLAUDE.md` | `CLAUDE.md` | Claude hedefi seçiliyse |
 | `project/AGENTS.md` | `AGENTS.md` | Codex **veya** OpenCode hedefi seçiliyse |
 | `project/codex-config.toml` | `.codex/config.toml` | Codex hedefi seçiliyse |
@@ -126,5 +129,7 @@ kayıtlar, ilerleme notları. `.agent-memory/` ile aynı statüdedir.
   ürettiği yollar **artı** önceki defterde olup hâlâ diskte duran yolların birleşimini
   tutar. Bayat çıktı raporu buna bakar, böylece deftere hiç girmemiş — yani kullanıcının
   kendi yazdığı — agent/skill dosyaları bayat sayılmaz. (Kullanıcı bir zamanlar generated
-  olan bir yola elle dosya koyarsa o yol defterde olduğu için bayat raporlanır.) Elle düzenlenmez; commit edilir (takımda
-  tutarlı olması için). Detay: `sync-pipeline.md` §8.
+  olan bir yola elle dosya koyarsa o yol defterde olduğu için bayat raporlanır.) Elle
+  düzenlenmez ve **git'e girmez**: bu makinede neyin üretildiğinin kaydıdır. Commit
+  edilseydi, bir takım arkadaşının kaldırdığı agent'ın dosyası benim diskimde bayat olarak
+  raporlanmazdı ve Claude onu yüklemeye devam ederdi. Detay: `sync-pipeline.md` §8.

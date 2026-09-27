@@ -20,7 +20,6 @@ Tüm gövde **docLanguage** dilinde yazılır.
 name: <name>
 description: <ne zaman PROAKTİF çağrılır — docLanguage; routing/consults bağlamı dahil>
 tools: <Read, Grep, Glob[, Write, Edit, Bash] — writesCode/role'e göre>
-model: <opus | sonnet | haiku>
 memory: project
 color: <purple | blue | green | red | yellow | ...>
 ---
@@ -37,11 +36,13 @@ color: <purple | blue | green | red | yellow | ...>
   > **aynı** ölçüdür (`sandbox_mode`, yoksa `writesCode`). Üç hedef aynı soruya farklı
   > cevap verirse aynı rol bir yerde yazma alanı alıp başka yerde reddedilir — son üç
   > denetim turunun bulduğu hataların çoğu tam olarak buydu.
-- `model`, `color`: manifest `agents[].model` / `agents[].color`.
+- `color`: manifest `agents[].color`. **`model:` ve `effort:` yazılmaz** — sync onları
+  `llm.json`'dan çözüp üretilen Claude dosyasına ekler (`llm-config.md`); kaynak rol
+  dosyasında bulunurlarsa sync durur.
 - `memory: project` her zaman (per-agent memory disiplini, anayasa preset 3).
-- Codex-özel metadata (`model_reasoning_effort`, `sandbox_mode`, `nickname_candidates`,
-  `targets`, `extra_instructions`) **frontmatter'a girmez** — manifest'te tutulur, Codex
-  TOML'una yansır.
+- Codex-özel metadata (`sandbox_mode`, `nickname_candidates`, `targets`,
+  `extra_instructions`) **frontmatter'a girmez** — manifest'te tutulur, Codex TOML'una
+  yansır.
 
 ---
 
@@ -133,7 +134,6 @@ Role özel sıkı kurallar (madde listesi):
 | `skills[].enforcement: mandatory` | `## Zorunlu Skill'ler` altında **MUTLAKA** emir kipi. |
 | `skills[].enforcement: when-needed` | `## Gerektiğinde Skill'ler` altında öneri dili. |
 | `consults: [architect]` | `## Routing & Danışma`'da "mimari belirsizlikte architect'e sevk". Liste **boşsa** (architect yoksa) "mimari belirsizlikte **kullanıcıya sor**". |
-| `model` | frontmatter `model:` (tipik: architect/reviewer `opus`, developer `sonnet`). |
 
 ## Reviewer'a özel: `## Denetim Eksenleri`
 

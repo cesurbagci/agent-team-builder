@@ -19,9 +19,10 @@ değiştirilmez**; her zaman kaynaktan üretilir. Generator iki modda çalışı
   (`process.cwd()`) kullanılır. Tüm generated hedefler bu köke göre yazılır.
 - **`.agent-source/` (`sourceRoot`):** tek canonical kaynak ağacı:
   - `agents/manifest.json` — rol metadata listesi (`agents[]`). Her ajan için:
-    `name`, `description`, `targets[]` (varsayılan `["claude","codex"]`), `model`
-    (opsiyonel), `model_reasoning_effort`, `sandbox_mode`, `nickname_candidates[]`,
-    `extra_instructions[]`.
+    `name`, `description`, `targets[]` (yoksa kök `targetsDefault`; varsayılan ekosistem
+    yoktur), `sandbox_mode`, `nickname_candidates[]`, `extra_instructions[]`.
+  - `llm.json` ve (varsa) `llm.local.json` — model ve effort, ekosistem başına
+    (`llm-config.md`). Üretimden **önce** `validate-llm.mjs` ile doğrulanır.
   - `agents/<role>.md` — rolün tam talimat gövdesi (tool-bağımsız).
   - `project/CLAUDE.md`, `project/AGENTS.md` ve (Codex hedefi seçiliyse)
     `project/codex-config.toml`, `project/codex-team.md`, `project/migration-map.md`.
@@ -49,6 +50,10 @@ Kaynaktan üretilen, elle düzenlenmeyen dosyalar:
 | `agents/<role>.md` + manifest | `.opencode/agents/<role>.md` | `targets` içinde `opencode` |
 | `skills/<skill>/SKILL.md` | `.agents/skills/` (her zaman) + Claude hedefi varsa `.claude/skills/` + OpenCode hedefi varsa `.opencode/skills/` | varsa |
 
+Ajan dosyaları (`.claude/agents/`, `.codex/agents/`, `.opencode/agents/`) ve defter
+**git'e girmez** — çözümlenmiş modeli taşırlar ve o model bu makinenin `llm.local.json`'undan
+gelebilir. Sync onları `.gitignore`'daki işaretli blokta dosya dosya listeler (bkz. §11).
+
 Codex agent-definition'ı üretilirken kaynak gövdesi dönüştürülür (örn.
 `.claude/skills/...` yolları `.agents/skills/...` olur; Claude'a özgü Task-tool
 delege ifadeleri Codex sub-agent workflow ifadesine çevrilir).
@@ -65,6 +70,10 @@ Her generated dosyanın başına sabit bir header yazılır:
 - Header beklenen içeriğin parçasıdır; bu yüzden `--check` header eksik/yanlış ise
   drift sayar.
 
+`CLAUDE.md` ve `AGENTS.md` bir satır daha taşır: ajan dosyalarının yerelde üretildiğini ve
+eksiklerse sync çalıştırılması gerektiğini söyler. Bu iki dosya git'tedir; repoyu yeni
+klonlayan ya da ajan dosyalarını takipten çıkaran commit'i çeken kişi önce onları okur.
+
 ## 5. `--check` Drift Davranışı
 
 `--check` modunda generator:
@@ -72,7 +81,10 @@ Her generated dosyanın başına sabit bir header yazılır:
 - **Hiçbir dosya yazmaz, silmez, dizin oluşturmaz** (yan etki yok).
 - Her hedef için beklenen içeriği üretir ve diskteki içerikle karşılaştırır.
 - Fark bulduğu her dosyayı `mismatches` listesine ekler. Drift kaynakları:
-  1. Generated dosyanın içeriği beklenenden farklı (veya dosya hiç yok).
+  1. Generated dosyanın içeriği beklenenden farklı (veya dosya hiç yok). **İstisna:**
+     git'e girmeyen yerel çıktı (§11) hiç yoksa bu kayma **değildir** — CI'da ve taze
+     klonda bu dosyalar yoktur. `i <yol> is not generated yet …` bilgi satırıyla
+     söylenir, çıkış kodunu etkilemez. Var olup farklı olan yerel çıktı ise kaymadır.
   2. Defterde kayıtlı olup bu turda üretilmeyen, hâlâ diskte duran bayat generated
      dosya (bkz. §8).
   3. `.agent-source/agents/` altında manifest'te listelenmeyen `<role>.md` kaynağı.
@@ -124,7 +136,7 @@ güvenli olduğu anlamına gelmez; silme yolunu güvenli kılmak için gereken s
 (yol containment, dosya türü kontrolü, case-insensitive yeniden adlandırma çakışması,
 geçici I/O hatasının "üretilmedi" sanılması) sağladığı faydadan pahalıdır.
 
-Bunun yerine sync bir **sahiplik defteri** tutar: `.agent-source/generated-files.json`.
+Bunun yerine sync bir **sahiplik defteri** tutar: `.agent-source/generated-files.json`. Defter bu makineye aittir ve **git'e girmez** (§11).
 **Normal sync modunda**, her başarılı çalışma şunların birleşimini (repo köküne göre,
 POSIX ayraçlı, sıralı) oraya yazar: bu turda ürettiği tüm generated yollar **artı**
 önceki defterde olup artık üretilmeyen ama hâlâ diskte duran yollar. **`--check` modu
@@ -148,9 +160,10 @@ düşer ve bir daha hiç görünmez — `--check` yeşil yanarken dosya diskte k
   defter yalnız o turda üretilenleri içerir, dolayısıyla önceki defterin sahiplendiği
   bayat yollar bir daha raporlanmaz — o dosyalar tekrar üretilip yeniden deftere girmedikçe
   görünmez kalır.
-- **`--check` modunda ise sonuç farklıdır:** defter eksik ya da bozuksa diskteki içerik
-  beklenen birleşimden farklı olur (defter de generated olduğu için); defter yolu
-  **normal drift mismatch'i** olarak raporlanır ve `--check` exit 1 ile çıkar.
+- **`--check` modunda:** defter **bozuksa** diskteki içerik beklenen birleşimden farklı
+  olur; defter yolu normal drift mismatch'i olarak raporlanır ve `--check` exit 1 ile
+  çıkar. Defter **hiç yoksa** bu kayma değildir: defter git'e girmeyen yerel çıktıdır ve
+  CI'da ya da taze klonda bulunmaz (§5, §11).
 - `--check` defter dosyasının içeriğini **değiştirmez**.
 - Bayat dosyaları silmek kullanıcıya kalmıştır.
 
@@ -164,7 +177,8 @@ düşer ve bir daha hiç görünmez — `--check` yeşil yanarken dosya diskte k
 
 Hedeflenen her ekosistemin kaynak dosyası `.agent-source/project/instructions.md`
 referansını taşımalıdır: Claude için `project/CLAUDE.md`, Codex ya da OpenCode için
-`project/AGENTS.md`.
+`project/AGENTS.md`, OpenCode için ayrıca `project/opencode.json` (`instructions` dizisinin
+ilk elemanı).
 
 Referans eksikse `sync` **uyarır ve devam eder** — reddetmez. Gerekçe: dosya kullanıcının
 kendi kaynağıdır ve tek satır yüzünden üretimi durdurmak orantısız olur. Ama sessiz de
@@ -174,3 +188,39 @@ governance metnini kaybetmiş olur.
 Uyarı **`ctx.mismatches`'e girmez** — oraya girseydi `--check` düşerdi, yani reddetmiş
 olurduk. Bunun bedeli: yalnız `--check` çalıştıran bir CI eksik referansı görmez.
 Bilinçli bir tercihtir; eklemeyi teklif etmek etkileşimli skill'lerin işidir.
+
+## 11. Git'e girmeyen çıktı ve `.gitignore` bloğu
+
+Git'e girmeyen yerel çıktı: defter, `llm.local.json` ve her agent için etkin hedeflerine
+göre `.claude/agents/<ad>.md`, `.codex/agents/<ad>.toml`, `.opencode/agents/<ad>.md`.
+Liste yalnız manifest'ten hesaplanır; her makinede aynıdır.
+
+Sync bu listeyi `.gitignore`'da işaretli bir blokta tutar:
+
+- Her yol ayrı satırda, başında `/` ile — **dizin değil dosya**. Kullanıcının aynı
+  dizinlere elle yazdığı agent'lar git'te kalmalıdır.
+- Blok varsa yerinde yenilenir; yoksa dosyanın sonuna bir boş satırla eklenir; `.gitignore`
+  yoksa yalnız blokla oluşturulur. **Bloğun dışına dokunulmaz.**
+- Başlangıç işareti olup bitiş işareti yoksa sync durur: değiştirilecek aralık tanımsızdır.
+- `.gitignore` kullanıcının dosyasıdır ve git'tedir; deftere girmez. `--check` onu yazmaz,
+  güncel olmayan blok kayma olarak raporlanır.
+
+## 12. Anayasa işaretleri
+
+`instructions.md` açık preset'lerin işaret çiftlerini (`<!-- c:<preset> -->` …
+`<!-- /c:<preset> -->`) taşımalıdır. Sync her preset için manifest'le dosyayı karşılaştırır
+ve dört durumu ayrı ayrı **uyarır**: preset açık ama blok yok, preset kapalı ama blok
+duruyor, çift kopuk ya da yinelenmiş, çift ters sırada. Son ikisi düzenleme güvenliğidir —
+yükseltme blokları bu işaretlere göre ekleyip çıkarır.
+
+§10'daki referans uyarısıyla aynı gerekçeyle **`ctx.mismatches`'e girmez**:
+`instructions.md` projenin kendi dosyasıdır.
+
+## 13. Model kataloğu uyarıları
+
+Üretimden sonra sync, çözümlenmiş modelleri bu makinenin kataloğuyla karşılaştırır
+(`llm-config.md`, *Katalog*): Codex'te `codex debug models`, OpenCode'da `opencode models`.
+Katalogda olmayan model, modelin desteklemediği effort ve emekliliği duyurulmuş model
+**uyarıdır**; `--check` modunda da uyarıdır ve çıkış kodunu etkilemez. CLI yoksa kontrol
+sessizce atlanır; CLI hata verirse tek bilgi satırı yazılır. Her uyarı
+`team-builder-models`'e yönlendirir.

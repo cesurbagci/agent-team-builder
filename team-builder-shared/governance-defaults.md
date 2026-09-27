@@ -2,8 +2,11 @@
 
 > v1'in basit "architect + developer + reviewer" rosterini **domain-split**
 > mimarisine taşır. Bunlar varsayılandır; sihirbaz her rolü kullanıcıya gösterir,
-> kabul/değiştir denir. Her rol için aşağıdaki alanlar manifest.json'a yazılır:
-> `model` · `model_reasoning_effort` · `sandbox_mode` · `writesCode` · `consults`.
+> kabul/değiştir denir. Her rol için `sandbox_mode` · `writesCode` · `consults`
+> manifest.json'a yazılır. **Model ve effort önerisi** de buradadır ama manifest'e değil,
+> `team-builder-models` aracılığıyla `.agent-source/llm.json`'a gider (bkz.
+> `llm-config.md`): Claude için takma ad (eskimez) ve effort; Codex ve OpenCode modeli o
+> makinenin kataloğundan seçilir.
 
 ## Genel İlke
 
@@ -21,7 +24,7 @@ agent md gövdesindeki "Çalışma/Yasak klasörleri" ile uygulanır):
 ## 1. Architect / Tech Lead  (çekirdek, default: EKLE, lead)
 
 - `writesCode`: **false** (doc-only). Production kodu yalnız **okur**.
-- `model`: **opus** · `model_reasoning_effort`: **high** · `sandbox_mode`: **workspace-write**
+- Claude önerisi: **opus** · effort: **high** · `sandbox_mode`: **workspace-write**
   — sahiplendiği `docs/` dizinine yazması gerektiği için `read-only` olamaz; production
   koduna yazma yasağı talimatla uygulanır (reviewer'dan farkı budur).
 - **Yazma yetkisi: routing'de kendisine verilen doküman yolları.** Varsayılan tek satır `docs/**`'tir — o zaman "tüm `docs/` dizini" doğru ifadedir ve alt klasörleri (`docs/architecture/adr` vb.) tek tek sayma. Doküman **bölünmüşse** (doc-writer'a `docs/guides/**` verildiyse) ya da per-module satır varsa yetkiyi **tablodaki kendi yollarıyla** ifade et; "tüm `docs/`" demek başka bir rolün alanını da sahiplenmek olur. Production koduna hiçbir durumda yazamaz.
@@ -50,7 +53,7 @@ domain için **ayrı bir developer rolü** oluşturur. Domain türetme kuralı (
 
 Her developer rolü için varsayılan:
 - `writesCode`: **true**.
-- `model`: **sonnet** · `model_reasoning_effort`: **medium** · `sandbox_mode`: **workspace-write**.
+- Claude önerisi: **sonnet** · effort: **medium** · `sandbox_mode`: **workspace-write**.
   (Karmaşık projelerde effort=high tercih edilebilir; sihirbaz proje karmaşıklığına göre yükseltebilir.)
 - `consults`: **[architect]** — architect takımda **yoksa boş `[]`**.
 - Kurallar (her developer'a, kendi domain'i doldurularak):
@@ -61,7 +64,7 @@ Her developer rolü için varsayılan:
 ## 3. Reviewer  (çekirdek, default: EKLE)
 
 - `writesCode`: **false** (read-only).
-- `model`: **opus** · `model_reasoning_effort`: **high** · `sandbox_mode`: **read-only**.
+- Claude önerisi: **opus** · effort: **high** · `sandbox_mode`: **read-only**.
 - `consults`: [] (gate'tir; gerekirse architect'e eskale eder — architect **yoksa** eskalasyon hedefi **kullanıcıdır**).
 - **Plan kapısı açıksa:** evrensel kod review kuralının tek otoritesi `planGate.codeReviewer`'dır. O alan bir ad taşıyorsa kural o adla yazılır (bu rol o ad olmayabilir); `null` ise **evrensel kod review kuralı hiç yazılmaz**. Plan kapısı kapalıysa bugünkü sabit `reviewer` gate'i aynen korunur.
 - Kurallar:
@@ -76,17 +79,17 @@ Her developer rolü için varsayılan:
 ## Opsiyonel Roller
 
 ### QA / Test Engineer  (opsiyonel)
-- `writesCode`: true (yalnız test) · `model`: **sonnet** · `model_reasoning_effort`: **medium** · `sandbox_mode`: **workspace-write**.
+- `writesCode`: true (yalnız test) · Claude önerisi: **sonnet** · effort: **medium** · `sandbox_mode`: **workspace-write**.
 - `consults`: [architect] — architect takımda **yoksa boş `[]`**.
 - Kurallar: "Test stratejisini sen belirlersin; coverage hedefini takip et; testleri kodun gerçek davranışına göre yaz."
 
 ### Security Reviewer  (opsiyonel)
-- `writesCode`: false · `model`: **opus** · `model_reasoning_effort`: **high** · `sandbox_mode`: **read-only**.
+- `writesCode`: false · Claude önerisi: **opus** · effort: **high** · `sandbox_mode`: **read-only**.
 - `consults`: [architect] — architect takımda **yoksa boş `[]`**.
 - Kurallar: "Auth, input validasyonu, secrets, dış çağrı içeren değişiklikleri sen incelersin; bulguları reviewer formatında raporla."
 
 ### Doc Writer  (opsiyonel)
-- `writesCode`: false (yalnız doküman) · `model`: **haiku** · `model_reasoning_effort`: **low** · `sandbox_mode`: **workspace-write** (yalnız `docs/`).
+- `writesCode`: false (yalnız doküman) · Claude önerisi: **haiku** · effort: **low** · `sandbox_mode`: **workspace-write** (yalnız `docs/`).
 - `consults`: [architect] — architect takımda **yoksa boş `[]`**.
 - Kurallar: Architect **varsa** — "Mimari kararları architect üretir; sen kullanıcı-bakış dokümanını/README'leri yazar ve günceltirsin. ADR yazma." **İkisi birlikte seçildiyse routing tablosu böler:** architect `docs/**`'in sahibidir, doc-writer'a yazacağı alt yol (örn. `docs/guides/**`) **mutlaka** verilir. Yol vermemek "yazamaz" demek değildir — `workspace-write` bir role routing'de yol verilmemesi manifest'i **geçersiz** kılar (yazma izni var, yazacağı yer yok; bkz. `manifest-schema.md` doğrulama kuralları). Doc-writer'a yol verilmeyecekse doc-writer'ı **ekleme**. Architect **yoksa** — "Kullanıcı-bakış dokümanını ve README'leri sen yazar ve günceltirsin. Mimari karar gerekiyorsa kullanıcıya sor." (ADR yasağı kalkar: yazacak başka rol yoktur.)
 
@@ -100,15 +103,13 @@ Her rol, `manifest.json` `agents[]` içine şu metadata ile yazılır:
 {
   "name": "backend-developer",
   "targets": ["claude", "codex"],
-  "model": "sonnet",                  // claude hedefi için
-  "model_reasoning_effort": "high",   // low | medium | high
   "sandbox_mode": "workspace-write",  // read-only | workspace-write
   "writesCode": true,
   "consults": ["technical-architect"]
 }
 ```
 
-`writesCode: false` her ikisinde de vardır ama sandbox ayrışır: reviewer hiçbir şey
+Model ve effort bu nesnede yoktur — `llm.json`'a gider. `writesCode: false` her ikisinde de vardır ama sandbox ayrışır: reviewer hiçbir şey
 yazmadığı için `read-only`, architect sahiplendiği `docs/` dizinine yazdığı için
 `workspace-write`'dır (production kodu yasağı talimattadır). Developer'larda
 `workspace-write` + `writesCode: true`. Domain → developer eşlemesi projeye özeldir ve

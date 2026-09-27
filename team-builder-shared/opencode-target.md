@@ -36,13 +36,14 @@ Codex ile **paylaşılır** — codex **veya** opencode hedefi varsa üretilir.
 Her opencode hedefli agent için OpenCode frontmatter'lı bir markdown üretilir. **Gövde,
 tek kaynak `.agent-source/agents/<name>.md`'nin zengin gövdesidir** (Claude frontmatter'ı
 çıkarılır, yerine OpenCode frontmatter'ı yazılır; skill yolları `.opencode/skills/`'e
-yeniden yazılır). Frontmatter **manifest alanlarından** derlenir:
+yeniden yazılır). Frontmatter **manifest alanlarından** ve çözümlenmiş LLM ayarından (`llm-config.md`) derlenir:
 
 ```yaml
 ---
 description: "<agents[].description>"
 mode: <primary|subagent>
-model: <provider/model>
+model: <provider/model>        # llm.json'da çözümlendiyse
+reasoningEffort: <effort>      # llm.json'da çözümlendiyse
 permission:
   edit: <allow|deny>
   bash: <allow|ask>
@@ -51,11 +52,12 @@ permission:
 <kaynak md'nin zengin gövdesi (skill yolları .opencode/skills/'e yeniden yazılmış)>
 ```
 
-| Frontmatter alanı | manifest kaynağı | Eşleme |
+| Frontmatter alanı | Kaynak | Eşleme |
 |---|---|---|
 | `description` | `agents[].description` | Agent'ın ne zaman/nasıl kullanılacağı. |
 | `mode` | `lead` | `name === lead` → `primary` (Tab ile geçilen ana ajan); diğerleri → `subagent` (`@mention` ile çağrılır). |
-| `model` | `agents[].opencode_model` ya da `model` fallback | `provider/model` formatı (`anthropic/claude-...`, `openai/gpt-...`). `opencode_model` yoksa opus/sonnet/haiku → Anthropic ID fallback haritası. |
+| `model` | `llm.json` → `opencode` girdisi | `sağlayıcı/model` biçimi. Yoksa satır yazılmaz: birincil ajan genel modeli, alt ajan onu çağıranın modelini kullanır. Kodda sabit bir yedek harita **yoktur**. |
+| `reasoningEffort` | `llm.json` → `opencode` girdisi | Sağlayıcıya olduğu gibi aktarılır, anlamı sağlayıcıya bağlı. Yoksa satır yazılmaz. |
 | `permission.edit` | `sandbox_mode`, yoksa `writesCode` | `sandbox_mode: read-only` → `deny`; `workspace-write` → `allow`. `sandbox_mode` verilmemişse `writesCode`'a düşülür (eksik alan izni genişletmesin diye). |
 | `permission.bash` | `permission.edit` + `writesCode` | Kod yazmayan roller `ask`; yazan roller `allow`. |
 
@@ -145,7 +147,7 @@ opencode run
   *`writesCode: false` tek başına `deny` demek değildir* notu tam olarak bu yüzden
   önemli — bir doküman sahibi meşru biçimde `workspace-write`'tır ve `edit: allow`
   alır. `--agent architect` demek, denetleyiciye yazma izni vermek demektir.
-  Konfigürasyon yüklenmediği için `opencode_model` ve variant ayarları da
+  Konfigürasyon yüklenmediği için `llm.json`'daki OpenCode modeli ve `reasoningEffort` da
   **uygulanmaz**; çağrı OpenCode'un o oturumdaki varsayılanıyla koşar.
 - **Salt-okunurluk OpenCode'da CLI ile zorlanamıyor.** `opencode run`'da salt-okunur
   bayrağı yok; tersi var (`--dangerously-skip-permissions`). Bunu "sandbox engeller"
