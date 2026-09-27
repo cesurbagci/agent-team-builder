@@ -41,7 +41,7 @@ Hangi preset olursa olsun sıra aynıdır:
 4. **Onay al.** Onaysız hiçbir dosya değişmez.
 5. **Uygula:** manifest → `instructions.md` bloğu → (varsa) artefakt.
    Manifest'i yazdıktan **hemen sonra**, bloğa ve artefakta geçmeden
-   `node "${CLAUDE_SKILL_DIR}/../team-builder-shared/validate-manifest.mjs"` koştur. Geçersizse
+   `node "${CLAUDE_SKILL_DIR}/../team-builder-shared/validate-manifest.mjs" "<proje>/.agent-source/agents/manifest.json"` koştur; `MANIFEST OK` görmelisin. Geçersizse
    **dur ve düzelt**. Setup aynı denetimi üretimden **önce** yapar; burada da öyle olmalı
    — geçersiz bir manifest'le ilerlersen 6. adımdaki `sync` onu üretilen dosyalara da
    taşır ve geri alınacak iş büyür.
@@ -50,7 +50,7 @@ Hangi preset olursa olsun sıra aynıdır:
    edileceği için bu makinede `llm.local.json` varsa `--no-local` ile çalıştır ve doğrula
    (`team-builder-sync`, *Commit'e gidecek bir üretim*).
 7. **Doğrula ve raporla.** Doğrulama şu ikisidir:
-   `node "${CLAUDE_SKILL_DIR}/../team-builder-shared/validate-manifest.mjs"` ile manifest'i
+   `node "${CLAUDE_SKILL_DIR}/../team-builder-shared/validate-manifest.mjs" "<proje>/.agent-source/agents/manifest.json"` ile manifest'i
    denetle, ve `instructions.md`'de beklediğin blokların bulunup bulunmadığını gör
    (açtığın preset'in işaret çifti var mı, kapattığınınki gitmiş mi).
    6. adımdaki `sync` bu ikinci kontrolü **mekanik olarak da** yapar: manifest'in

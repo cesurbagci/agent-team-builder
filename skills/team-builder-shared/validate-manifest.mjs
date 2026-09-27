@@ -6,6 +6,11 @@
 // Agent names are embedded directly in generated file paths
 // (sync-agent-config.mjs:409,419,425). Anything outside this slug — a slash,
 // a backslash, a space, a control character — can escape the target directory.
+import { spawnSync } from "node:child_process";
+import { lstatSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   routePathProblems,
   routeContains,
@@ -1381,6 +1386,67 @@ if (process.argv.includes("--selftest")) {
     );
   }
 
+  // CLI: the manifest path is an argument, never JavaScript source, so any
+  // directory name works — quotes, dollar signs, a Windows drive letter.
+  {
+    const dir = mkdtempSync(path.join(os.tmpdir(), "tb-vm-it's $x-"));
+    const run = file =>
+      spawnSync(process.execPath, [fileURLToPath(import.meta.url), file], { encoding: "utf8" });
+    const goodFile = path.join(dir, "manifest.json");
+    const badFile = path.join(dir, "bad.json");
+    writeFileSync(goodFile, JSON.stringify(good));
+    writeFileSync(badFile, JSON.stringify(bad));
+    const accepted = run(goodFile);
+    const refused = run(badFile);
+    const noArgument = spawnSync(process.execPath, [fileURLToPath(import.meta.url)], { encoding: "utf8" });
+    if (accepted.status !== 0 || !accepted.stdout.includes("MANIFEST OK")) {
+      console.error(`SELFTEST FAIL: CLI must accept a valid manifest, got ${accepted.status} ${accepted.stderr}`);
+      ok = false;
+    }
+    if (refused.status !== 1 || !refused.stderr.includes("Manifest geçersiz")) {
+      console.error(`SELFTEST FAIL: CLI must reject an invalid manifest with exit 1, got ${refused.status}`);
+      ok = false;
+    }
+    // Without a file there is nothing to validate: say so, never exit 0.
+    if (noArgument.status === 0) {
+      console.error("SELFTEST FAIL: CLI without a manifest path must not report success");
+      ok = false;
+    }
+    if (process.platform !== "win32") {
+      const linked = path.join(dir, "linked.json");
+      symlinkSync(goodFile, linked);
+      const link = run(linked);
+      if (link.status !== 1 || !link.stderr.includes("not a regular file")) {
+        console.error(`SELFTEST FAIL: CLI must not follow a symbolic link, got ${link.status}`);
+        ok = false;
+      }
+    }
+    rmSync(dir, { recursive: true, force: true });
+  }
+
   if (!ok) process.exit(1);
   console.log("SELFTEST PASS");
+}
+
+// CLI: node validate-manifest.mjs <path/to/manifest.json>. Only when run
+// directly — sync imports this module. A link is not followed, like sync's own
+// source reads, so a linked manifest cannot print an outside file's values.
+const invokedDirectly =
+  process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1]);
+if (invokedDirectly && !process.argv.includes("--selftest")) {
+  const file = process.argv[2];
+  if (!file) {
+    console.error("Usage: node validate-manifest.mjs <path/to/manifest.json> | --selftest");
+    process.exit(2);
+  }
+  try {
+    if (!lstatSync(file).isFile()) {
+      throw new Error(`${file} is not a regular file (a symbolic link is not followed)`);
+    }
+    validate(JSON.parse(readFileSync(file, "utf8")));
+    console.log("MANIFEST OK");
+  } catch (error) {
+    console.error(error.message);
+    process.exit(1);
+  }
 }

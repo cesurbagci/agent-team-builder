@@ -52,32 +52,15 @@ onları bırakabilir.
 
 ### 2. Manifest'i doğrula (generate ÖNCESİ)
 
-Bozuk bir manifest ile generate çalıştırma. Önce
-`${CLAUDE_SKILL_DIR}/../team-builder-shared/validate-manifest.mjs` ile doğrula.
-
-Bu modül parse edilmiş bir nesne üzerinde çalışır: `validate(doc)` fonksiyonunu
-export eder (geçerliyse `true`, değilse hata fırlatır). Tercih edilen yol:
-`manifest.json`'ı oku, JSON parse et ve `validate()` çağır. Örnek:
+Bozuk bir manifest ile generate çalıştırma. Önce doğrulayıcıya manifest dosyasının yolunu
+ver; `MANIFEST OK` görmelisin:
 
 ```bash
-node --input-type=module -e '
-import { validate } from "${CLAUDE_SKILL_DIR}/../team-builder-shared/validate-manifest.mjs";
-import { readFileSync } from "node:fs";
-const root = process.argv[1];
-const doc = JSON.parse(readFileSync(root + "/.agent-source/agents/manifest.json", "utf8"));
-validate(doc);
-console.log("MANIFEST OK");
-' <proje>
+node "${CLAUDE_SKILL_DIR}/../team-builder-shared/validate-manifest.mjs" "<proje>/.agent-source/agents/manifest.json"
 ```
 
-(`<proje>` yerine projenin mutlak yolunu koy.)
-
-En azından modülün kendi selftest'ini çalıştırıp sağlamlığını teyit et, sonra
-manifest'i yukarıdaki gibi elle doğrula:
-
-```bash
-node "${CLAUDE_SKILL_DIR}/../team-builder-shared/validate-manifest.mjs" --selftest
-```
+(`<proje>` yerine projenin mutlak yolunu koy.) Doğrulayıcının kendisinden şüphelenirsen
+`--selftest` ile çalıştır; `SELFTEST PASS` görmelisin.
 
 Doğrulama hata verirse: **dur**, hatayı kullanıcıya raporla, `.agent-source/` düzelt.
 Generate'e geçme.

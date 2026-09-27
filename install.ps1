@@ -52,14 +52,23 @@ if (-not $Target) {
 # ${CLAUDE_SKILL_DIR}/../team-builder-shared/... The Claude Code plugin resolves
 # that on its own; a copy knows where it landed, so the absolute path is written
 # in instead (forward slashes: node and the shells accept them on Windows).
+# The files are UTF-8 without a BOM. Windows PowerShell 5.1 reads and writes
+# the ANSI code page by default, which corrupts Turkish text and non-ASCII
+# paths, so both directions name the encoding.
 function Rewrite-SkillDir {
   param([string]$Dir, [string]$Dest)
   $absolute = ((Resolve-Path -LiteralPath $Dest).Path) -replace '\\', '/'
+  # The skills' commands carry this path inside double quotes, where these are
+  # special: refuse rather than write a command that expands or breaks.
+  if ($absolute -match '[$`"]') {
+    throw "Refusing to install into ${absolute}: the path contains `$, `` or `", which the skills' commands cannot quote. Choose another directory."
+  }
+  $utf8 = New-Object System.Text.UTF8Encoding($false)
   Get-ChildItem -Path $Dir -Filter '*.md' -Recurse -File | ForEach-Object {
-    $content = Get-Content -Raw -LiteralPath $_.FullName
+    $content = [System.IO.File]::ReadAllText($_.FullName, $utf8)
     $updated = $content.Replace('${CLAUDE_SKILL_DIR}/../', $absolute + '/')
     if ($updated -ne $content) {
-      Set-Content -LiteralPath $_.FullName -Value $updated -NoNewline
+      [System.IO.File]::WriteAllText($_.FullName, $updated, $utf8)
     }
   }
 }

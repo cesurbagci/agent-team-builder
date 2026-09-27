@@ -307,9 +307,9 @@ Tüm cevaplar toplandı; şimdi kaynağı yaz, doğrula ve generate et. Sırayla
 **8b. Manifest'i doğrula:**
 
 - Önce aracın çalıştığını teyit et: `node "${CLAUDE_SKILL_DIR}/../team-builder-shared/validate-manifest.mjs" --selftest` → `SELFTEST PASS` görmelisin.
-- Sonra yazdığın `manifest.json`'u doğrula. **Tercih edilen yol:** küçük bir Node
-  tek-satırıyla dosyayı parse edip `validate()` fonksiyonunu o obje ile çağır — kural
-  listesinin tamamını uygulayan tek şey odur.
+- Sonra yazdığın `manifest.json`'u doğrula:
+  `node "${CLAUDE_SKILL_DIR}/../team-builder-shared/validate-manifest.mjs" "<proje-kökü>/.agent-source/agents/manifest.json"` →
+  `MANIFEST OK` görmelisin. Kural listesinin tamamını uygulayan tek şey odur.
 - Çalıştıramıyorsan `${CLAUDE_SKILL_DIR}/../team-builder-shared/manifest-schema.md`'deki
   **"Doğrulama kuralları"** bölümünü aç ve maddelerin **hepsini** tek tek denetle. Listeyi
   buraya kopyalama ve akıldan sayma: kurallar bu dosyadan bağımsız değişiyor, buradaki her

@@ -65,6 +65,13 @@ copy_skills() {
   # $1: destination skills dir
   mkdir -p "$1"
   local dest; dest="$(cd "$1" && pwd)"
+  # The skills' commands carry this path inside double quotes, where these are
+  # special: refuse rather than write a command that expands or breaks.
+  case "$dest" in
+    *'$'* | *'`'* | *'"'* | *'\'*)
+      echo "Refusing to install into $dest: the path contains \$, \`, \" or \\, which the skills' commands cannot quote. Choose another directory." >&2
+      exit 1 ;;
+  esac
   shopt -s nullglob
   for src in "$SRC_DIR"/skills/*/; do
     local name; name="$(basename "$src")"
