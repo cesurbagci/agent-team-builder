@@ -129,9 +129,22 @@ async function replaceFile(filePath, data) {
 
 // Reads a file without following a symbolic link at its own name, where the
 // platform can (O_NOFOLLOW): a link rejects with ELOOP (EMLINK on FreeBSD).
+// Without O_NOFOLLOW (Windows), a link swapped in between the lstat and the
+// open would be followed, so the opened file must also be the one inspected:
+// same device and inode.
 async function readTextNoFollow(filePath) {
+  const inspected = await fs.lstat(filePath, { bigint: true })
+  if (!inspected.isFile()) {
+    throw Object.assign(new Error(`${filePath} is not a regular file`), {
+      code: inspected.isSymbolicLink() ? 'ELOOP' : 'EINVAL',
+    })
+  }
   const handle = await fs.open(filePath, fsConstants.O_RDONLY | (fsConstants.O_NOFOLLOW ?? 0))
   try {
+    const opened = await handle.stat({ bigint: true })
+    if (opened.dev !== inspected.dev || opened.ino !== inspected.ino) {
+      throw Object.assign(new Error(`${filePath} changed while it was being opened`), { code: 'ELOOP' })
+    }
     return await handle.readFile('utf8')
   } finally {
     await handle.close()
@@ -602,7 +615,7 @@ async function warnMissingInstructionsRef(ctx, manifest, warn) {
   for (const name of checks) {
     const source = ctx.resolveSource('project', name)
     if (!(await pathExists(source))) continue
-    const body = await readText(source)
+    const body = await ctx.readSourceText(source)
     if (!body.includes(INSTRUCTIONS_REF)) {
       warn(
         `! .agent-source/project/${name} does not reference ${INSTRUCTIONS_REF} — ` +
@@ -640,7 +653,7 @@ async function warnConstitutionMarkerDrift(ctx, manifest, warn) {
   const source = ctx.resolveSource('project', 'instructions.md')
   if (!(await pathExists(source))) return
 
-  const body = await readText(source)
+  const body = await ctx.readSourceText(source)
   const constitution = manifest.constitution ?? {}
 
   for (const { key, enabledByDefault } of CONSTITUTION_PRESETS) {
@@ -1003,7 +1016,8 @@ async function checkAgentSources(ctx, manifest) {
   for (const agent of manifest.agents) {
     const source = ctx.resolveSource('agents', `${agent.name}.md`)
     if (!(await pathExists(source))) continue // reported per-agent during sync
-    const block = frontmatterOf(await fs.readFile(source, 'utf8'))
+    // Through the containment check: this text also reaches error messages.
+    const block = frontmatterOf(await ctx.readSourceText(source))
     const where = `.agent-source/agents/${agent.name}.md`
     if (block === null) {
       problems.push(`${where} must start with YAML frontmatter`)
@@ -2967,6 +2981,48 @@ async function runWriteContainmentSelftest() {
       `a source swapped for a link after the check must not be read, got ${raced ? raced.code : 'its text'}`
     )
     await fs.rm(swapped)
+
+    // A role file is validated before it is copied, and a mismatched
+    // description is quoted in the error: a link to an outside file stops sync
+    // before its text reaches that message.
+    const roleFile = path.join(project, '.agent-source', 'agents', 'dev.md')
+    const outsideRole = path.join(outside, 'role.md')
+    await fs.writeFile(outsideRole, '---\nname: dev\ndescription: CONFIDENTIAL\n---\n')
+    await fs.rename(roleFile, path.join(base, 'dev.md.saved'))
+    await fs.symlink(outsideRole, roleFile)
+    let roleRefused = null
+    try {
+      await silentGenerate({ root: project, checkOnly: true })
+    } catch (error) {
+      roleRefused = error
+    }
+    assert(
+      roleRefused !== null &&
+        roleRefused.message.includes('outside the project') &&
+        !roleRefused.message.includes('CONFIDENTIAL'),
+      `a role file linking outside the project must stop sync unread, got ${roleRefused ? roleRefused.message : 'no error'}`
+    )
+    await fs.rm(roleFile)
+    await fs.rename(path.join(base, 'dev.md.saved'), roleFile)
+
+    // Without O_NOFOLLOW the read compares the opened file with the inspected
+    // one; simulated here by an lstat that reports a different file.
+    const decoy = path.join(base, 'decoy')
+    await fs.writeFile(decoy, 'decoy\n')
+    const realLstat = fs.lstat
+    fs.lstat = (target, options) => realLstat(target === secret ? decoy : target, options)
+    let switched = null
+    try {
+      await readTextNoFollow(secret)
+    } catch (error) {
+      switched = error
+    } finally {
+      fs.lstat = realLstat
+    }
+    assert(
+      switched !== null && switched.code === 'ELOOP',
+      `a file that is not the one inspected must not be read, got ${switched ? switched.code : 'its text'}`
+    )
 
     // The manifest is a source too: its strings reach the Codex instructions.
     const manifestFile = path.join(project, '.agent-source', 'agents', 'manifest.json')

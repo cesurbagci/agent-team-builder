@@ -130,8 +130,10 @@ repodaki metni proje dışındaki bir dosyaya — örneğin bir kabuk başlangı
 - İçeriği ya da değerleri üretilen bir dosyaya geçen kaynak (`.agent-source/project/*`, rol
   dosyaları, `skills/`, manifest, `llm.json` ve `llm.local.json`), bağlar çözülünce proje içinde
   değilse sync **durur**: yoksa repodaki bir bağ, makinedeki özel bir dosyayı repoya
-  kopyalatırdı. Çözülen yol bağ izlenmeden okunur; kontrolden sonra bağa çevrilen bir dosya
-  okunmaz.
+  kopyalatırdı. Çözülen yol bağ izlenmeden okunur ve açılan dosyanın, incelenen dosyayla
+  aynı olduğu (aygıt ve inode) doğrulanır: kontrolden sonra bağa çevrilen bir dosya okunmaz —
+  `O_NOFOLLOW` olmayan Windows'ta da. Rol dosyalarını denetleyen okuma da bu yoldan geçer;
+  hata mesajına proje dışından metin girmez.
 - Defter (`generated-files.json`) de aynı kontrolle okunur: girdileri sonraki deftere taşınır,
   bu yüzden başka bir projenin defterine giden bir bağ sync'i durdurur. Proje dışına çıkan bir
   girdi (`..` ya da bağlı bir dizin üzerinden) denetlenmez ve raporlanmaz.
@@ -141,8 +143,7 @@ repodaki metni proje dışındaki bir dosyaya — örneğin bir kabuk başlangı
 Bu kurallar repodaki içeriğe — commit'lenmiş bağlara — karşıdır. Sync çalışırken proje
 dizinini aynı anda değiştiren yerel bir süreçle yarışı ise tam kapatmazlar: Node, bir dizine
 tutunarak (`openat` gibi) dosya açmayı sunmaz. Böyle bir süreç, kontrol ile yazma arasında
-bir dizini bağa çevirirse yazma proje dışına kayabilir; Windows'ta `.gitignore` okuması da
-aynı yarışa açıktır.
+bir **dizini** bağa çevirirse yazma proje dışına kayabilir.
 
 ## 7. `.claude/settings.local.json` Muafiyeti
 
