@@ -157,7 +157,7 @@ Güncellenmiş team-builder bu yapıda sync'i durdurur.
    | Codex: manifest'teki `model` | Yalnız **Codex kataloğunda varsa** `agents.<ad>.codex.model`. Claude hedefli agent'larda bu bir Claude takma adıydı (`opus`) ve Codex'e yanlış gidiyordu — **taşıma**. Katalogdan seçenek sun (Akış 1'deki gibi yalnız `visibility: list` ve `upgrade`'i boş modeller; bu dosya takımın) ve kullanıcıya seçtir — boş bırakmak da bir seçenektir, kendin seçme. Katalog okunamıyorsa adı kullanıcıya sor |
    | Codex: `model_reasoning_effort` | `agents.<ad>.codex.effort` — model taşınmasa da: Codex bu effort'la çalışıyordu. Modelsiz bir effort ekosistemin varsayılan modeline uygulanır ve katalogda denetlenmez |
    | OpenCode: `opencode_model` | `agents.<ad>.opencode.model` |
-   | OpenCode: `opencode_model` yok | Eski sürüm kodda sabit bir yedek haritadan eskimiş bir ad yazıyordu — **taşıma**; `opencode models`'tan öner ya da boş bırak (OpenCode varsayılanı) |
+   | OpenCode: `opencode_model` yok | Eski sürüm kodda sabit bir yedek haritadan eskimiş bir ad yazıyordu — **taşıma**. Akış 1'deki OpenCode sorusunu sor: takımda herkes aynı sağlayıcıyı kullanıyorsa `opencode models`'tan seçenek sun ve kullanıcıya seçtir (boş bırakmak da bir seçenek); kullanmıyorsa ya da bilinmiyorsa ortak dosyaya yazma — her makine Akış 2'de kendi yerel dosyasına yazar. Kendin seçme |
 
 2. Katalogları oku ve tabloya göre **taşınacak** Codex ve OpenCode değerlerini onunla
    karşılaştır — *Yenile*'nin 2. adımındaki gibi; `llm.json` henüz yok. Bulunanları göster.

@@ -1,7 +1,7 @@
 # Tasarım: LLM Yapılandırması (`llm.json` + `team-builder-models`)
 
 - **Tarih:** 2026-09-27
-- **Durum:** Tasarım onaylandı — uygulanmadı
+- **Durum:** Uygulandı — `docs/superpowers/plans/2026-09-27-llm-config.md`
 - **Kapsam:** Model ve effort seçiminin agent tanımından ayrılması; ortak dosya + kişisel
   dosya; sağlayıcı kataloğuna dayalı uyarı ve güncelleme; mevcut projelerin göçü
 
@@ -334,7 +334,7 @@ ekosistem girdisi hatadır (L3); bu değer taşınmaz, kullanıcıya gösterilen
 | Codex: manifest `model` | Yalnız Codex kataloğunda bulunuyorsa `codex.model` olur. Claude hedefli agent'larda bu değer bir Claude takma adıydı — taşınmaz, katalogdan öneri sunulur. Katalog okunamıyorsa skill sorar |
 | Codex: `model_reasoning_effort` | `codex.effort` |
 | OpenCode: `opencode_model` | `opencode.model` |
-| OpenCode: yedek haritadan gelen değer | **Taşınmaz**; `opencode models`'tan öneri ya da boş (OpenCode varsayılanı) |
+| OpenCode: yedek haritadan gelen değer | **Taşınmaz**. Takımda herkes aynı sağlayıcıyı kullanıyorsa kullanıcı `opencode models`'tan seçer ya da boş bırakır; değilse ortak dosyaya yazılmaz, her makine kendi yerel dosyasında belirler (Akış 2) |
 
 Ardından katalog kontrolü çalışır (örneğin emeklilik uyarısı).
 
