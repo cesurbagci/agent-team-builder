@@ -71,6 +71,25 @@ function frontmatterName(skillMd) {
   return lines.length === 1 ? lines[0][2].trim().replace(/^(["'])(.*)\1$/, '$2') : null
 }
 
+// The project's .agent-source/skills, created if missing, refused when any
+// part of it is a link: writes and deletions must stay in this project.
+async function projectSkillsDir(projectRoot) {
+  await fs.mkdir(projectRoot, { recursive: true })
+  const realProject = await fs.realpath(projectRoot)
+  const destRoot = path.join(realProject, '.agent-source', 'skills')
+  await fs.mkdir(destRoot, { recursive: true })
+  if ((await fs.realpath(destRoot)) !== destRoot) {
+    throw new Error(`${destRoot} resolves elsewhere — is .agent-source or its skills directory a link? Nothing copied`)
+  }
+  return { realProject, destRoot }
+}
+
+// An existing destination must be a real directory, never a link to elsewhere.
+async function assertNotLink(dest) {
+  const info = await fs.lstat(dest).catch(() => null)
+  if (info?.isSymbolicLink()) throw new Error(`${dest} is a link; not replaced`)
+}
+
 export async function copySkill(skillDir, projectRoot) {
   const root = await fs.realpath(skillDir)
   const skillMd = await fs.readFile(path.join(root, 'SKILL.md'), 'utf8')
@@ -80,7 +99,9 @@ export async function copySkill(skillDir, projectRoot) {
       `SKILL.md needs exactly one frontmatter name line holding a plain slug, got ${JSON.stringify(name)} — check it by hand`
     )
   }
-  const dest = path.join(projectRoot, '.agent-source', 'skills', name)
+  const { destRoot } = await projectSkillsDir(projectRoot)
+  const dest = path.join(destRoot, name)
+  await assertNotLink(dest)
   const warnings = [...new Set(skillMd.match(/\.\.\/[^\s)`'"]+/g) ?? [])].map(
     ref => `SKILL.md refers to ${ref}, outside the skill; it is not copied`
   )
@@ -108,17 +129,22 @@ export const TEAM_BUILDER_DIRS = [
 
 export async function vendorTeamBuilder(projectRoot, skillsRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')) {
   const from = await fs.realpath(skillsRoot)
-  const destRoot = path.join(projectRoot, '.agent-source', 'skills')
-  await fs.mkdir(destRoot, { recursive: true })
-  // Run from the project's own copy, source and destination are the same.
-  if (from === (await fs.realpath(destRoot))) return []
+  const { realProject, destRoot } = await projectSkillsDir(projectRoot)
+  // Run from this project's own copy — .agent-source or one of the tool
+  // mirrors — there is nothing newer to bring in; a mirror may even be older
+  // than the canonical copy.
+  if (inside(realProject, from)) return []
   // A copy install wrote its absolute directory into the .md files.
   const installPrefixes = [...new Set([from, skillsRoot].flatMap(d => [d + path.sep, d.split(path.sep).join('/') + '/']))]
   const copied = []
   for (const name of TEAM_BUILDER_DIRS) {
-    const root = path.join(from, name)
+    const root = await fs.realpath(path.join(from, name))
+    if (path.dirname(root) !== from) {
+      throw new Error(`${name} in ${from} resolves to ${root}, outside the bundle; nothing copied`)
+    }
     const files = await collect(root, root, '', [], new Set([root]))
     const dest = path.join(destRoot, name)
+    await assertNotLink(dest)
     await fs.rm(dest, { recursive: true, force: true })
     for (const { from: source, rel } of files) {
       const target = path.join(dest, rel)
@@ -203,6 +229,38 @@ async function selftest() {
       'a second run must replace the earlier copy'
     )
     assert((await vendorTeamBuilder(project, vendored)).length === 0, 'the project copy must not be vendored onto itself')
+    const mirror = path.join(project, '.agents', 'skills')
+    await fs.mkdir(mirror, { recursive: true })
+    for (const name of TEAM_BUILDER_DIRS) await fs.cp(path.join(vendored, name), path.join(mirror, name), { recursive: true })
+    assert((await vendorTeamBuilder(project, mirror)).length === 0, 'a tool mirror in the project must not overwrite the canonical copy')
+
+    if (process.platform !== 'win32') {
+      // A source directory that is itself a link out of the bundle.
+      const leaky = path.join(tmp, 'leaky')
+      await fs.cp(installed, leaky, { recursive: true })
+      await fs.rm(path.join(leaky, 'team-builder-setup'), { recursive: true })
+      await fs.mkdir(path.join(tmp, 'private'))
+      await fs.writeFile(path.join(tmp, 'private', 'SKILL.md'), 'SECRET')
+      await fs.symlink(path.join(tmp, 'private'), path.join(leaky, 'team-builder-setup'))
+      let outside = null
+      try { await vendorTeamBuilder(path.join(tmp, 'p2'), leaky) } catch (e) { outside = e }
+      assert(outside?.message.includes('outside the bundle'), 'a source directory linking out must be refused')
+
+      // A destination that links elsewhere must never be written or emptied.
+      const p3 = path.join(tmp, 'p3')
+      const external = path.join(tmp, 'external')
+      await fs.mkdir(path.join(external, 'team-builder-setup'), { recursive: true })
+      await fs.writeFile(path.join(external, 'team-builder-setup', 'keep.txt'), 'keep')
+      await fs.mkdir(path.join(p3, '.agent-source'), { recursive: true })
+      await fs.symlink(external, path.join(p3, '.agent-source', 'skills'))
+      let linked = null
+      try { await vendorTeamBuilder(p3, installed) } catch (e) { linked = e }
+      assert(linked?.message.includes('resolves elsewhere'), 'a linked destination must be refused')
+      assert(
+        (await fs.readFile(path.join(external, 'team-builder-setup', 'keep.txt'), 'utf8')) === 'keep',
+        'nothing outside the project may be deleted'
+      )
+    }
 
     const ambiguous = path.join(tmp, 'src', 'ambiguous')
     await fs.mkdir(ambiguous, { recursive: true })
