@@ -1,7 +1,15 @@
 #!/usr/bin/env node
 // copy-skill.mjs — copy a chosen skill into a project's .agent-source/skills/.
 //
-// CLI: node copy-skill.mjs <skill-dir> <project-root> [--selftest]
+// CLI: node copy-skill.mjs <skill-dir> <project-root>
+//      node copy-skill.mjs --team-builder <project-root>
+//      node copy-skill.mjs --selftest
+//
+// --team-builder copies team-builder itself — its five skills and
+// team-builder-shared, from wherever this file is installed — so a teammate
+// who has not installed team-builder still gets it with the repo. It replaces
+// an earlier copy (that is how it updates), and turns a copy install's
+// absolute paths back into ${CLAUDE_SKILL_DIR}/../ so they work on any machine.
 //
 // The copy holds regular files only, because sync mirrors nothing else:
 // - .git is skipped, so the project never records an embedded repository;
@@ -89,6 +97,45 @@ export async function copySkill(skillDir, projectRoot) {
   return { name, dest, copied: true, warnings }
 }
 
+export const TEAM_BUILDER_DIRS = [
+  'team-builder-setup',
+  'team-builder-sync',
+  'team-builder-upgrade',
+  'team-builder-models',
+  'architecture-advisor',
+  'team-builder-shared',
+]
+
+export async function vendorTeamBuilder(projectRoot, skillsRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')) {
+  const from = await fs.realpath(skillsRoot)
+  const destRoot = path.join(projectRoot, '.agent-source', 'skills')
+  await fs.mkdir(destRoot, { recursive: true })
+  // Run from the project's own copy, source and destination are the same.
+  if (from === (await fs.realpath(destRoot))) return []
+  // A copy install wrote its absolute directory into the .md files.
+  const installPrefixes = [...new Set([from, skillsRoot].flatMap(d => [d + path.sep, d.split(path.sep).join('/') + '/']))]
+  const copied = []
+  for (const name of TEAM_BUILDER_DIRS) {
+    const root = path.join(from, name)
+    const files = await collect(root, root, '', [], new Set([root]))
+    const dest = path.join(destRoot, name)
+    await fs.rm(dest, { recursive: true, force: true })
+    for (const { from: source, rel } of files) {
+      const target = path.join(dest, rel)
+      await fs.mkdir(path.dirname(target), { recursive: true })
+      if (rel.endsWith('.md')) {
+        let text = await fs.readFile(source, 'utf8')
+        for (const prefix of installPrefixes) text = text.split(prefix).join('${CLAUDE_SKILL_DIR}/../')
+        await fs.writeFile(target, text)
+      } else {
+        await fs.copyFile(source, target)
+      }
+    }
+    copied.push(dest)
+  }
+  return copied
+}
+
 async function selftest() {
   const tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'tb-copy-skill-'))
   const assert = (ok, msg) => { if (!ok) throw new Error(`SELFTEST FAIL: ${msg}`) }
@@ -131,6 +178,32 @@ async function selftest() {
     }
     assert((await copySkill(skill, project)).copied === false, 'an existing copy must be left alone')
 
+    // --team-builder: a copy install (absolute paths) becomes portable again,
+    // and a second run replaces the first.
+    const installed = path.join(tmp, 'home', 'skills')
+    for (const name of TEAM_BUILDER_DIRS) {
+      await fs.mkdir(path.join(installed, name), { recursive: true })
+      await fs.writeFile(
+        path.join(installed, name, name === 'team-builder-shared' ? 'x.mjs' : 'SKILL.md'),
+        `run node "${installed}/team-builder-shared/x.mjs"\n`
+      )
+    }
+    await vendorTeamBuilder(project, installed)
+    const vendored = path.join(project, '.agent-source', 'skills')
+    const syncMd = await fs.readFile(path.join(vendored, 'team-builder-sync', 'SKILL.md'), 'utf8')
+    assert(syncMd === 'run node "${CLAUDE_SKILL_DIR}/../team-builder-shared/x.mjs"\n', `absolute paths must be made relative, got ${syncMd}`)
+    assert(
+      (await fs.readFile(path.join(vendored, 'team-builder-shared', 'x.mjs'), 'utf8')).includes(installed),
+      'only .md files are rewritten'
+    )
+    await fs.writeFile(path.join(vendored, 'team-builder-sync', 'old.md'), 'stale')
+    await vendorTeamBuilder(project, installed)
+    assert(
+      !(await fs.access(path.join(vendored, 'team-builder-sync', 'old.md')).then(() => true, () => false)),
+      'a second run must replace the earlier copy'
+    )
+    assert((await vendorTeamBuilder(project, vendored)).length === 0, 'the project copy must not be vendored onto itself')
+
     const ambiguous = path.join(tmp, 'src', 'ambiguous')
     await fs.mkdir(ambiguous, { recursive: true })
     await fs.writeFile(
@@ -165,12 +238,19 @@ if (isMain) {
   const args = process.argv.slice(2)
   const run = args.includes('--selftest')
     ? selftest()
-    : args.length === 2
+    : args[0] === '--team-builder' && args.length === 2
+      ? vendorTeamBuilder(args[1]).then(dirs => {
+          for (const dir of dirs) console.log(`copied: ${dir}`)
+          if (dirs.length === 0) console.log('already the project copy; nothing to do')
+        })
+      : args.length === 2
       ? copySkill(args[0], args[1]).then(r => {
           for (const w of r.warnings) console.warn(`! ${w}`)
           console.log(r.copied ? `copied: ${r.dest}` : `already present: ${r.dest}`)
         })
-      : Promise.reject(new Error('Usage: node copy-skill.mjs <skill-dir> <project-root> | --selftest'))
+      : Promise.reject(
+          new Error('Usage: node copy-skill.mjs <skill-dir> <project-root> | --team-builder <project-root> | --selftest')
+        )
   run.catch(error => {
     console.error(error.message)
     process.exitCode = 1

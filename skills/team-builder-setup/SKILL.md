@@ -59,7 +59,7 @@ Sihirbaz çok sorulu; soruları **güvenle** sor:
   - **Soru başına EN FAZLA 4 seçenek.** 4'ten fazla aday varsa tek soruya sığdırma.
   - Her seçenekte hem **kısa etiket** hem **açıklama** olmalı.
   - Birden çok seçilebiliyorsa `multiSelect` kullan; tek seçimse normal.
-- **Rolleri CHECKBOX ile seçtir (tercih edilen), düz metin değil.** Aday rol sayısı 4'ü geçtiği için **çoklu-seçim (multiSelect) sorusunu ≤4'lük gruplara böl** (örn. Grup 1: architect, ios/web/backend-developer'lar; Grup 2: reviewer, qa, security, doc-writer). Önerilen rolleri **önceden işaretli** sun. En sonda "başka özel rol?" için tek bir serbest-metin sorusu sor. **Tabloyu/listeyi düz metin soruya çevirme** — kullanıcı kutucukları tıklayarak seçsin. (Tek tek Evet/Hayır da kabul ama checkbox tercih edilir; asla tek soruda 4+ seçenek koyma.)
+- **Rolleri CHECKBOX ile seçtir (tercih edilen), düz metin değil.** Aday rol sayısı 4'ü geçtiği için **çoklu-seçim (multiSelect) sorusunu ≤4'lük gruplara böl** (örn. Grup 1: architect, ios/web/backend-developer'lar; Grup 2: reviewer, qa, security, doc-writer; veritabanı varsa Grup 3: database-engineer). Önerilen rolleri **önceden işaretli** sun. En sonda "başka özel rol?" için tek bir serbest-metin sorusu sor. **Tabloyu/listeyi düz metin soruya çevirme** — kullanıcı kutucukları tıklayarak seçsin. (Tek tek Evet/Hayır da kabul ama checkbox tercih edilir; asla tek soruda 4+ seçenek koyma.)
 - **Anayasa presetleri 5 kural, ama tek soruda sorulmaz.** İlk dördü (hepsi default açık) tek `multiSelect` soruya sığar (4 seçenek); **plan kapısı ayrı sorulur** — default kapalıdır ve açılırsa iki alt soru daha getirir.
 - Emin değilsen **düz metin** sor. UX'i şık yapmaya çalışırken aracı geçersiz parametreyle çağırma.
 - **JARGON YASAĞI + önce açıkla:** Kullanıcıya **alan adı / teknik terim gösterme** (`codeDocSync`, `enforcement`, `glob`, `targets`, `layout` vb.). Her kavramı **önce bir cümle + somut örnekle** anlat, **sonra** sor. Kullanıcı terimi bilmiyor olabilir; "ADR nedir", "kod-doküman senkronu nedir" gibi şeyleri kısaca açıkla. Seçenekleri günlük dille ("şimdilik boş bırak", "sana taslak önereyim") yaz, kod/JSON ile değil.
@@ -131,11 +131,11 @@ Adımları **bu sırayla** uygula. Her adımda kullanıcıya sor, cevabı al, so
 
 1. **Önce kısa proje analizi yap** (sessizce): kod köklerini tara (`apps/*`, `modules/*`, `packages/*`, `src/*` vb.) ve **domain-split developer rolleri öner** (örn. `backend-developer`, `frontend-developer`, `extension-developer`). Bunu kullanıcıya "şu rolleri öneriyorum" diye sun.
 
-2. **Rolleri CHECKBOX (çoklu seçim) ile seçtir**, ≤4'lük gruplara bölerek; önerilen rolleri önceden işaretli sun (bkz. "Soru Sorma Biçimi"). Örn. **Grup 1:** architect, ios/web/backend-developer'lar (analizden çıkanlar); **Grup 2:** reviewer, qa, security, doc-writer. Önce kısa bir "şu rolleri öneriyorum" özeti verip sonra checkbox'ları sun; tabloyu serbest-metin soruya ÇEVİRME. Aday/öneri sırası: 
+2. **Rolleri CHECKBOX (çoklu seçim) ile seçtir**, ≤4'lük gruplara bölerek; önerilen rolleri önceden işaretli sun (bkz. "Soru Sorma Biçimi"). Örn. **Grup 1:** architect, ios/web/backend-developer'lar (analizden çıkanlar); **Grup 2:** reviewer, qa, security, doc-writer; **Grup 3** (projede veritabanı varsa): database-engineer. Önce kısa bir "şu rolleri öneriyorum" özeti verip sonra checkbox'ları sun; tabloyu serbest-metin soruya ÇEVİRME. Aday/öneri sırası: 
    - **architect** (öneri: EKLE) — takım lideri (`lead`), kod yazmaz; **routing'de kendisine verilen doküman yollarına yetkilidir** — varsayılanda tek satır `docs/**`, yani "tüm `docs/` dizini"; doc-writer da eklendiyse yalnız kendi payı. Mimari kararlar/ADR'ler `docs/<arch-root>/` altında toplanır ama yetkisini klasör klasör sayma, tablodaki yolla ifade et. Routing'de `docs/**` → architect (architect eklenmezse bu satır doc-writer'a geçer; ikisi de yoksa üretilmez).
    - **developer(lar)** (öneri: EKLE) — analizden önerdiğin her domain için ayrı developer (architect de önerildiyse `consults: [architect]`, önerilmediyse `consults: []`).
    - **reviewer** (öneri: EKLE) — kod yazmaz, sadece inceler (gate).
-   - **opsiyoneller:** `qa`, `security`, `doc-writer`, (UI ağırlıklıysa) `ui-developer` — her birini ayrı sor. Proje analizine göre öner: güvenlik kritikse (auth/ödeme/kişisel veri) `security`, UI ağırlıklıysa UI developer + `frontend-design` skill'i, test önemliyse `qa`. (Bu öneriler Adım 7'deki kalite odaklarıyla da örtüşür.)
+   - **opsiyoneller:** `qa`, `security`, `doc-writer`, `database-engineer`, (UI ağırlıklıysa) `ui-developer` — her birini ayrı sor. Proje analizine göre öner: güvenlik kritikse (auth/ödeme/kişisel veri) `security`, UI ağırlıklıysa UI developer + `frontend-design` skill'i, test önemliyse `qa`, **projede veritabanı varsa `database-engineer`** (işaretleri ve rol tanımı `governance-defaults.md` → *Database Engineer*; önceden işaretli sun). (Bu öneriler Adım 7'deki kalite odaklarıyla da örtüşür.)
    - **"Başka özel bir rol eklemek ister misin?"** — serbest rol; aynı rutin.
 
 3. **EKLENEN her üyeyi SIRAYLA, TEK TEK yapılandır** (gerçek wizard — `member-template.md`). Bir agent'ı bitirmeden diğerine geçme; 4 rolün ayarını birden basma. Her agent için şu mini-akış:
@@ -302,6 +302,19 @@ Tüm cevaplar toplandı; şimdi kaynağı yaz, doğrula ve generate et. Sırayla
     `sync` tarafından ekosistem skill dizinlerine mirror'lanır.
 - **Plan kapısı kapalıysa** yukarıdakilerin **hiçbiri** üretilmez: `.agent-work/` yoktur,
   `work-plan` skill kaynağı yazılmaz, dolayısıyla mirror da oluşmaz.
+- **team-builder'ı da projeye koy (sor, önerilen: evet).** "Repoyu alan ama team-builder
+  kurmamış takım arkadaşları da takımı değiştirebilsin diye team-builder'ı projeye de
+  koyayım mı?" Evet derse:
+  ```bash
+  node "${CLAUDE_SKILL_DIR}/../team-builder-shared/copy-skill.mjs" --team-builder "<proje-kökü>"
+  ```
+  Beş skill ve ortak klasör `.agent-source/skills/` altına kopyalanır; 8c'deki sync onları
+  seçilen araçların proje skill dizinlerine yansıtır. Kullanıcıya bedelini söyle: repoya yaklaşık
+  0,6 MB × (kaynak + her hedef aracın dizini) girer; team-builder'ı plugin ya da script ile
+  **ayrıca** kuran biri skill'leri iki kez görür (Claude'da `/team-builder:…` ve `/…`, Codex'te
+  aynı ad iki kez) — proje kopyası olan birinin ayrıca kurmasına gerek yoktur. Güncellemek için
+  aynı komut yeniden çalıştırılır (önceki kopyanın yerine geçer), sonra sync. Cevabı state'e
+  `answers.vendorTeamBuilder` olarak yaz. Hayır derse hiçbir şey kopyalanmaz.
 - Ayrıca `${CLAUDE_SKILL_DIR}/../team-builder-shared/architecture-docs.md`'deki "İskelet üretimi" kuralına göre `docs/<arch-root>/` iskeletini üret: `adr/` `constraints/` `design/` dizinleri + `ilkeler.md`. **README ve standart şablonları `${CLAUDE_SKILL_DIR}/../team-builder-shared/templates/` standardından kopyala:** `templates/architecture-readme.md` → `docs/<arch-root>/README.md`; `templates/{doc-standard.md, adr.md, constraint.md, design.md}` → `docs/<arch-root>/templates/`. Böylece dokümanlar **tek standartta** yazılır ve agent'lar bu standarda göre okur (`doc-standard.md`). per-module ise modül-docs şablonu da eklenir.
 
 **8b. Manifest'i doğrula:**

@@ -222,6 +222,12 @@ The single source of truth is `.agent-source/`:
   a teammate who only uses the agents needs nothing but `git pull` — team-builder is for whoever
   changes the team or its models. The only file git ignores is `.agent-source/llm.local.json`,
   kept in a `.gitignore` block that sync manages.
+- **team-builder can travel with the repo.** Setup offers to copy team-builder itself into
+  `.agent-source/skills/`, so a teammate who never installed it can still change the team.
+  Re-run `copy-skill.mjs --team-builder <project>` to update that copy. Someone who also installs
+  team-builder separately sees its skills twice, so they don't need to.
+- **Skills chosen for a role are copied into the project** (`.agent-source/skills/`), never
+  installed globally.
 - **A machine can run different models.** Sync applies `llm.local.json` and lists the agent
   files it changed on this machine; leave those out of your commits. `sync --no-local` writes
   the team's version (for example before committing a change to `llm.json`).
@@ -486,6 +492,12 @@ Tek gerçek kaynak `.agent-source/`'tur:
   taşırlar; ajanları yalnız kullanan takım arkadaşına `git pull` yeter — team-builder'ı
   takımı ya da modelleri değiştirecek kişi kurar. Git'in yok saydığı tek dosya
   `.agent-source/llm.local.json`'dur; sync'in yönettiği bir `.gitignore` bloğunda durur.
+- **team-builder repoyla birlikte gelebilir.** Setup, team-builder'ın kendisini
+  `.agent-source/skills/` altına kopyalamayı teklif eder; hiç kurmamış bir takım arkadaşı da takımı
+  değiştirebilir. O kopyayı güncellemek için `copy-skill.mjs --team-builder <proje>` yeniden
+  çalıştırılır. team-builder'ı ayrıca kuran biri skill'leri iki kez görür; kurmasına gerek yoktur.
+- **Rollere seçilen skill'ler projeye kopyalanır** (`.agent-source/skills/`), global dizine
+  kurulmaz.
 - **Bir makine farklı modellerle çalışabilir.** Sync `llm.local.json`'u uygular ve bu makinede
   değiştirdiği ajan dosyalarını listeler; onları commit'e katma. `sync --no-local` takımın
   hâlini yazar (örneğin `llm.json`'daki bir değişikliği commit etmeden önce).

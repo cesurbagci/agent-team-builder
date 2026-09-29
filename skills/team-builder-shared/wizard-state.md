@@ -39,6 +39,7 @@ dosyasını **sil**. Kurulum tamamlandı; artık `team-builder-models`, `team-bu
     "focus": ["performance","code-design"],
     "constitution": { "noWorkaround": true, "codeDocSync": true, "perAgentMemory": true, "languageStandard": true, "planGate": true },
     "planGate": { "planReviewer": "architect", "codeReviewer": null },  // yalnız constitution.planGate açıksa
+    "vendorTeamBuilder": true,  // 8a: team-builder projeye de kopyalansın mı
     "codeDocSync": [],
     "routing": [],
     "lead": "architect"

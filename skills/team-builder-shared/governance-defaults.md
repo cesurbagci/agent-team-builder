@@ -88,6 +88,33 @@ Her developer rolü için varsayılan:
 - `consults`: [architect] — architect takımda **yoksa boş `[]`**.
 - Kurallar: "Auth, input validasyonu, secrets, dış çağrı içeren değişiklikleri sen incelersin; bulguları reviewer formatında raporla."
 
+### Database Engineer  (opsiyonel — projede veritabanı varsa öner)
+- **Ne zaman önerilir:** proje analizinde bir veritabanı izi görürsen — migration dizinleri
+  (`migrations/`, `db/migrate/`, Flyway/Liquibase), ORM şema/entity dosyaları (`schema.prisma`,
+  `DbContext`/Entity Framework, JPA/Hibernate `@Entity`, TypeORM/Sequelize/Drizzle, Django
+  `models.py`, SQLAlchemy/Alembic, ActiveRecord), `*.sql` dosyaları ya da bağımlılıklarda bir
+  veritabanı sürücüsü. Önerirken hangi işareti gördüğünü söyle.
+- `name`: `database-engineer` · `writesCode`: **true** (şema, entity, migration, sorgu katmanı) ·
+  Claude önerisi: **opus** · effort: **high** · `sandbox_mode`: **workspace-write**.
+- **Routing:** entity/şema/migration yolları ona verilir (ör. `prisma/**`, `src/db/**`,
+  `apps/api/src/entities/**`, `db/migrate/**`). Bu yollar çoğu zaman bir developer'ın alanının
+  içindedir; routing kuralı gereği ya iç içe (dar yol database-engineer'ın) ya da tamamen ayrı
+  olmalıdır.
+- `consults`: [architect] — architect takımda **yoksa boş `[]`**. Developer'lar şema, index ya da
+  sorgu performansı sorusunda ona danışır (`consults`'a eklenmesini öner).
+- Kurallar:
+  - "Veri modelini standartlara göre tasarla: normalizasyon (bilinçli denormalizasyonu gerekçesiyle
+    yaz), tutarlı adlandırma, birincil/yabancı anahtar, NOT NULL, unique ve check kısıtları, doğru
+    veri tipleri."
+  - "Performansı tasarımda düşün: gerçek sorgu desenlerine göre index (bileşik index sırası,
+    kapsayan index), N+1 ve gereksiz tam tablo taramalarından kaçın, büyük tablolarda sayfalama;
+    önemli sorgularda çalıştırma planını (`EXPLAIN`) kontrol et."
+  - "Migration'lar geri alınabilir ve çalışan sistemle uyumlu olsun (genişlet → taşı → daralt);
+    veri kaybettiren bir değişikliği (kolon/tablo silme, tip daraltma) kullanıcı onayı olmadan
+    yapma."
+  - "Şema değişikliği mimari etkiliyse (yeni veri deposu, büyük model değişikliği) architect'e
+    danış; architect yoksa kullanıcıya sor."
+
 ### Doc Writer  (opsiyonel)
 - `writesCode`: false (yalnız doküman) · Claude önerisi: **haiku** · effort: **low** · `sandbox_mode`: **workspace-write** (yalnız `docs/`).
 - `consults`: [architect] — architect takımda **yoksa boş `[]`**.

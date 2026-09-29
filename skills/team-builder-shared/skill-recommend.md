@@ -81,8 +81,9 @@ olup henüz yüklü olmayanlar. Sadece yüklülerle sınırlı kalma.
       Klasör adı frontmatter `name` ile aynı olmalı.
    6. **Kopyalama başarısızsa** kullanıcıyı bilgilendir; skill atlanır ya da sonra eklenir —
       kullanıcı karar verir.
-   - **team-builder'ın kendi skill'lerini kopyalama** (`team-builder-*`, `architecture-advisor`):
-     onlar team-builder kurulumuyla gelir; projeye de konursa aynı adla iki kez görünürler.
+   - **team-builder'ın kendi skill'lerini bu adımda kopyalama** (`team-builder-*`,
+     `architecture-advisor`): onları setup ayrı bir soruyla, `copy-skill.mjs --team-builder` ile
+     projeye koyar (Adım 8a).
    - **Aynı skill global olarak da kuruluysa** kullanıcıya söyle: Codex aynı adlı iki skill'i
      birleştirmez, ikisi de listelenir; Claude'da kişisel (global) kopya projedekini gölgeler.
      Proje kopyası yeterliyse global olanı kaldırmayı önerebilirsin — kendin silme.
