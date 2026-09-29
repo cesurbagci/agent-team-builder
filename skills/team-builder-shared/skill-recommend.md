@@ -57,27 +57,26 @@ olup henüz yüklü olmayanlar. Sadece yüklülerle sınırlı kalma.
    arkadaşının bir şey kurması gerekmez, herkes aynı sürümü kullanır.
    1. **Zaten `.agent-source/skills/<ad>/` varsa** kopyalama; aynı skill birden çok agent'a
       seçildiyse de bir kez kopyala.
-   2. **Yüklü skill** (Adım 2'de bulduğun yol — global, proje içi ya da bir plugin'in önbelleği):
+   2. **Kopyalamayı betik yapar** — elle `cp` kullanma:
       ```bash
-      src="<Adım 2'de bulduğun skill klasörü>"
-      dest="<proje>/.agent-source/skills/<ad>"
-      mkdir -p "$dest" && cp -RL "$src/." "$dest/"
-      test -f "$dest/SKILL.md" && echo "kopyalandı: $dest"
+      node "<bu dosyanın klasörü>/copy-skill.mjs" "<skill klasörü>" "<proje>"
       ```
-      `-L` bağları gerçek dosyaya çevirir: sync `.agent-source/skills/` içindeki bağları yansıtmaz.
-   3. **Public skill (git kaynağı):** kaynağı göster, onay al, sonra:
-      ```bash
-      tmp="$(mktemp -d)"
-      git clone --depth 1 <git-url> "$tmp"
-      # SKILL.md içeren klasörü seç (repo kökü ya da skills/<ad>/); birden çok varsa kullanıcıya sor
-      src="$(dirname "$(find "$tmp" -name SKILL.md -not -path '*/.git/*' | head -1)")"
-      dest="<proje>/.agent-source/skills/<ad>"
-      mkdir -p "$dest" && cp -R "$src/." "$dest/" && rm -rf "$dest/.git"
-      rm -rf "$tmp"
-      test -f "$dest/SKILL.md" && echo "kopyalandı: $dest"
-      ```
-   4. **Marketplace/eklenti kaynağı:** önce kullanıcıya kurdur ya da tek satırlık komutu ver; kurulan
-      skill klasörünü bulup 2. adımdaki gibi projeye kopyala.
+      `<bu dosyanın klasörü>` team-builder'ın ortak klasörüdür (setup'taki
+      `${CLAUDE_SKILL_DIR}/../team-builder-shared`). Betik:
+      - `.git`'i atlar (proje iç içe bir repo kaydetmez);
+      - skill klasörünün **içini** gösteren bir bağı gerçek dosyaya çevirir (sync bağ yansıtmaz),
+        **dışını** gösteren bir bağda durur ve hiçbir şey kopyalamaz — dış dosya repoya giremez;
+      - hedefi SKILL.md'deki `name`'den kurar; `.agent-source/skills/<ad>/` zaten varsa dokunmaz;
+      - SKILL.md skill klasörünün dışına (`../`) atıf yapıyorsa `!` ile uyarır.
+   3. **Yüklü skill** (Adım 2'de bulduğun yol — global, proje içi ya da bir plugin'in önbelleği):
+      o klasörü betiğe ver.
+   4. **Public skill (git kaynağı):** kaynağı göster, onay al; geçici bir klasöre
+      `git clone --depth 1 <git-url> "$tmp"` yap, SKILL.md içeren klasörü seç (birden çok varsa
+      kullanıcıya sor), onu betiğe ver, sonra geçici klasörü sil. **Marketplace/eklenti
+      kaynağı:** önce kullanıcıya kurdur, kurulan skill klasörünü betiğe ver.
+   - **`!` … outside the skill uyarısı:** o skill paketinin başka yerindeki dosyalara dayanıyor
+     (çoğu plugin skill'i böyledir); tek başına kopyalanınca çalışmayabilir. Kullanıcıya söyle,
+     atlamayı ya da o aracın plugin'i olarak kullanmayı öner.
    5. Kopyalanan skill'in adını (SKILL.md frontmatter `name`) doğrula; agent'a bu adla atanır.
       Klasör adı frontmatter `name` ile aynı olmalı.
    6. **Kopyalama başarısızsa** kullanıcıyı bilgilendir; skill atlanır ya da sonra eklenir —
