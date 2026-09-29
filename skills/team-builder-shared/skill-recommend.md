@@ -11,9 +11,9 @@ Bir üye eklenirken, o role uygun skill'leri öner. **İki kaynaktan da öner:**
 (1) projede/kullanıcıda **zaten yüklü** olanlar, (2) **public / community'si yüksek**
 olup henüz yüklü olmayanlar. Sadece yüklülerle sınırlı kalma.
 
-> **Kurulumu tekrarlama:** Aynı public skill birden çok agent'a seçilirse **bir kez kur**,
-> sonra her agent'ın manifest'ine ekle. Zaten kurulu (veya bu oturumda kurulmuş) bir skill'i
-> yeniden indirme.
+> **Kopyalamayı tekrarlama:** Aynı skill birden çok agent'a seçilirse projeye **bir kez**
+> kopyala, sonra her agent'ın manifest'ine ekle. Zaten `.agent-source/skills/` altında olan
+> (veya bu oturumda kopyalanmış) bir skill'i yeniden indirme.
 
 ## Adımlar
 
@@ -25,7 +25,11 @@ olup henüz yüklü olmayanlar. Sadece yüklülerle sınırlı kalma.
    - `~/.codex/skills/` (Codex)
    - proje içi: `.claude/skills/`, `.opencode/skills/`, `.agents/skills/`
 
+   - plugin'lerin skill'leri: `~/.claude/plugins/cache/`, `~/.codex/plugins/cache/`
+   - projenin kendi kaynağı: `.agent-source/skills/`
+
    Olmayan dizinleri sessizce atla. Role/stack'e uyanları **"✅ Zaten yüklü"** olarak işaretle.
+   Yüklü olması projeye kopyalanmayacağı anlamına gelmez: seçilirse 5. adımda kopyalanır.
 
 3. **Public/popüler skill ara (ATLAMA):** role + stack için yüklü olmayan ama değerli, community'si yüksek skill'leri öner.
    - **WebSearch/WebFetch varsa kullan:** güncel popüler skill'leri ara (örn. "claude code skills <stack>", GitHub `awesome-claude-code`/skill repoları, marketplace'ler). Yıldız/indirme gibi popülerlik sinyali varsa belirt.
@@ -46,29 +50,50 @@ olup henüz yüklü olmayanlar. Sadece yüklülerle sınırlı kalma.
 
    > **Asla yapma:** skill'leri sadece "isim — açıklama" listesi olarak sunmak; kaynak satırını atlamak; zorunluluk seçimini kullanıcıya bırakmadan önceden atamak. Üçü de zorunludur.
 
-5. **Seçilenleri OTOMATİK KUR** (`autoInstall`):
-   Kullanıcı işaretleyince, yüklü olmayan her seçili skill'i kur:
-   1. **Scope sor (bir kez):** kullanıcı seviyesi mi, proje seviyesi mi? (Varsayılan: kullanıcı seviyesi — her projede kullanılsın.) **Dizini araca göre seç**, Claude'u varsayma:
-      - Claude Code → `~/.claude/skills/` · proje `.claude/skills/`
-      - OpenCode → `~/.config/opencode/skills/` · proje `.opencode/skills/`
-      - Codex → `~/.codex/skills/` · proje `.agents/skills/`
-
-      Birden çok hedef seçildiyse skill'i hepsinin dizinine kopyala. (Not: OpenCode `~/.claude/skills/` ve `.claude/skills/` dizinlerini de native okur; Claude + OpenCode birlikte kullanılıyorsa Claude yoluna kurmak ikisine birden yeter.)
-   2. **git kaynağı için:**
+5. **Seçilenleri PROJEYE KOPYALA** — nerede bulunmuş olursa olsun:
+   Seçilen her skill `.agent-source/skills/<ad>/` altına kopyalanır; global dizine **kurulmaz**,
+   kapsam sorulmaz. Sync onu hedeflenen araçların proje dizinlerine (`.agents/skills/`, varsa
+   `.claude/skills/`, `.opencode/skills/`) yansıtır. Skill'ler böylece repoyla gelir: takım
+   arkadaşının bir şey kurması gerekmez, herkes aynı sürümü kullanır.
+   1. **Zaten `.agent-source/skills/<ad>/` varsa** kopyalama; aynı skill birden çok agent'a
+      seçildiyse de bir kez kopyala.
+   2. **Yüklü skill** (Adım 2'de bulduğun yol — global, proje içi ya da bir plugin'in önbelleği):
+      ```bash
+      src="<Adım 2'de bulduğun skill klasörü>"
+      dest="<proje>/.agent-source/skills/<ad>"
+      mkdir -p "$dest" && cp -RL "$src/." "$dest/"
+      test -f "$dest/SKILL.md" && echo "kopyalandı: $dest"
+      ```
+      `-L` bağları gerçek dosyaya çevirir: sync `.agent-source/skills/` içindeki bağları yansıtmaz.
+   3. **Public skill (git kaynağı):** kaynağı göster, onay al, sonra:
       ```bash
       tmp="$(mktemp -d)"
       git clone --depth 1 <git-url> "$tmp"
-      # SKILL.md içeren dizini bul (repo kökü ya da skills/<name>/ olabilir)
-      src="$(dirname "$(find "$tmp" -name SKILL.md | head -1)")"
-      dest="<scope>/<skill-name>"            # Adım 1'de seçilen araç/scope dizini
-      rm -rf "$dest" && mkdir -p "$dest" && cp -R "$src/." "$dest/"
+      # SKILL.md içeren klasörü seç (repo kökü ya da skills/<ad>/); birden çok varsa kullanıcıya sor
+      src="$(dirname "$(find "$tmp" -name SKILL.md -not -path '*/.git/*' | head -1)")"
+      dest="<proje>/.agent-source/skills/<ad>"
+      mkdir -p "$dest" && cp -R "$src/." "$dest/" && rm -rf "$dest/.git"
       rm -rf "$tmp"
-      test -f "$dest/SKILL.md" && echo "kuruldu: $dest"
+      test -f "$dest/SKILL.md" && echo "kopyalandı: $dest"
       ```
-   3. **marketplace/eklenti kaynağı için:** ilgili kurulum yolunu uygula (ör. plugin/marketplace komutu) ya da kullanıcıya tek satırlık komutu ver; kurulumdan sonra SKILL.md varlığını doğrula.
-   4. **Kurulum başarısızsa** kullanıcıyı bilgilendir; skill yine de manifest'e eklenebilir (kurulunca aktif olur) ya da atlanır — kullanıcı karar verir.
-   5. Kurulan skill'in adını (SKILL.md frontmatter `name`) doğrula; agent'a bu adla atanır.
-   - **Güvenlik:** `git clone` harici bir adresten kod indirir — kaynağı kullanıcıya göster ve onayını al, rastgele adresten sessizce kurma.
+   4. **Marketplace/eklenti kaynağı:** önce kullanıcıya kurdur ya da tek satırlık komutu ver; kurulan
+      skill klasörünü bulup 2. adımdaki gibi projeye kopyala.
+   5. Kopyalanan skill'in adını (SKILL.md frontmatter `name`) doğrula; agent'a bu adla atanır.
+      Klasör adı frontmatter `name` ile aynı olmalı.
+   6. **Kopyalama başarısızsa** kullanıcıyı bilgilendir; skill atlanır ya da sonra eklenir —
+      kullanıcı karar verir.
+   - **team-builder'ın kendi skill'lerini kopyalama** (`team-builder-*`, `architecture-advisor`):
+     onlar team-builder kurulumuyla gelir; projeye de konursa aynı adla iki kez görünürler.
+   - **Aynı skill global olarak da kuruluysa** kullanıcıya söyle: Codex aynı adlı iki skill'i
+     birleştirmez, ikisi de listelenir; Claude'da kişisel (global) kopya projedekini gölgeler.
+     Proje kopyası yeterliyse global olanı kaldırmayı önerebilirsin — kendin silme.
+   - **Yalnız metin dosyaları yansıtılır:** sync dosyaları metin olarak okuyup yazar. Skill'de
+     görsel gibi ikili dosyalar varsa proje kopyalarında bozulurlar; betikler çalıştırma iznini
+     kaybeder (`bash betik.sh` ile çalışır). Böyle bir skill seçilirse kullanıcıya söyle.
+   - **Lisans:** üçüncü taraf bir skill repoya girer. Klasördeki LICENSE dosyası kopyayla gelir;
+     yoksa kullanıcıya lisansı kontrol etmesini söyle.
+   - **Güvenlik:** `git clone` harici bir adresten kod indirir ve bu kod repoya girer — kaynağı
+     kullanıcıya göster ve onayını al, rastgele adresten sessizce kopyalama.
 
 ## Bilinen public skill kataloğu (fallback — stack'e göre uyarla)
 

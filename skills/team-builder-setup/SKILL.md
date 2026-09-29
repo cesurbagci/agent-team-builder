@@ -148,11 +148,11 @@ Adımları **bu sırayla** uygula. Her adımda kullanıcıya sor, cevabı al, so
    **(f) Skill'ler** — `skill-recommend.md` §4 **ZORUNLU FORMATINA birebir uy.** Bu role uygun **yüklü + public** skill'leri öner. **Hiçbir skill'i yalnız "isim — açıklama" ile gösterme**; her skill **iki satır** olmalı:
       ```
       • <skill-adı> — <bu projede ne işe yarar>
-        Kaynak: ✅ ${CLAUDE_SKILL_DIR}/../<name>   |   [owner/repo](https://github.com/owner/repo)   |   marketplace/eklenti
+        Kaynak: ✅ <bulunduğu gerçek yol>   |   [owner/repo](https://github.com/owner/repo)   |   marketplace/eklenti
       ```
       Public skill'lerin adresini **WebSearch açıksa MUTLAKA ara ve yaz** (markdown link); bulamazsan "kaynak doğrulanmalı" işaretle ama kaynak satırını atlama.
       Sonra **her skill için TEK TEK** sor (tekli seçim 3 seçenek): **"Zorunlu (her zaman) / Gerektiğinde / Ekleme"** — önceden atama yapma, kullanıcı seçsin.
-      Seçilen **yüklü-olmayan** skill'i **otomatik kur** (`skill-recommend.md` §5: scope → `git clone` → kopyala → doğrula; kaynağı gösterip onay al; tekrar indirme).
+      Seçilen **her** skill'i — yüklü olsun olmasın — **projeye kopyala**: `.agent-source/skills/<ad>/` (`skill-recommend.md` §5). Global dizine kurma, kapsam sorma; sync onu hedef araçların proje dizinlerine yansıtır. Public kaynakta kaynağı gösterip onay al; aynı skill'i iki kez kopyalama.
    **(g)** Bu agent'ın özetini göster, "bu rol böyle tamam mı?" diye onaylat. Onaylanınca taslağını sakla (manifest `agents[]` girişi + `agent-md-rich.md` rol talimatı; diske Adım 8'de yazılır) ve **bir sonraki role geç**.
 
    `lead` varsayılanı `architect`'tir. **Architect eklenmediyse** `lead` olarak eklenen
