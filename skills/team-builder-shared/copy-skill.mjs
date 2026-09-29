@@ -24,34 +24,47 @@ function inside(root, target) {
   return target === root || target.startsWith(root + path.sep)
 }
 
-// `seen` holds the real directories already walked: a link back to a parent
-// would otherwise recurse forever.
-async function collect(root, dir, files, seen = new Set([root])) {
+// Walks `dir` (a real path) and records each file under its logical path
+// `rel`, the one the skill sees — a linked directory keeps its link's name.
+// `ancestors` holds the real directories on the current branch: a link back
+// to one of them would recurse forever.
+async function collect(root, dir, rel, files, ancestors) {
   for (const entry of await fs.readdir(dir, { withFileTypes: true })) {
     if (entry.name === '.git') continue
     const full = path.join(dir, entry.name)
+    const logical = path.join(rel, entry.name)
     let real = full
     if (entry.isSymbolicLink()) {
       real = await fs.realpath(full)
       if (!inside(root, real)) {
-        throw new Error(`${path.relative(root, full)} links outside the skill (${real}); not copied`)
+        throw new Error(`${logical} links outside the skill (${real}); not copied`)
       }
+      // A link into .git would bring the repository back under another name.
+      if (path.relative(root, real).split(path.sep).includes('.git')) continue
     }
     const stat = await fs.stat(real)
     if (stat.isDirectory()) {
-      if (seen.has(real)) continue
-      seen.add(real)
-      await collect(root, real, files, seen)
+      if (ancestors.has(real)) continue
+      await collect(root, real, logical, files, new Set([...ancestors, real]))
+    } else if (stat.isFile()) {
+      files.push({ from: real, rel: logical })
     }
-    else if (stat.isFile()) files.push({ from: real, rel: path.relative(root, full) })
   }
   return files
+}
+
+// The name from the opening frontmatter block only, never from the body.
+function frontmatterName(skillMd) {
+  const block = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/.exec(skillMd)?.[1]
+  if (block === undefined) return null
+  const line = /^(["']?)name\1[ \t]*:[ \t]*(.*)$/m.exec(block)
+  return line ? line[2].trim().replace(/^(["'])(.*)\1$/, '$2') : null
 }
 
 export async function copySkill(skillDir, projectRoot) {
   const root = await fs.realpath(skillDir)
   const skillMd = await fs.readFile(path.join(root, 'SKILL.md'), 'utf8')
-  const name = /^---\r?\n[\s\S]*?^name:\s*["']?([^"'\r\n]+?)["']?\s*$/m.exec(skillMd)?.[1]
+  const name = frontmatterName(skillMd)
   if (!name || !NAME_SLUG.test(name)) {
     throw new Error(`SKILL.md needs a frontmatter name that is a plain slug, got ${JSON.stringify(name)}`)
   }
@@ -63,7 +76,7 @@ export async function copySkill(skillDir, projectRoot) {
     await fs.access(dest)
     return { name, dest, copied: false, warnings }
   } catch {}
-  const files = await collect(root, root, [])
+  const files = await collect(root, root, '', [], new Set([root]))
   for (const { from, rel } of files) {
     const target = path.join(dest, rel)
     await fs.mkdir(path.dirname(target), { recursive: true })
@@ -80,13 +93,18 @@ async function selftest() {
     const project = path.join(tmp, 'project')
     await fs.mkdir(path.join(skill, 'scripts'), { recursive: true })
     await fs.mkdir(path.join(skill, '.git'), { recursive: true })
-    await fs.writeFile(path.join(skill, 'SKILL.md'), '---\nname: demo\ndescription: d\n---\nSee ../../shared/x.md\n')
+    await fs.writeFile(
+      path.join(skill, 'SKILL.md'),
+      '---\n"name": demo\ndescription: d\n---\nSee ../../shared/x.md\n\nname: example\n'
+    )
     await fs.writeFile(path.join(skill, 'scripts', 'run.sh'), 'echo hi\n')
     await fs.writeFile(path.join(skill, '.git', 'config'), 'x')
     await fs.writeFile(path.join(tmp, 'secret.txt'), 'SECRET')
     if (process.platform !== 'win32') {
       await fs.symlink('scripts/run.sh', path.join(skill, 'alias.sh'))
       await fs.symlink('..', path.join(skill, 'scripts', 'loop'))
+      await fs.symlink('scripts', path.join(skill, 'alias'))
+      await fs.symlink('.git', path.join(skill, 'repo-meta'))
     }
 
     const first = await copySkill(skill, project)
@@ -98,6 +116,14 @@ async function selftest() {
     if (process.platform !== 'win32') {
       const alias = await fs.lstat(path.join(dest, 'alias.sh'))
       assert(alias.isFile() && !alias.isSymbolicLink(), 'an inside link must become a regular file')
+      assert(
+        await fs.readFile(path.join(dest, 'alias', 'run.sh'), 'utf8') === 'echo hi\n',
+        'a linked directory must keep its own name'
+      )
+      assert(
+        !(await fs.access(path.join(dest, 'repo-meta')).then(() => true, () => false)),
+        'a link into .git must be skipped'
+      )
     }
     assert((await copySkill(skill, project)).copied === false, 'an existing copy must be left alone')
 
