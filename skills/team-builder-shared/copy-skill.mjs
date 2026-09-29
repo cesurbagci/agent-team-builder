@@ -57,8 +57,10 @@ async function collect(root, dir, rel, files, ancestors) {
 function frontmatterName(skillMd) {
   const block = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/.exec(skillMd)?.[1]
   if (block === undefined) return null
-  const line = /^(["']?)name\1[ \t]*:[ \t]*(.*)$/m.exec(block)
-  return line ? line[2].trim().replace(/^(["'])(.*)\1$/, '$2') : null
+  // More than one line that looks like the key — a multiline value can hold
+  // one — is ambiguous without a YAML parser: refuse rather than guess.
+  const lines = [...block.matchAll(/^(["']?)name\1[ \t]*:[ \t]*(.*)$/gm)]
+  return lines.length === 1 ? lines[0][2].trim().replace(/^(["'])(.*)\1$/, '$2') : null
 }
 
 export async function copySkill(skillDir, projectRoot) {
@@ -66,7 +68,9 @@ export async function copySkill(skillDir, projectRoot) {
   const skillMd = await fs.readFile(path.join(root, 'SKILL.md'), 'utf8')
   const name = frontmatterName(skillMd)
   if (!name || !NAME_SLUG.test(name)) {
-    throw new Error(`SKILL.md needs a frontmatter name that is a plain slug, got ${JSON.stringify(name)}`)
+    throw new Error(
+      `SKILL.md needs exactly one frontmatter name line holding a plain slug, got ${JSON.stringify(name)} — check it by hand`
+    )
   }
   const dest = path.join(projectRoot, '.agent-source', 'skills', name)
   const warnings = [...new Set(skillMd.match(/\.\.\/[^\s)`'"]+/g) ?? [])].map(
@@ -126,6 +130,20 @@ async function selftest() {
       )
     }
     assert((await copySkill(skill, project)).copied === false, 'an existing copy must be left alone')
+
+    const ambiguous = path.join(tmp, 'src', 'ambiguous')
+    await fs.mkdir(ambiguous, { recursive: true })
+    await fs.writeFile(
+      path.join(ambiguous, 'SKILL.md'),
+      '---\ndescription: "First line\nname: example\nlast line"\nname: actual\n---\n'
+    )
+    let unclear = null
+    try { await copySkill(ambiguous, project) } catch (e) { unclear = e }
+    assert(unclear?.message.includes('exactly one'), 'an ambiguous name must stop the copy')
+    assert(
+      !(await fs.access(path.join(project, '.agent-source', 'skills', 'example')).then(() => true, () => false)),
+      'nothing may be copied under a guessed name'
+    )
 
     if (process.platform !== 'win32') {
       await fs.symlink(path.join(tmp, 'secret.txt'), path.join(skill, 'leak.txt'))
