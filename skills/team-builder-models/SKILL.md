@@ -56,13 +56,33 @@ Hedeflenen her ekosistem için, CLI kuruluysa:
 
 ## Kullanıcıya nasıl sorulur
 
-- Sade dille: "architect Claude'da hangi modelle çalışsın?" Alan adı (`defaults`,
-  `agents`) ya da JSON gösterme.
-- Seçenekleri sen getir: Codex ve OpenCode için katalogdan, Claude için takma adlardan. Her
-  seçeneğe kısa bir not ekle ("en güçlü", "hızlı", "2026-10-14'te kalkıyor").
-- Effort'u **modelden sonra** sor ve yalnız o modelin desteklediği seviyeleri sun: Codex'te
-  `supported_reasoning_levels`; Claude'da `low`, `medium`, `high`, `xhigh`, `max` —
-  belge "kullanılabilir seviyeler modele bağlı" diyor, emin değilsen `high`'ı öner.
+- **Rol rol sorma; tek tabloda öner, kullanıcı yalnız değiştirmek istediğini söylesin.**
+  Alan adı (`defaults`, `agents`) ya da JSON gösterme.
+- Tablodan önce, hedeflenen her ekosistem için **seçilebilecekleri** listele — model ve o
+  modelin effort seviyeleri birlikte, her modele kısa bir notla ("en güçlü", "hızlı",
+  "2026-10-14'te kalkıyor"):
+  - **Claude:** takma adlar `opus`, `sonnet`, `haiku`, `fable`. Effort: `low`, `medium`,
+    `high`, `xhigh`, `max` — belge "kullanılabilir seviyeler modele bağlı" diyor; emin
+    değilsen `high`'ı öner.
+  - **Codex:** katalogdaki `visibility: list` ve `upgrade`'i boş modeller; her birinin
+    yanında `supported_reasoning_levels` ve `default_reasoning_level`.
+  - **OpenCode:** `opencode models --pure` listesi. Effort sağlayıcıya olduğu gibi gider;
+    seviyelerini sağlayıcı belirler — bilmiyorsan effort'u boş bırakmayı öner.
+  Katalog okunamayan ekosistemde bunu söyle; adı kullanıcıdan al, uydurma.
+- Sonra **tek tablo**: satırlar roller, sütunlar hedeflenen her ekosistem için
+  `model · effort`, hücreler önerilerle dolu. Örnek:
+
+  | Rol | Claude | Codex |
+  |---|---|---|
+  | architect | opus · high | gpt-5.6-terra · high |
+  | backend-developer | sonnet · medium | gpt-5.6-terra · medium |
+  | reviewer | opus · high | gpt-5.6-terra · high |
+
+  Altına: "Değiştirmek istediklerini yaz (ör. `reviewer codex: gpt-5.6-sol · xhigh`); hepsi
+  uygunsa `tamam` de." Değişiklikleri uygula; katalogda olmayan bir model ya da modelin
+  desteklemediği bir effort gelirse söyle ve seçenekleri hatırlat. Model değiştiyse effort'u
+  o modelin seviyelerine göre kontrol et. Güncel tabloyu yeniden göster; `tamam` gelene kadar
+  yazma.
 - Bir girdiye model yazarken effort'u da **aynı girdiye** yaz — `defaults`'ta ya da
   `agents`'ta, hangi dosyada olursa olsun. Effort, modeli seçen katmandan daha genel bir
   katmandan gelmez (`llm-config.md`, *Çözümleme*): alttaki effort'u korumak istiyorsan onu
@@ -75,8 +95,8 @@ Hedeflenen her ekosistem için, CLI kuruluysa:
 
 1. Hedeflenen ekosistemleri çıkar: her agent'ın `targets`'ı, yoksa kök `targetsDefault`.
 2. Katalogları oku.
-3. Her rol için öneri sun. **Taşınabilir** seçenekleri öne çıkar — bu dosya takımdaki
-   herkeste çalışacak:
+3. Önerileri kur — tabloyu *Kullanıcıya nasıl sorulur*'daki gibi **tek seferde** göster.
+   **Taşınabilir** seçenekleri öne çıkar — bu dosya takımdaki herkeste çalışacak:
    - **Claude:** takma ad ve effort. Rol önerisi
      `${CLAUDE_SKILL_DIR}/../team-builder-shared/governance-defaults.md`'de (örneğin architect
      `opus` + `high`, developer `sonnet` + `medium`).
@@ -84,10 +104,11 @@ Hedeflenen her ekosistem için, CLI kuruluysa:
      modelin `default_reasoning_level`'ı; rol ağırsa bir üst seviye.
    - **OpenCode:** önce sor: "Takımda herkes aynı OpenCode sağlayıcısını mı kullanıyor?"
      **Hayır** ya da **bilmiyorum** → OpenCode'u ortak dosyaya **yazma**; her makine kendi
-     yerel dosyasında belirleyecek (Akış 2). **Evet** → `opencode models`'tan seçtir.
+     yerel dosyasında belirleyecek (Akış 2); tablodaki OpenCode sütununu yazma. **Evet** →
+     sütunu `opencode models`'tan önerilerle doldur. Bu soruyu tablodan önce sor.
 4. Çoğu rolün aynı değeri kullandığı ekosistemde o değeri `defaults`'a, farklı olanları
    `agents`'a yaz.
-5. Özeti sade dille göster, onay al, `.agent-source/llm.json`'ı yaz.
+5. Tablo `tamam` ile onaylanınca `.agent-source/llm.json`'ı yaz.
 6. **Setup'tan çağrıldıysan burada dur:** sync'i setup, bütün dosyaları yazdıktan sonra
    kendisi çalıştırır. Değilse sync çalıştır:
    `node "${CLAUDE_SKILL_DIR}/../team-builder-shared/sync-agent-config.mjs" --root <proje>`.
@@ -196,7 +217,7 @@ Güncellenmiş team-builder bu yapıda sync'i durdurur.
 
 2. Katalogları oku ve tabloya göre **taşınacak** Codex ve OpenCode değerlerini onunla
    karşılaştır — *Yenile*'nin 2. adımındaki gibi; `llm.json` henüz yok. Bulunanları göster.
-3. Planı sade dille göster ve **onay al**. Onaysız hiçbir dosya değişmez.
+3. Planı *Kullanıcıya nasıl sorulur*'daki tablo biçiminde (rol × ekosistem, `model · effort`) göster; taşınmayan değerleri altında say. Kullanıcı yalnız değiştirmek istediğini söyler; **onay al**. Onaysız hiçbir dosya değişmez.
 4. Onaydan sonra, bu sırayla:
    1. `.agent-source/llm.json`'ı yaz. Değerler takımın commit ettiği dosyalardan geldiği
       için **ortak** dosyaya. Her değeri kendi agent'ının girdisine (`agents.<ad>`) yaz;

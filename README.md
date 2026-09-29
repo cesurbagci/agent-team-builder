@@ -36,9 +36,10 @@ and bakes the rules the team must follow (the "constitution") into each agent's 
 - **Roles:** architect (read-only, produces ADRs) · domain developers · reviewer (read-only).
 - **Constitution:** no-workaround discipline, code–doc sync, per-agent memory, language/comment
   standard — all four on by default, each toggleable in the wizard. A fifth preset, the
-  **plan gate**, is **off by default**: it makes the team write a plan, have it reviewed
-  (when you name a reviewer) and get **your** approval before any code is written. Unlike the other four it creates files in
-  your project (`.agent-work/` and a `work-plan` skill), which is why you opt into it.
+  **plan gate**, is asked separately and **recommended on**: it makes the team write a plan, have it
+  reviewed (when you name a reviewer) and get **your** approval before any code is written. Unlike
+  the other four it creates files in your project (`.agent-work/` and a `work-plan` skill), so you
+  can turn it off.
 - **Mandatory routing:** path-based routing like "if this code path changes, that developer;
   on architectural uncertainty, the architect".
 - **Single source:** everything is generated from `.agent-source/`; generated files are never
@@ -308,9 +309,10 @@ tanımlar ve takımın uyması gereken kuralları (anayasa) her agent'ın talima
 - **Roller:** architect (read-only, ADR üretir) · domain developer'lar · reviewer (read-only).
 - **Anayasa:** no-workaround disiplini, kod-doküman senkronu, per-agent memory, dil/yorum
   standardı — dördü de varsayılan açık, sihirbazda kapatılabilir. Beşinci bir preset,
-  **plan kapısı**, **varsayılan kapalıdır**: kod yazılmadan önce plan yazılmasını,
-  (bir denetleyici belirlediysen) denetlenmesini ve **senin onaylamanı** şart koşar. Diğer dördünün aksine projede dosya
-  üretir (`.agent-work/` ve bir `work-plan` skill'i) — o yüzden açmak bilinçli bir tercihtir.
+  **plan kapısı**, ayrı sorulur ve **açık önerilir**: kod yazılmadan önce plan yazılmasını,
+  (bir denetleyici belirlediysen) denetlenmesini ve **senin onaylamanı** şart koşar. Diğer
+  dördünün aksine projede dosya üretir (`.agent-work/` ve bir `work-plan` skill'i) — istemezsen
+  kapatırsın.
 - **Zorunlu routing:** "şu kod yolu değişiyorsa şu developer'a, mimari belirsizlikte
   architect'e" gibi path-bazlı yönlendirme.
 - **Tek kaynak:** her şey `.agent-source/`'tan üretilir; generated dosyalar elle düzenlenmez.

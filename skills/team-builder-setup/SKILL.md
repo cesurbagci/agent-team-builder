@@ -35,7 +35,7 @@ Akışa başlamadan önce şu dosyaların var olduğunu doğrula. Yoksa kullanı
 - `${CLAUDE_SKILL_DIR}/../team-builder-shared/agent-md-rich.md` — zengin agent md gövde kalıbı.
 - `${CLAUDE_SKILL_DIR}/../team-builder-shared/skill-recommend.md` — proje-farkında skill önerisi.
 - `${CLAUDE_SKILL_DIR}/../team-builder-shared/routing.md` — path-based zorunlu routing tablosu.
-- `${CLAUDE_SKILL_DIR}/../team-builder-shared/constitution.md` — 5 cross-cutting anayasa preseti (ilk dördü default açık, plan kapısı default kapalı).
+- `${CLAUDE_SKILL_DIR}/../team-builder-shared/constitution.md` — 5 cross-cutting anayasa preseti (ilk dördü default açık, plan kapısı ayrı sorulur ve açık önerilir).
 - `${CLAUDE_SKILL_DIR}/../team-builder-shared/plan-gate.md` — plan kapısı kurulum sözleşmesi (KARAR 5 açıksa).
 - `${CLAUDE_SKILL_DIR}/../team-builder-shared/templates/plan.md` — plan dosyası şablonu.
 - `${CLAUDE_SKILL_DIR}/../team-builder-shared/templates/work-plan-skill.md` — projeye kurulacak `work-plan` skill'inin şablonu.
@@ -60,7 +60,7 @@ Sihirbaz çok sorulu; soruları **güvenle** sor:
   - Her seçenekte hem **kısa etiket** hem **açıklama** olmalı.
   - Birden çok seçilebiliyorsa `multiSelect` kullan; tek seçimse normal.
 - **Rolleri CHECKBOX ile seçtir (tercih edilen), düz metin değil.** Aday rol sayısı 4'ü geçtiği için **çoklu-seçim (multiSelect) sorusunu ≤4'lük gruplara böl** (örn. Grup 1: architect, ios/web/backend-developer'lar; Grup 2: reviewer, qa, security, doc-writer; veritabanı varsa Grup 3: database-engineer). Önerilen rolleri **önceden işaretli** sun. En sonda "başka özel rol?" için tek bir serbest-metin sorusu sor. **Tabloyu/listeyi düz metin soruya çevirme** — kullanıcı kutucukları tıklayarak seçsin. (Tek tek Evet/Hayır da kabul ama checkbox tercih edilir; asla tek soruda 4+ seçenek koyma.)
-- **Anayasa presetleri 5 kural, ama tek soruda sorulmaz.** İlk dördü (hepsi default açık) tek `multiSelect` soruya sığar (4 seçenek); **plan kapısı ayrı sorulur** — default kapalıdır ve açılırsa iki alt soru daha getirir.
+- **Anayasa presetleri 5 kural, ama tek soruda sorulmaz.** İlk dördü (hepsi default açık) tek `multiSelect` soruya sığar (4 seçenek); **plan kapısı ayrı sorulur** — açık önerilir, kullanıcı kapatabilir; açık kalırsa iki alt soru daha getirir.
 - Emin değilsen **düz metin** sor. UX'i şık yapmaya çalışırken aracı geçersiz parametreyle çağırma.
 - **JARGON YASAĞI + önce açıkla:** Kullanıcıya **alan adı / teknik terim gösterme** (`codeDocSync`, `enforcement`, `glob`, `targets`, `layout` vb.). Her kavramı **önce bir cümle + somut örnekle** anlat, **sonra** sor. Kullanıcı terimi bilmiyor olabilir; "ADR nedir", "kod-doküman senkronu nedir" gibi şeyleri kısaca açıkla. Seçenekleri günlük dille ("şimdilik boş bırak", "sana taslak önereyim") yaz, kod/JSON ile değil.
 - **DAHİLİ REFERANSLARI GİZLE:** Kullanıcıya **asla** "referans proje", "altın standart", dosya adı (`governance-defaults.md`, "KARAR 4") gibi iç kaynakları söyleme. Bunlar senin rehberin; kullanıcı için yalnızca **sade öneri** sun ("önerilen model: opus" yeter, gerekçe olarak iç kaynak gösterme).
@@ -143,7 +143,8 @@ Adımları **bu sırayla** uygula. Her adımda kullanıcıya sor, cevabı al, so
    **(a)** "Şimdi **<rol>** rolünü ayarlıyoruz (X/N). Görevi: <tek cümle>." diye başla.
    **(b) Hedef(ler)** — Adım 2'de birden çok ekosistem seçildiyse: bu rol hangilerinde üretilsin (claude / codex / opencode / kombinasyon; varsayılan = `targetsDefault`). Tek ekosistem varsa bu soruyu atla. → manifest `targets`.
    **(c) Model** — burada **sorma.** Bütün roller yapılandırıldıktan sonra, dosyalar yazılmadan önce `${CLAUDE_SKILL_DIR}/../team-builder-models/SKILL.md`'nin **Akış 1 — Ortak dosyayı kur** bölümünü izle: her rol için modeli ve effort'u o makinenin kataloğundan sorar ve `.agent-source/llm.json`'ı yazar. Sync'i o akış çalıştırmaz; setup'ın son adımı çalıştırır. Manifest'e ve rol dosyasına **model yazma** — tek yeri `llm.json`'dır (`${CLAUDE_SKILL_DIR}/../team-builder-shared/llm-config.md`).
-   **(d) Effort** — model gibi, Akış 1'de sorulur; burada sorma.
+   **(d) Effort** — model gibi, Akış 1'de sorulur; burada sorma. Akış 1 bütün roller için
+   modeli ve effort'u **tek tabloda** önerir; kullanıcı yalnız değiştirmek istediğini söyler.
    **(e) Kod yazsın mı + kime danışır** — varsayılanı söyle, onaylat/değiştir (architect eklendiyse developer → architect'e danışır; **architect eklenmediyse `consults` boş kalır ve belirsizlikte kullanıcıya sorulur**; architect/reviewer kod yazmaz).
    **(f) Skill'ler** — `skill-recommend.md` §4 **ZORUNLU FORMATINA birebir uy.** Bu role uygun **yüklü + public** skill'leri öner. **Hiçbir skill'i yalnız "isim — açıklama" ile gösterme**; her skill **iki satır** olmalı:
       ```
@@ -199,20 +200,21 @@ Sade açıklama kalıbı (jargon yok):
 3. **Her agent kendi notunu tutar** (`perAgentMemory`) — "Her rol kendi `.agent-memory/<rol>/` klasörüne not/karar yazar; birbirinin notuna karışmaz."
 4. **Dil standardı** (`languageStandard`) — "Kod İngilizce; doküman, yorum ve cevap senin seçtiğin dilde (`docLanguage`)."
 
-**7C) Plan kapısı (ayrı soru, default KAPALI)** — `constitution.md` KARAR 5.
+**7C) Plan kapısı (ayrı soru, AÇIK önerilir)** — `constitution.md` KARAR 5.
 
-Bu preset dördüyle birlikte gösterilmez: kendi sorusu vardır ve **kapalı** gelir.
+Bu preset dördüyle birlikte gösterilmez: kendi sorusu vardır ve **açık önerilir** — kullanıcı isterse kapatır.
 
 > "Kod yazılmadan önce iş için plan yazılsın ve **sen onaylayasın** mı? (İstersen planı
 > sana gelmeden önce gözden geçirecek bir rol de belirleyebilirsin.)
 > Onaylanan işler bir havuzda birikir; sırasını sen seçersin. Bu, projede bir çalışma
-> alanı dizini (`.agent-work/`) ve bir skill üretir. **Varsayılan: kapalı.**"
+> alanı dizini (`.agent-work/`) ve bir skill üretir. **Önerim: açık** — istemezsen kapatırım."
 
 **Kapalı bırakırsa:** `manifest.constitution.planGate: false` yaz, kök `planGate` nesnesini
 **yazma**, başka soru sorma. Adım 8a'da plan kapısı çıktılarının hiçbiri üretilmez.
 
-**Açarsa** iki kapı sahibini sor. Her soruda **yalnız kod yazmayan rolleri** (Adım 5'te
-`writesCode: false` seçilenler) ve "kimse" seçeneğini sun.
+**Açık kalırsa** iki kapı sahibini sor. Her soruda **yalnız kod yazmayan rolleri** (Adım 5'te
+`writesCode: false` seçilenler) ve "kimse" seçeneğini sun. Öneri olarak plan için architect'i,
+kod için reviewer'ı göster (takımda varlarsa); yoksa "kimse"yi öner — yine de kullanıcı seçer.
 
 **İki soru da atlanamaz** — kök `planGate` nesnesinin iki anahtarı da zorunludur. Kod
 yazmayan hiç rol yoksa soruları yine sor; tek seçenek "kimse" olur ama kullanıcı sonucu

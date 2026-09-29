@@ -29,7 +29,7 @@ Generated dosyalar **elle değiştirilmez**; kaynak burasıdır.
 | `constitution.codeDocSync` | `boolean` | Hayır | Kod-doküman senkronizasyonu açık mı. `codeDocSync[]` tablosu zorunlu kılınır. |
 | `constitution.perAgentMemory` | `boolean` | Hayır | Per-agent memory disiplini açık mı (`.agent-memory/<agent>/MEMORY.md`). |
 | `constitution.languageStandard` | `boolean` | Hayır | Dil & yorum standardı açık mı (kod İngilizce / doküman `docLanguage`). |
-| `constitution.planGate` | `boolean` | Hayır | Plan kapısı açık mı. **Default `false`** — diğer dört presetin aksine kapalı gelir, çünkü artefakt üretir (`.agent-work/`, `work-plan` skill'i). Açıksa kök `planGate` nesnesi zorunludur. Bkz. `plan-gate.md`. |
+| `constitution.planGate` | `boolean` | Hayır | Plan kapısı açık mı. **Alan yoksa `false`** (eski projeler değişmez); setup onu açık önerir ve açıkça yazar. Diğer dört presetten ayrı sorulur, çünkü artefakt üretir (`.agent-work/`, `work-plan` skill'i). Açıksa kök `planGate` nesnesi zorunludur. Bkz. `plan-gate.md`. |
 | `planGate` | `object` | Koşullu | Kapı sahipleri. **Yalnız `constitution.planGate: true` iken bulunur**; kapalıyken varlığı manifest'i geçersiz kılar. |
 | `planGate.planReviewer` | `string \| null` | Evet (nesne varsa) | Planı denetleyen agent'ın adı, ya da `null` (kapı 1 atlanır). Kod yazmayan bir agent olmalı. |
 | `planGate.codeReviewer` | `string \| null` | Evet (nesne varsa) | Biten işin kodunu denetleyen agent'ın adı, ya da `null` (kapı 3 yoktur). Kod yazmayan bir agent olmalı. |

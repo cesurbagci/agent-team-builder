@@ -8,9 +8,10 @@
 Anayasa, projedeki tüm rolleri kesen (cross-cutting) numaralı kararlardır: tek tek
 agent'lara değil, takımın tamamına uygulanan disiplinler.
 **İlk dördü DEFAULT AÇIK** gelir; sihirbaz her birini gösterir ve kullanıcı kapatabilir
-(toggle). **KARAR 5 (plan kapısı) DEFAULT KAPALIDIR** — diğerleri yalnız agent
-talimatlarına metin gömerken o, projede dosya ve dizin üretir (`.agent-work/` iskeleti ve
-`work-plan` skill'i); açılması bilinçli bir tercih olmalıdır. Bazı satırlar projeye
+(toggle). **KARAR 5 (plan kapısı) ayrı sorulur ve sihirbaz onu AÇIK önerir** — diğerleri
+yalnız agent talimatlarına metin gömerken o, projede dosya ve dizin üretir (`.agent-work/`
+iskeleti ve `work-plan` skill'i); kullanıcı isterse kapatır. Manifest'te alan hiç yoksa
+(eski projeler) kapalı sayılır. Bazı satırlar projeye
 özeldir → kullanıcıya sorulur.
 
 Anayasa alanları `manifest.constitution`'a yazılır:
@@ -66,7 +67,7 @@ metin*). İlk dördünün `default` değeri `true`, KARAR 5'inki
    | Dil standardı | "Kod İngilizce; doküman/yorum/cevap senin seçtiğin dilde." |
    | Plan kapısı | "Kod yazılmadan önce plan yazılır ve **sen onaylarsın** (istersen önce bir rol gözden geçirir). Onaylı işler bir havuzda birikir, sırasını sen seçersin. (Varsayılan: kapalı.)" |
 
-4. **İlk dördü default açık, KARAR 5 default kapalı**; kullanıcı her birini değiştirebilir.
+4. **İlk dördü default açık, KARAR 5 ayrı soruda açık önerilir**; kullanıcı her birini değiştirebilir.
    Açık kalanlar için projeye özel satırları sor (sadece açık olanlar için; aşağıya bak).
 5. **KARAR 5 ayrı sorulur.** Dört toggle'ı tek ekranda göstermek 4-seçenek sınırını
    doldurur; plan kapısı kendi sorusunda, kendi gerekçesiyle sunulur.
@@ -159,7 +160,7 @@ standardı detayları kullanıcıya sorulur" yazıyordu; hiçbir yer o cevabı i
 ne setup ne yükseltme böyle bir soru soruyor. Projeye özel cevap isteyen preset'ler
 yalnız `noWorkaround` ve `codeDocSync`'tir.
 
-## KARAR 5 — Plan kapısı  (`planGate`) · DEFAULT KAPALI
+## KARAR 5 — Plan kapısı  (`planGate`) · SİHİRBAZ AÇIK ÖNERİR
 
 **Ne:** Kod yazılmadan önce iş için plan yazılır, (denetleyici tanımlıysa) denetlenir ve
 **kullanıcı onaylar** — kullanıcı onayı her zaman vardır, atlanamaz.
@@ -167,9 +168,11 @@ Onaylanan işler bir havuzda birikir; hangisinin ne zaman yapılacağını kulla
 Üç kapı vardır: kapı 1 plan denetimi (`planReviewer`), kapı 2 kullanıcı onayı (her zaman
 vardır, atlanamaz), kapı 3 kod denetimi (`codeReviewer`).
 
-**Neden default kapalı:** diğer dört preset yalnız metin gömer; bu preset projede dosya
-üretir — `.agent-work/` iskeleti ve projeye kurulan `work-plan` skill'i. Küçük ya da
-tek kişilik projelerde bu ek yük istenmeyebilir.
+**Neden açık önerilir, neden ayrı sorulur:** onaysız kod yazılmaması ve işlerin bir havuzda
+izlenmesi takımın varsayılan çalışma biçimi olmalı. Ama diğer dört preset yalnız metin gömerken
+bu preset projede dosya üretir — `.agent-work/` iskeleti ve projeye kurulan `work-plan` skill'i;
+küçük ya da tek kişilik projelerde bu ek yük istenmeyebilir, o yüzden kullanıcı kapatabilir.
+Manifest'te alan yoksa kapalı sayılır: eski projeler kendiliğinden değişmez.
 
 **Agent'lara yansıması:**
 - **her agent md'sine** kısa bir "Plan Kapısı" bölümü eklenir: onaysız kod yazılmaz,
@@ -201,7 +204,7 @@ projeye kurulan `work-plan` skill'indedir.
 0. **Önce roller belirlenmiş olmalı** (presetler rollerden sonra sorulur — bkz. SUNUM KURALLARI).
 1. **İlk dört kuralı** default açık ve **sade dille** (SUNUM KURALLARI tablosu) göster;
    kullanıcı her birini toggle edebilir. Seçilmemiş role atıf yapma.
-1b. **KARAR 5'i ayrı sor**, default kapalı. Açarsa iki kapı sahibi sorusunu sor
+1b. **KARAR 5'i ayrı sor**, açık öner. Açarsa iki kapı sahibi sorusunu sor
    (KARAR 5'teki kalıpla); kapalı bırakırsa hiçbir şey sorma ve kök `planGate` nesnesini
    yazma.
 2. Açık her preset için **projeye özel satırları** sor:
