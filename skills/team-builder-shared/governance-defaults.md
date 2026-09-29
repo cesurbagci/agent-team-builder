@@ -94,6 +94,11 @@ Her developer rolü için varsayılan:
   `DbContext`/Entity Framework, JPA/Hibernate `@Entity`, TypeORM/Sequelize/Drizzle, Django
   `models.py`, SQLAlchemy/Alembic, ActiveRecord), `*.sql` dosyaları ya da bağımlılıklarda bir
   veritabanı sürücüsü. Önerirken hangi işareti gördüğünü söyle.
+- **İz yoksa sor** — boş ya da yeni bir projede kod henüz yoktur: "Bu projede veritabanı
+  işlemleri olacak mı (tablolar/entity'ler, migration'lar, sorgular)?" Evet derse rolü öner ve
+  nerede duracaklarını sor (ör. `src/db/**`, `prisma/**`); o yol routing'de ona verilir —
+  yazma izni olan bir rolün routing'de yolu olmalıdır. Yolu henüz bilmiyorsa bir öneri yap
+  (`src/db/**`), sonra `db/migrate/**` gibi düzeltilebileceğini söyle.
 - `name`: `database-engineer` · `writesCode`: **true** (şema, entity, migration, sorgu katmanı) ·
   Claude önerisi: **opus** · effort: **high** · `sandbox_mode`: **workspace-write**.
 - **Routing:** entity/şema/migration yolları ona verilir (ör. `prisma/**`, `src/db/**`,
