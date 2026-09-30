@@ -15,8 +15,9 @@ routing tablosu, `TEMPLATE.md`, ADR'ler) elbette okursun — onlar kural değil,
 
 **Veriyi nereden okursun.** Manifest `.agent-source/agents/manifest.json`'dır; routing tablosu
 da onun içindedir (`routing`). Kapı sahipleri manifest'te `planGate.planReviewer` ve
-`planGate.codeReviewer` alanlarındadır; değer bir agent adı ya da `null`'dır. Bu iki
-alanı **her kapıda yeniden oku** — sahip değişmiş olabilir ve yüklemlerin tamamı
+`planGate.codeReviewer` alanlarındadır; değer bir agent adı ya da `null`'dır.
+`planGate.crossReview` `true` ise sahipler **başka bir ekosistemde** çalıştırılır (bkz.
+*Başka ekosistemdeki kapı sahibi*). Bu alanları **her kapıda yeniden oku** — sahip değişmiş olabilir ve yüklemlerin tamamı
 **güncel** sahibe göre hesaplanır.
 
 ## Önce: hangi mod?
@@ -219,8 +220,8 @@ bakılmaz, ama geçiş bittiğinde koşul sağlanmıyorsa hata vardır.
 4. **Kapı 1 — plan denetimi.** Projenin plan denetleyicisi tanımlıysa onu çağır. Reddetme
    ölçütleri: kabul kriteri yok ya da ölçülemez; `paths` gövdeyle tutarsız; açık soru
    cevapsız; yaklaşım mevcut bir ADR'ye aykırı.
-   Denetleyici senin ekosisteminde üretilmemişse **Başka ekosistemdeki kapı sahibi**
-   bölümünü izle; çıktı sözleşmesi ve hata hâli oradadır.
+   Denetleyici senin ekosisteminde üretilmemişse — ya da `crossReview` açıksa —
+   **Başka ekosistemdeki kapı sahibi** bölümünü izle; çıktı sözleşmesi ve hata hâli oradadır.
    Denetleyici sana şunu döndürür:
    ```
    verdict: approved | rejected
@@ -269,8 +270,8 @@ o iş için kural atlanır.
 
 1. **Kapı 3 — kod denetimi.** Projenin kod denetleyicisi tanımlıysa çağır. Denetleyici
    kapı 1'deki **aynı** çıktıyı döndürür (`verdict` / `reviewed_revision` / `reasons`).
-   Kod denetleyicisi senin ekosisteminde üretilmemişse **Başka ekosistemdeki kapı
-   sahibi** bölümünü izle — kapı 3'te prompt'a uygulama farkını (temel referans +
+   Kod denetleyicisi senin ekosisteminde üretilmemişse — ya da `crossReview` açıksa —
+   **Başka ekosistemdeki kapı sahibi** bölümünü izle — kapı 3'te prompt'a uygulama farkını (temel referans +
    değişen dosyalar) da eklersin.
    - `reviewed_revision` diskteki `revision` ile aynı değilse **kaydı yazma** — plan
      denetim sırasında değişmiş demektir, denetimi tekrarla. Bayat bir kayıt `done/`'a
@@ -309,13 +310,19 @@ o iş için kural atlanır.
 
 ## Başka ekosistemdeki kapı sahibi
 
-Kapı sahibi senin ekosisteminde üretilmemişse onu **harici CLI çağrısıyla** kendi
-ekosisteminde çalıştırırsın. Kapı 1 ve kapı 3 için dizi aynıdır.
+Kapı sahibi senin ekosisteminde üretilmemişse — ya da manifest'te `planGate.crossReview`
+`true` ise — onu **harici CLI çağrısıyla** başka bir ekosistemde çalıştırırsın. Çapraz
+denetimin amacı işi yazan modelden farklı bir modelin denetlemesidir. Kapı 1 ve kapı 3 için
+dizi aynıdır.
 
 1. Sahibin **etkin hedeflerini** çöz (kendi `targets`'ı, yoksa `targetsDefault`).
-   Senin ekosistemin bunlardan biriyse **çapraz çağrı yok** — normal yoldan çağır.
-2. Değilse hedef ekosistem, etkin hedefler listesinin **sırasındaki ilkidir**.
-   Kullanıcıya sorma.
+   - `crossReview` **kapalıysa**: senin ekosistemin bunlardan biriyse **çapraz çağrı yok** —
+     normal yoldan çağır.
+   - `crossReview` **açıksa**: senin ekosisteminden **farklı** bir hedef varsa çapraz çağrı
+     yaparsın. Sahip yalnız senin ekosisteminde üretiliyorsa başka yer yoktur: normal
+     yoldan çağır ve kullanıcıya "çapraz denetim bu sahip için mümkün değil" de.
+2. Hedef ekosistem, etkin hedefler listesinin **sırasındaki ilkidir** — `crossReview`
+   açıksa seninkini atlayarak. Kullanıcıya sorma.
 3. Hedefin **rol tanımını oku**:
    `.claude/agents/<ad>.md`, `.codex/agent-definitions/<ad>.md`,
    `.opencode/agents/<ad>.md`. Dosya yoksa bu bir hatadır (aşağıya bak).

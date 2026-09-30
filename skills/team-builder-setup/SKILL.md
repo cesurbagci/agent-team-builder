@@ -226,8 +226,19 @@ atama.
 2. > "İş bitince kodu kim denetlesin? (Kimse dersen kod review kapısı olmaz.)"
    → `manifest.planGate.codeReviewer` (ad ya da `null`)
 
-**Her cevaptan sonra state'i yaz** (`answers.planGate` altına tek tek) — kullanıcı iki
-sorunun ortasında çıkarsa resume'da cevapladığı soru yeniden sorulmaz.
+3. **Birden çok hedef seçildiyse** (Adım 2) ve en az bir sahip adı verildiyse sor:
+   > "Kodu yazan ile denetleyen farklı araçta olsun mu? Örneğin Claude'da yapılan iş Codex'te
+   > denetlenir, Codex'te yapılan iş Claude'da. Farklı bir model gözden kaçanı yakalar.
+   > **Önerim: evet.**"
+   → `manifest.planGate.crossReview` (`true`/`false`). Evet derse sahibin birden çok hedefte
+   üretildiğini kontrol et (varsayılan `targetsDefault` öyledir); yalnız bir hedefteyse
+   çapraz denetim o sahip için işlemez — kullanıcıya söyle. Sıra önemlidir: sahip,
+   hedef listesinde çağıranınkinden sonra gelen ilk ekosistemde çalışır; kullanıcı belirli
+   bir aracı istiyorsa (ör. "denetim hep Codex'te") sahibin `targets`'ını ona göre sırala
+   ya da daralt. Tek hedef seçildiyse bu soruyu **sorma** ve alanı yazma.
+
+**Her cevaptan sonra state'i yaz** (`answers.planGate` altına tek tek) — kullanıcı
+soruların ortasında çıkarsa resume'da cevapladığı soru yeniden sorulmaz.
 
 **Erişilebilirlik kontrolü.** Hedeflenen **her** ekosistemde kod yazan ve routing'de
 geçen en az bir agent (uygun executor) bulunmalı. Eksikse kullanıcıya sade dille söyle

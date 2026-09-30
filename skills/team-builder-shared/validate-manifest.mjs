@@ -132,6 +132,11 @@ function validatePlanGate(doc, errors, agentsByName) {
     }
   }
 
+  // crossReview: the gate owners run in another ecosystem than the caller.
+  if ("crossReview" in gate && typeof gate.crossReview !== "boolean") {
+    errors.push("planGate.crossReview true ya da false olmalı");
+  }
+
   // Only the executable path is overridable — never the arguments. A free-form
   // shell command in the manifest would put arbitrary command execution into
   // generated config, which is exactly the risk the fixed mapping avoids.
@@ -1063,6 +1068,22 @@ if (process.argv.includes("--selftest")) {
       },
     ],
   });
+
+  // V8f — crossReview is optional and boolean.
+  expectAccept("V8f crossReview", {
+    ...gateBase(),
+    constitution: { planGate: true },
+    planGate: { planReviewer: null, codeReviewer: null, crossReview: true },
+  });
+  expectReject(
+    "V8g crossReview not boolean",
+    {
+      ...gateBase(),
+      constitution: { planGate: true },
+      planGate: { planReviewer: null, codeReviewer: null, crossReview: "yes" },
+    },
+    "planGate.crossReview true ya da false olmalı"
+  );
 
   // V8b — cli override accepts a path per ecosystem.
   expectAccept("V8b cli override", {
