@@ -321,11 +321,15 @@ dizi aynıdır.
    - `crossReview` **kapalıysa**: senin ekosistemin bunlardan biriyse **çapraz çağrı yok** —
      normal yoldan çağır.
    - `crossReview` **açıksa**: denetlenen işi **yazan** ekosistemden farklı bir hedefte
-     çalıştırırsın. Kapı 1'de yazan sensin (planı sen yazdın). Kapı 3'te yazan
+     çalıştırırsın. Kapı 1'de yazan, planın **güncel revizyonunu** yazan oturumun
+     ekosistemidir: bu revizyonu bu oturumda sen yazdıysan sensin; yazmadıysan (ör.
+     başarısız bir denetimden sonra başka bir araçta devam ediliyorsa) bilemezsin —
+     **kullanıcıya sor**, tahmin etme. Kapı 3'te yazan
      **executor'ın ekosistemidir** — kodu *Başka ekosistemdeki executor* ile başka bir
      ekosistemde yaptırdıysan o, yoksa sen. Yazan ekosistemin dışında bir hedef yoksa
-     başka yer yoktur: normal yoldan çağır ve kullanıcıya "çapraz denetim bu sahip için
-     mümkün değil" de. Yazan ekosistem seninki değilse ve sahip senin ekosisteminde de
+     çapraz denetim mümkün değildir: kullanıcıya "çapraz denetim bu sahip için mümkün
+     değil" de ve sahibi `crossReview` kapalıymış gibi çağır — senin ekosistemindeyse
+     normal yoldan, değilse etkin hedeflerinin ilkinde harici çağrıyla. Yazan ekosistem seninki değilse ve sahip senin ekosisteminde de
      üretiliyorsa, sahibi **normal yoldan** çağırabilirsin — zaten farklı bir model denetler.
 2. Hedef ekosistem, etkin hedefler listesinin **sırasındaki ilkidir** — `crossReview`
    açıksa yazan ekosistemi atlayarak. Kullanıcıya sorma.
@@ -486,9 +490,12 @@ Bu çağrı projeye **yazar**; o yüzden:
 1. **Her seferinde kullanıcıya sor**, varsayma: "Bu işin sahibi `<ekosistem>`'deki `<ad>`.
    İşi ona vereyim mi? `<ekosistem>` projede dosya değiştirecek." Hayır derse plan
    `approved/`'da o ekosistemde açılmayı bekler.
-2. Evet derse, çalıştırmadan önce **sen** `s:progress`'i doldur ve dosyayı
-   `in-progress/`'e taşı (*Havuz*'daki sırayla). `.agent-work/` altına yine yalnız sen
-   yazarsın. Başlangıç noktasını not et: `git rev-parse HEAD` ve `git status --short`.
+2. **Çalışma ağacı `.agent-work/` dışında temiz olmalı.** `git status --short` başka bir
+   değişiklik gösteriyorsa kullanıcıdan önce commit ya da stash etmesini iste — kirli bir
+   dosyaya executor'ın yaptığı değişiklik sonradan ayırt edilemez. Sonra **sen**
+   `s:progress`'i doldur ve dosyayı `in-progress/`'e taşı (*Havuz*'daki sırayla);
+   `.agent-work/` altına yine yalnız sen yazarsın. Başlangıcı not et: `git rev-parse HEAD`,
+   ve `.agent-work/` altındaki her dosyanın `git hash-object` özeti.
 3. Prompt'u kur: executor'ın **rol tanımının tamamı** (`.claude/agents/<ad>.md`,
    `.codex/agent-definitions/<ad>.md`, `.opencode/agents/<ad>.md`) + **plan dosyasının
    tamamı** + şu kurallar: "Yalnız planın `paths` alanındaki yollarda dosya değiştir.
@@ -504,9 +511,11 @@ Bu çağrı projeye **yazar**; o yüzden:
    | `opencode` | `opencode run` |
 
    `--agent` verme — rol prompt'ta. Model ayarı uygulanmaz, CLI'ın varsayılanı çalışır.
-5. **Sonucu doğrula** — executor'ın söylediğine değil diske bak: başlangıçtan beri değişen
-   dosyalar (`git diff --name-only <başlangıç>..HEAD` + `git status --short`, başlangıçta
-   zaten kirli olanları çıkararak). Planın `paths` dışında bir değişiklik varsa **dur**,
+5. **Sonucu doğrula** — executor'ın söylediğine değil diske bak. Değişen dosyalar:
+   `git diff --name-only <başlangıç>..HEAD` ile `git status --short`'un `.agent-work/`
+   dışındaki birleşimi (ağaç başlangıçta temizdi, hepsi executor'ındır). `.agent-work/`
+   altında özeti değişen, eklenen ya da silinen bir dosya da executor'ındır. Planın `paths`
+   dışında bir değişiklik ya da `.agent-work/`'te herhangi bir değişiklik varsa **dur**,
    kullanıcıya listeyi göster; geri alma kararı onundur. Çağrı hata verdiyse ya da çıktı
    `blocked` diyorsa kullanıcıya söyle, `s:progress`'e yaz, planı `in-progress/`'te bırak.
 6. `s:progress`'i güncelle, sonra *İşi bitirme*'ye geç. Kapı 3'te işi **yazan** ekosistem
