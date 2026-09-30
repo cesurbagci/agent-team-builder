@@ -24,8 +24,9 @@ sahipliği okur; `--check` bunu yakalamaz.
 - **Eski yapı:** manifest'te bir agent `model`, `model_reasoning_effort` ya da `opencode_model`
   taşıyorsa, ya da bir rol dosyasının frontmatter'ında `model:`/`effort:` varsa önce
   `team-builder-models` göçü gerekir — söyle, dur.
-- `.agent-source/project/instructions.md` yoksa önce `team-builder-upgrade` göçü gerekir
-  (routing bölümü o dosyadadır) — söyle, dur.
+- `.agent-source/project/instructions.md` yoksa, ya da manifest'te açık olan her anayasa
+  preset'inin işaret çifti (`<!-- c:<preset> -->` … `<!-- /c:<preset> -->`) o dosyada yoksa,
+  önce `team-builder-upgrade` göçü gerekir (routing bölümü o dosyadadır) — söyle, dur.
 
 ## 1. Klasörü bul
 
@@ -33,7 +34,8 @@ sahipliği okur; `--check` bunu yakalamaz.
 node "${CLAUDE_SKILL_DIR}/../team-builder-shared/module-scan.mjs" "<proje>"
 ```
 
-`unowned: <klasör>` satırları sahipsizdir. Kullanıcı bir klasör söylediyse şu anki sahibini
+`unowned: <klasör>` satırları sahipsizdir; `(only the files directly inside it)` diyen satırda
+klasörün alt klasörlerinin bir kısmı sahiplidir, doğrudan içindeki dosyalar sahipsizdir. Kullanıcı bir klasör söylediyse şu anki sahibini
 sor:
 
 ```bash
@@ -106,6 +108,9 @@ Sync bunları kopyalar; burada güncellemezsen ajanlar eskisini okur.
   `## Routing & Danışma`, `## Kısıtlar`. Yeni ve eski sahip dahil; başka rollerin bu yolu anan
   hariç tutmaları ("`<yol>` altına yazma — orası `<rol>`ün") da güncellenir. Yeni role
   danışacak rollerin danışma satırı eklenir.
+- Manifest'teki `agents[].extra_instructions`: sahipliğe dayanan her cümle (bir yolun sahibi
+  olduğunu ya da bir yola yazmadığını söyleyen) aynı şekilde uzlaştırılır — eski ve yeni sahip,
+  başka rollerin hariç tutmaları. Sync bunları Codex çıktısına olduğu gibi kopyalar.
 - Yeni rol: kendi rol dosyası (`agent-md-rich.md`).
 - 5. adımda `codeDocSync` değiştiyse kopyalanmış **bütün** tablolar: `instructions.md`'deki
   blok (`constitution.md`'deki render kuralı) ve tabloyu taşıyan **her** rol dosyası —

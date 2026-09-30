@@ -52,7 +52,8 @@ async function childDirs(dir) {
 }
 
 // Top-level folders nobody owns. A folder that holds routed subfolders (only
-// `apps/web/**` is routed) reports its unowned children instead of itself.
+// `apps/web/**` is routed) reports its unowned children instead of itself —
+// and itself too, marked partial, when files sit directly inside it.
 export async function unownedFolders(projectRoot) {
   const { root, routes } = await readRouting(projectRoot)
   const out = []
@@ -60,15 +61,33 @@ export async function unownedFolders(projectRoot) {
     if (ownerOf(routes, top)) continue
     const partly = routes.some(r => typeof r?.path === 'string' && routeContains(`${top}/**`, r.path))
     if (!partly) {
-      out.push(top)
+      out.push({ folder: top, partial: false })
       continue
     }
+    const entries = await fs.readdir(path.join(root, top), { withFileTypes: true })
+    if (entries.some(e => e.isFile() && !e.name.startsWith('.'))) out.push({ folder: top, partial: true })
     for (const child of await childDirs(path.join(root, top))) {
       const rel = `${top}/${child}`
-      if (!ownerOf(routes, rel)) out.push(rel)
+      if (!ownerOf(routes, rel)) out.push({ folder: rel, partial: false })
     }
   }
   return out
+}
+
+// The nearest existing ancestor of `full`, resolved: a folder that does not
+// exist yet may still sit under a link that leaves the project.
+async function realNearest(full) {
+  let current = full
+  for (;;) {
+    try {
+      return await fs.realpath(current)
+    } catch (error) {
+      if (error.code !== 'ENOENT') throw error
+      const parent = path.dirname(current)
+      if (parent === current) throw error
+      current = parent
+    }
+  }
 }
 
 export async function folderOwner(projectRoot, folder) {
@@ -78,8 +97,8 @@ export async function folderOwner(projectRoot, folder) {
   }
   const { root, routes } = await readRouting(projectRoot)
   const full = path.join(root, ...folder.split('/'))
-  const real = await fs.realpath(full).catch(() => null)
-  if (real !== null && !inside(root, real)) {
+  const real = await realNearest(full)
+  if (!inside(root, real)) {
     throw new Error(`${folder} resolves outside the project (${real})`)
   }
   return ownerOf(routes, folder)
@@ -94,9 +113,10 @@ async function selftest() {
   }
   try {
     const project = path.join(tmp, 'p')
-    for (const d of ['product/api', 'company', 'apps/web', 'apps/mobile', 'src/auth', 'node_modules/x', '.cache']) {
+    for (const d of ['product/api', 'company', 'apps/web', 'apps/mobile', 'lib/auth', 'src/auth', 'node_modules/x', '.cache']) {
       await fs.mkdir(path.join(project, d), { recursive: true })
     }
+    await fs.writeFile(path.join(project, 'lib', 'main.js'), '')
     await fs.mkdir(path.join(project, '.agent-source', 'agents'), { recursive: true })
     const manifest = {
       routing: [
@@ -104,12 +124,18 @@ async function selftest() {
         { path: 'apps/web/**', role: 'frontend-developer' },
         { path: 'src/**', role: 'backend-developer' },
         { path: 'src/auth/**', role: 'security-developer' },
+        { path: 'lib/auth/**', role: 'security-developer' },
       ],
     }
     await fs.writeFile(path.join(project, '.agent-source', 'agents', 'manifest.json'), JSON.stringify(manifest))
 
     const unowned = await unownedFolders(project)
-    assert(JSON.stringify(unowned) === JSON.stringify(['apps/mobile', 'company']), `unowned folders, got ${JSON.stringify(unowned)}`)
+    const expected = [
+      { folder: 'apps/mobile', partial: false },
+      { folder: 'company', partial: false },
+      { folder: 'lib', partial: true },
+    ]
+    assert(JSON.stringify(unowned) === JSON.stringify(expected), `unowned folders, got ${JSON.stringify(unowned)}`)
     assert((await folderOwner(project, 'src/auth/tokens')).role === 'security-developer', 'the most specific owner must win')
     assert((await folderOwner(project, 'src/billing')).role === 'backend-developer', 'a nested folder takes its parent route')
     assert((await folderOwner(project, 'company')) === null, 'an unowned folder has no owner')
@@ -122,6 +148,7 @@ async function selftest() {
       await fs.symlink(path.join(outside, 'secret'), path.join(project, 'linked'))
       assert(!(await unownedFolders(project)).includes('linked'), 'a directory link must not be listed')
       assert(await rejects(() => folderOwner(project, 'linked'), 'outside the project'), 'a folder resolving outside must be refused')
+      assert(await rejects(() => folderOwner(project, 'linked/new'), 'outside the project'), 'a future folder under an outside link must be refused')
 
       // An ancestor of the manifest that links outside the project.
       const p2 = path.join(tmp, 'p2')
@@ -129,7 +156,15 @@ async function selftest() {
       await fs.mkdir(path.join(outside, 'agents'), { recursive: true })
       await fs.writeFile(path.join(outside, 'agents', 'manifest.json'), JSON.stringify(manifest))
       await fs.symlink(path.join(outside, 'agents'), path.join(p2, '.agent-source', 'agents'))
-      assert(await rejects(() => unownedFolders(p2), 'not read'), 'a manifest behind a linked ancestor must not be read')
+      const originalReadFile = fs.readFile
+      const read = []
+      fs.readFile = (target, ...rest) => { read.push(String(target)); return originalReadFile(target, ...rest) }
+      try {
+        assert(await rejects(() => unownedFolders(p2), 'not read'), 'a manifest behind a linked ancestor must be refused')
+      } finally {
+        fs.readFile = originalReadFile
+      }
+      assert(!read.some(f => f.startsWith(outside)), `the outside manifest must never be read, read ${JSON.stringify(read)}`)
     }
   } finally {
     await fs.rm(tmp, { recursive: true, force: true })
@@ -144,7 +179,11 @@ if (isMain) {
     ? selftest()
     : args.length === 1
       ? unownedFolders(args[0]).then(list =>
-          console.log(list.length ? list.map(f => `unowned: ${f}`).join('\n') : 'every folder has an owner')
+          console.log(
+            list.length
+              ? list.map(f => (f.partial ? `unowned: ${f.folder} (only the files directly inside it)` : `unowned: ${f.folder}`)).join('\n')
+              : 'every folder has an owner'
+          )
         )
       : args.length === 2
         ? folderOwner(args[0], args[1]).then(owner =>
