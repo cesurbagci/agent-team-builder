@@ -39,7 +39,7 @@
 ### 6. Test / kalite  (`testing`)
 - **Constraint:** kritik yollar için test; coverage hedefi (varsayılan **%80**, kullanıcıya sor).
 - **Reviewer ekseni:** yeni mantık için test var mı, davranış testi (mock değil), kırılgan test.
-- **Rol/skill önerisi:** `qa` rolü; skill `tdd-workflow`/`e2e-testing` (stack'e göre `*-testing`).
+- **Rol/skill önerisi:** kod yazan her role TDD skill'i (`test-driven-development`/`tdd-workflow`) ve stack'in `*-testing`/`*-tdd` skill'i; ayrı bir uçtan uca test alanı varsa `qa` rolü + `e2e-testing`. Birim/entegrasyon testlerini kodun sahibi yazar.
 
 > Katalog sabit değil; stack/proje gereğine göre uyarla. Seçilmeyen boyut için kural/eksen üretme (YAGNI).
 

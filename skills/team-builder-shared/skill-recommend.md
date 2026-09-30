@@ -109,7 +109,7 @@ olup henüz yüklü olmayanlar. Sadece yüklülerle sınırlı kalma.
 | Swift/Apple | `swift-architecture-performance` | ECC |
 | Java/Spring | `springboot-patterns`, `springboot-tdd` | ECC |
 | Laravel/PHP | `laravel-patterns`, `laravel-tdd` | ECC |
-| Test/QA | `tdd-workflow`, `e2e-testing` | ECC / superpowers |
+| Test | `test-driven-development`, `tdd-workflow`, `e2e-testing` | superpowers / ECC |
 | Review | `code-review`, `security-review` | ECC |
 | MCP server | `mcp-builder` (`mcp-server-patterns`) | anthropic-skills / ECC |
 | Mimari/ADR | `architecture-advisor` | bu team-builder ailesi |
@@ -120,8 +120,12 @@ olup henüz yüklü olmayanlar. Sadece yüklülerle sınırlı kalma.
 ## Örnek rol eşleştirmeleri (başlangıç)
 - frontend developer → `frontend-design` (mandatory), `frontend-patterns` (when-needed)
 - backend developer → `backend-patterns`, `api-design`
-- reviewer → `code-review` (+ güvenlik kritikse `security-review`)
-- QA → `tdd-workflow`, `e2e-testing`
+- **kod yazan her rol** (developer'lar, database-engineer) → TDD skill'i
+  (`test-driven-development` ya da `tdd-workflow`) + stack'in test skill'i (`springboot-tdd`,
+  `python-testing` …), **gerektiğinde** — testlerini kendileri yazar
+- reviewer → `code-review` (+ güvenlik kritikse `security-review`); test skill'i gerekmez,
+  testleri denetler ama yazmaz
+- QA (yalnız ayrı e2e alanı varsa) → `e2e-testing`
 - architect → `architecture-advisor`
 
 ## Her skill için zorunluluk seviyesi (MUTLAKA sor — sade dille)

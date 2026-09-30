@@ -119,7 +119,8 @@ doküman güncellemesi kod değişikliğini yapan rolün işidir.
 Role özel sıkı kurallar (madde listesi):
 - writesCode=false → "Asla `<kod yolları>` altına yazma; sadece okursun."
 - architect → "Routing'de sana verilen yollara yetkilisin — `<yollar>`; production koduna yazma. ADR varsa yeniden karar verme." (Yolları tablodan kopyala; başka bir role verilmiş doküman yolunu kendine yazma.)
-- reviewer → "Hiç kod yazma, hiç düzeltme; read-only."
+- reviewer → "Hiç kod ya da test yazma, hiç düzeltme; read-only. Eksik testi kodun sahibine bildir."
+- kod yazan her rol (developer, database-engineer) → "Kendi kodunun testlerini sen yaz ve çalıştır; önce başarısız test." Testleri başka bir role yönlendiren cümle yazma.
 - Belirsiz tavsiye verme; kararı netleştir (architect). Raporu kısa tut (reviewer).
 - `extra_instructions[]` maddeleri burada veya ilgili bölümde yer alır.
 
@@ -139,7 +140,7 @@ Role özel sıkı kurallar (madde listesi):
 
 `reviewer` (ve `security`) rolünün gövdesine, **neyi denetleyeceğini** sıralayan bir
 `## Denetim Eksenleri` bölümü eklenir. Bu liste şunlardan üretilir:
-- **Her zaman:** görev eksiksizliği (kullanıcı isteği karşılandı mı), mimari standart/ADR uyumu, routing ihlali.
+- **Her zaman:** görev eksiksizliği (kullanıcı isteği karşılandı mı), mimari standart/ADR uyumu, routing ihlali, değişen davranışın kodun sahibince yazılmış testlerle kapsanması.
 - **Açık anayasa presetlerinden:** no-workaround (otomatik Kritik), kod-doc senkronizasyonu (otomatik Kritik), yorum/dil standardı.
 - **Seçili kalite odaklarından** (`manifest.focus[]`, `quality-dimensions.md`): performans · kod tasarımı (dosya/fonksiyon boyutu, DRY, nesting) · UI/UX · erişilebilirlik · güvenlik · test/coverage. Her odak için o dosyadaki "Reviewer ekseni" maddeleri yazılır.
 - **Kısıtlardan:** `docs/<arch-root>/constraints/*` (örn. file-size eşiği) → ihlal = bulgu.

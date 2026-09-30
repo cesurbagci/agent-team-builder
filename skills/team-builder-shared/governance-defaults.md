@@ -60,6 +60,17 @@ Her developer rolü için varsayılan:
   - Dokümantasyonu sahiplenen bir rol **varsa** — ölçü routing'dir, rol adı değil: kod yazmayan (`writesCode: false`) bir role verilmiş her yol o rolün yazma alanıdır — "Sadece kendi domain'inde (`<paths>`) kod yaz. `<o yol>` altına yazma — orası `<o rol>`ün; gerekiyorsa ona işaret et." Sahip architect ise yasak **tüm `docs/`**'tur, yalnız mimari kök değil. Doküman birden çok role bölündüyse her yol için ayrı satır yazılır. Böyle bir rol **yoksa** bu cümle **yazılmaz** — `docs/` özel sahipliği olmayan sıradan bir dizindir.
   - "Mimari etkili kararda (yeni bağımlılık, modül sınırı, yeni IPC/public API yüzeyi, şema/breaking change, güvenlik etkisi) implementasyonu durdurup **architect'e danış**." Architect **yoksa** danışma hedefi **kullanıcıdır**: "…implementasyonu durdurup kullanıcıya sor."
   - "Diğer domain'lerin kodunu okuyabilirsin ama yazamazsın."
+  - "Kendi kodunun testlerini sen yazar ve çalıştırırsın: yeni davranışta ya da hata
+    düzeltmesinde önce doğru nedenle başarısız olan testi yaz, sonra kodu, sonra projenin test
+    komutunu çalıştır."
+- **Testler kodun sahibinindir.** Bir domain'in test yolları (`src/test/**`, `__tests__/**`,
+  `*_test.go` vb.) o domain'in developer'ına aittir; ayrı bir role verilmez. Developer'ın
+  routing satırı test yollarını zaten kapsıyorsa ayrı satır gerekmez. Kullanıcı testleri
+  reviewer'a yazdırmak isterse şunu söyle: kod yazan bir rol kapı sahibi olamaz; kod
+  denetimi o zaman başka bir role kalır.
+- **Skill:** her developer'a TDD skill'i (`test-driven-development` — superpowers, ya da
+  `tdd-workflow` — ECC) ve stack'in test skill'i (ör. `springboot-tdd`, `python-testing`)
+  **gerektiğinde** olarak önerilir (`skill-recommend.md`).
 
 ## 3. Reviewer  (çekirdek, default: EKLE)
 
@@ -71,6 +82,8 @@ Her developer rolü için varsayılan:
   - "Kod yazma ve dosya değiştirme. `git diff`, `git status` ve ilgili mimari dokümanları okuyarak bulgu raporu üret."
   - Kod review kapısı **varsa** (plan kapısı kapalı, ya da `planGate.codeReviewer` bir ad taşıyor): "Her çıktı review gate'inden geçer." `planGate.codeReviewer: null` ise bu cümle **yazılmaz** — projede kod review kapısı yoktur.
   - "Bulguları **Kritik / Uyarı / Öneri** olarak grupla; önce gerçek riskleri yaz."
+  - "Testleri de denetle: değişen davranışı kapsıyorlar mı, yeni davranışta önce başarısız
+    olan test var mı. Test yazma; eksik testi kodun sahibine bildir."
   - "**Workaround pattern'leri otomatik Kritik'tir** (anayasa no-workaround). Kod-doc senkronizasyon eksiği de Kritik."
   - "Kritik/Yüksek bulgular merge'i bloklar."
 
@@ -80,8 +93,11 @@ Her developer rolü için varsayılan:
 
 ### QA / Test Engineer  (opsiyonel)
 - `writesCode`: true (yalnız test) · Claude önerisi: **sonnet** · effort: **medium** · `sandbox_mode`: **workspace-write**.
+- **Kapsam:** yalnız ayrı duran uçtan uca / kabul testleri (ör. `e2e/**`, `tests/acceptance/**`).
+  Birim ve entegrasyon testleri kodun sahibi developer'ındır — QA'ya verilmez. Ayrı bir e2e
+  alanı yoksa bu rolü önerme. Kod yazdığı için kapı sahibi olamaz.
 - `consults`: [architect] — architect takımda **yoksa boş `[]`**.
-- Kurallar: "Test stratejisini sen belirlersin; coverage hedefini takip et; testleri kodun gerçek davranışına göre yaz."
+- Kurallar: "Uçtan uca test stratejisini sen belirlersin; testleri kodun gerçek davranışına göre yaz; developer'ların birim ve entegrasyon testlerine yazma."
 
 ### Security Reviewer  (opsiyonel)
 - `writesCode`: false · Claude önerisi: **opus** · effort: **high** · `sandbox_mode`: **read-only**.
@@ -119,6 +135,11 @@ Her developer rolü için varsayılan:
     yapma."
   - "Şema değişikliği mimari etkiliyse (yeni veri deposu, büyük model değişikliği) architect'e
     danış; architect yoksa kullanıcıya sor."
+  - "Kendi kodunun (entity, repository, migration, sorgu) testlerini sen yazar ve
+    çalıştırırsın; önce başarısız test."
+- **Test yolları:** kendi yollarının test karşılıkları da ona verilir (ör.
+  `src/main/.../domain/**` → `src/test/.../domain/**`), iç içe satırla. Skill olarak TDD ve
+  stack'in test skill'i **gerektiğinde** önerilir.
 
 ### Doc Writer  (opsiyonel)
 - `writesCode`: false (yalnız doküman) · Claude önerisi: **haiku** · effort: **low** · `sandbox_mode`: **workspace-write** (yalnız `docs/`).
