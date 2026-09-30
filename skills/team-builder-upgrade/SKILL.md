@@ -140,8 +140,8 @@ açma ve kapatma ayrı ayrı anlatılır.
    yoldur.
 2. **Manifest'i yaz:** `constitution.planGate: true` **ve** kök `planGate` nesnesi
    (`planReviewer`, `codeReviewer` — ikisi de zorunlu, değer ad ya da `null`). Proje birden
-   çok ekosistemi hedefliyorsa çapraz denetimi de sor (setup Adım 7C, 3. soru) ve
-   `crossReview`'ı yaz; tek hedefte yazma.
+   çok ekosistemi hedefliyorsa **ve** en az bir sahip adı verildiyse çapraz denetimi de sor (setup Adım 7C, 3. soru) ve
+   `crossReview`'ı yaz; tek hedefte ya da iki sahip de `null` ise sorma ve yazma.
 3. **Bloğu ekle:** `<!-- c:planGate -->` … `<!-- /c:planGate -->`, şablondan render
    edilmiş, denetleyici adları doldurulmuş.
 4. **Skill kaynağını üret:** `.agent-source/skills/work-plan/SKILL.md` —

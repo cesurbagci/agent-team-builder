@@ -232,9 +232,10 @@ atama.
    > **Önerim: evet.**"
    → `manifest.planGate.crossReview` (`true`/`false`). Evet derse sahibin birden çok hedefte
    üretildiğini kontrol et (varsayılan `targetsDefault` öyledir); yalnız bir hedefteyse
-   çapraz denetim o sahip için işlemez — kullanıcıya söyle. Sıra önemlidir: sahip,
-   hedef listesinde çağıranınkinden sonra gelen ilk ekosistemde çalışır; kullanıcı belirli
-   bir aracı istiyorsa (ör. "denetim hep Codex'te") sahibin `targets`'ını ona göre sırala
+   çapraz denetim o sahip için işlemez — kullanıcıya söyle. Sıra önemlidir: sahip, kendi
+   hedef listesinde **baştan başlayarak** çağıranınkinden farklı ilk ekosistemde çalışır
+   (`[claude, codex, opencode]` için Claude'dan çağrılınca Codex, Codex'ten çağrılınca Claude);
+   kullanıcı belirli bir aracı istiyorsa (ör. "denetim hep Codex'te") sahibin `targets`'ını ona göre sırala
    ya da daralt. Tek hedef seçildiyse bu soruyu **sorma** ve alanı yazma.
 
 **Her cevaptan sonra state'i yaz** (`answers.planGate` altına tek tek) — kullanıcı
