@@ -242,7 +242,7 @@ The single source of truth is `.agent-source/`:
 
 - **Plugin (Claude Code, Codex):** the repo is its own marketplace for both tools
   (`.claude-plugin/`; `.agents/plugins/marketplace.json` + `.codex-plugin/`). The version lives
-  in `.claude-plugin/plugin.json` and `.codex-plugin/plugin.json` — keep the two equal.
+  in `.claude-plugin/plugin.json` and `.codex-plugin/plugin.json` — keep the two equal and in line with the branch: a release branch `X.Y.Z` carries `X.Y.Z-dev.N` while in development (N goes up with every push, so the marketplaces pick the change up) and `X.Y.Z` when released.
 - **Script install:** clone + `install.sh` / `install.ps1`, for all three tools. The skills find
   their scripts next to themselves; the script writes in the absolute path.
 
@@ -515,7 +515,7 @@ Tek gerçek kaynak `.agent-source/`'tur:
 
 - **Plugin (Claude Code, Codex):** repo iki araç için de kendi marketplace'idir
   (`.claude-plugin/`; `.agents/plugins/marketplace.json` + `.codex-plugin/`). Sürüm
-  `.claude-plugin/plugin.json` ve `.codex-plugin/plugin.json`'dadır — ikisini eşit tut.
+  `.claude-plugin/plugin.json` ve `.codex-plugin/plugin.json`'dadır — ikisini eşit ve dalla uyumlu tut: `X.Y.Z` dalı geliştirme sırasında `X.Y.Z-dev.N` taşır (her push'ta N artar, marketplace'ler değişikliği görür), yayında `X.Y.Z` olur.
 - **Script ile kurulum:** clone + `install.sh` / `install.ps1`, üç araç için de. Skill'ler
   betiklerini kendi yanlarında bulur; script mutlak yolu yazar.
 
