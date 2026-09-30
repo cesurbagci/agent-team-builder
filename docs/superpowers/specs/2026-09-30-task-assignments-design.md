@@ -54,8 +54,9 @@
   ekosistemi `by:`'a yazar.
 - `executor` adının değişmesi bugünkü gibi `revision` artırır.
 - **Kodun nerede yazıldığı ayrıca kaydedilir.** Atama bir tercihtir; gerçek, `s:progress`'e
-  yazılır: her çalıştırmada "yazan: <ekosistem>" satırı. Kod denetiminde `crossReview` bu
-  revizyonda kod yazmış **bütün** ekosistemleri dışarıda bırakır; hepsi dışarıda kalıyorsa
+  yazılır: her çalıştırmada "yazan: <ekosistem>" satırı. Kayıt **birikir**: `revision`
+  artsa da silinmez — önceki revizyonun kodu denetlenen işin parçasıdır. Kod denetiminde
+  `crossReview` bu işte kod yazmış **bütün** ekosistemleri dışarıda bırakır; hepsi dışarıda kalıyorsa
   bugünkü yedek kural (uyarı + normal çağrı) işler. Kayıt yoksa (eski iş) kullanıcıya sorulur.
 
 ### K3 — Varsayılanlar (çalışma anında çözülür)
@@ -89,9 +90,12 @@ bu satır da yoktur.
   çağıramayabilir): danışma gerekiyorsa `blocked: consult <rol>: <soru>` döner; çağıran
   danışmayı K3/`assignments`'a göre yapar ve executor'ı cevapla **aynı çalıştırmanın devamı**
   olarak yeniden çağırır:
-  - temiz ağaç şartı ve başlangıç noktası (HEAD + `.agent-work/` özetleri) yalnız **ilk**
-    çağrıda alınır; devam çağrıları aynı başlangıca göre doğrulanır — her çağrıdan sonra
+  - temiz ağaç şartı ve **kod** başlangıcı (HEAD) yalnız **ilk** çağrıda alınır; devam
+    çağrıları kod değişikliklerini bu başlangıca göre doğrular — her çağrıdan sonra
     değişenler planın `paths`'i içinde olmalı;
+  - `.agent-work/` özetleri **her çağrıdan hemen önce** yeniden alınır — çağıranın arada
+    yaptığı meşru `s:progress` güncellemesinden sonra; çağrıdan sonraki fark executor'ındır.
+    Önce çağrı doğrulanır, sonra çağıran günceller;
   - devam prompt'u: rol + plan + danışma cevabı + o ana kadarki değişiklik listesi ve
     `s:progress`;
   - cevap planın içeriğini değiştiriyorsa bugünkü `revision` artırma ve `draft/`'a dönme
