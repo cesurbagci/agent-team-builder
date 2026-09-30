@@ -104,7 +104,7 @@ Kapı 1 ve kapı 3 için **aynı**:
      yüzden izin **rolden değil çağrı türünden** gelir. Her ekosistemde o CLI'ın en
      kısıtlayıcı mekanizması kullanılır — ve mekanizmanın gücü ekosisteme göre değişir,
      bkz. *Salt-okunurluk ne kadar zorlanıyor*.
-   - **Zaman aşımı: varsayılan 10 dakika.** Etkileşimsiz koşuda izin istemine takılan bir
+   - **Zaman aşımı: varsayılan 60 dakika (max effort denetimler 40 dakikayı bulabilir).** Etkileşimsiz koşuda izin istemine takılan bir
      çağrı da burada yakalanır; süresiz bekleme kapıyı sessizce kilitler. Süre dolunca
      **süreç ağacının tamamı** sonlandırılır — CLI'lar alt süreç açar, yalnız üstü
      öldürmek çağrıyı arkada bırakır.
@@ -442,7 +442,7 @@ runtime davranışını ve doğrulama kurallarını değiştirir.
 | B-N11 | Kayıt ekosistemi sahibin etkin hedeflerinde değil | `planReviewPassed` **yanlış** |
 | B-N12 | Hedef `.agent-work/`'e yazmaya kalktı | `codex`/`claude`'da mekanizma engeller; `opencode`'da **engellenmez** — koruma sözleşmeseldir ve kaydı yalnız çağıran yazar |
 | B-N13 | `by: user/<ad>` kaydında `reasons` boş | **Reddedilir** — gerekçesiz atlama yok |
-| B-N14 | Çağrı 10 dakikayı aştı | Zaman aşımı hatası; kayıt yazılmaz; süreç ağacı sonlandırılır |
+| B-N14 | Çağrı 60 dakikayı aştı | Zaman aşımı hatası; kayıt yazılmaz; süreç ağacı sonlandırılır |
 | B-N15 | Çıplak `by: user` (adsız) | **Reddedilir** — feragat bir sahibe bağlı olmalı |
 | B-N16 | Atlama kaydı var, sonra kapı sahibi değişti | `planReviewPassed` **yanlış** — feragat de düşer, onay gibi |
 | B-N17 | Blok içinde bilinmeyen ya da tekrarlanan alan | **`protocol_error`** |

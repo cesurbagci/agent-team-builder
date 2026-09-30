@@ -490,7 +490,7 @@ dizi aynıdır.
      konfigürasyonu yüklenmez ve *"`.agent-work/` altına yalnız sen yazarsın"* kuralı
      geçerlidir. Bu, **kaydın bütünlüğünü** korur; hedefin depoya hiç dokunamayacağını
      garanti etmez. Bir hedef seçerken bunu hesaba kat.
-   - **Zaman aşımı 10 dakika.** Süre dolarsa süreç ağacının tamamını sonlandır.
+   - **Zaman aşımı 60 dakika** — max effort denetimler 40 dakikayı bulabilir. Bekledikçe kullanıcıya süreyi bildir. Süre dolarsa süreç ağacının tamamını sonlandır.
    - Manifest'te `planGate.cli.<ekosistem>` varsa çalıştırılabilir **yol** olarak onu
      kullan; argümanlar yine yukarıdaki tablodandır.
 

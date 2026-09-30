@@ -1,6 +1,6 @@
 {
   "name": "team-builder",
-  "version": "1.1.9",
+  "version": "1.1.10",
   "description": "Set up and maintain a team of AI coding agents from one canonical source (.agent-source/): generates Claude Code, Codex and OpenCode agent configuration, keeps it in sync and manages models.",
   "author": {
     "name": "cesurbagci",
