@@ -363,6 +363,10 @@ etkin hedefleri; CLI'ı bu makinede kurulu olanlar) yaz:
 | Kod denetimi | reviewer | codex | claude, codex, opencode |
 | Danışma | architect | claude | claude, codex, opencode |
 
+"Seçilebilir" **yalnız** bu iki koşulla daraltılır. `crossReview` onu daraltmaz; yalnız
+varsayılanı belirler. Kullanıcı denetimi işi yazan araca verebilir (bkz. *Rolün aracını
+çöz*); tabloda o satıra "çapraz denetim olmaz" notu düş.
+
 "Değiştirmek istediğini yaz; hepsi uygunsa `tamam`." **Yalnız değiştirilen satırları**
 `assignments`'a yaz; hiçbiri değişmezse alanı hiç yazma — varsayılanlar plana dondurulmaz.
 
@@ -624,8 +628,9 @@ Kullanıcıya bu üç seçeneği bu sırayla sun:
 1. **Tekrar dene** — taşıma hatalarında anlamlı; protokol hatasında genelde değil.
 2. **`<sahip>`'i `<başka ekosistem>`'de çalıştır** — yalnız sahibin **etkin
    hedeflerinden**, rol tanımı dosyası **gerçekten var** olanları ve **az önce
-   başarısız olan ekosistem dışındakileri** listele; `crossReview` açıksa işi **yazan
-   ekosistemi de** listeleme — çapraz denetim istenmiştir. Geriye ekosistem kalmıyorsa bu
+   başarısız olan ekosistem dışındakileri** listele. `crossReview` açıksa işi **yazan**
+   ekosistemi en sona koy ve yanına "çapraz denetim olmaz" yaz. Seçim kullanıcınındır
+   (bkz. *Rolün aracını çöz*). Geriye ekosistem kalmıyorsa bu
    maddeyi **hiç gösterme** — aynı hedefi tekrar önermek 1. seçeneğin kopyasıdır.
    Agent adı uydurma; öneri manifest'ten türer.
 3. **Bu kapıyı atla** — **tek istisna budur: bu seçenek kaydı yazar.** Kullanıcıdan
