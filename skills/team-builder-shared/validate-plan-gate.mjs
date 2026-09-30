@@ -165,8 +165,10 @@ export async function validatePlanGateArtifacts(rootDir) {
       // New plans name the executor only; its tool is resolved when the work
       // runs, or set explicitly under `assignments`.
       const executorLine = /^executor:(.*)$/m.exec(fm)
-      if (executorLine && executorLine[1].includes('/')) {
-        errors.push('templates/plan.md executor must be a bare agent name (no <ekosistem>/)')
+      const executorValue = executorLine ? executorLine[1].trim() : ''
+      // One line, a name or placeholder: no block scalar, no continuation, no slash.
+      if (executorLine && !/^<?[A-Za-zçğıöşüİ-]+>?$/.test(executorValue)) {
+        errors.push('templates/plan.md executor must be a bare agent name on its line (no <ekosistem>/)')
       }
       // `reviews` is not a scalar: both gates append to their own array. The
       // keys have to live under `reviews` and start as empty lists — an
@@ -431,6 +433,17 @@ async function runSelftest() {
       'a deleted skill template',
       () => fs.rm(skillPath)
     )
+
+    // --- executor is a bare name -------------------------------------------
+    for (const [label, value] of [
+      ['inline qualified executor', 'executor: claude/dev'],
+      ['block-scalar qualified executor', 'executor:\n  claude/dev'],
+      ['folded qualified executor', 'executor: >-\n  claude/dev'],
+    ]) {
+      await expectError('executor must be a bare agent name', label, () =>
+        fs.writeFile(planPath, GOOD_PLAN.replace('executor: dev', value))
+      )
+    }
 
     // --- plan markers --------------------------------------------------------
     await expectError('missing marker s:questions', 'a dropped marker', () =>

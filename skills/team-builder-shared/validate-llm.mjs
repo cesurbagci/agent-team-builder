@@ -216,6 +216,8 @@ async function runSelftest() {
 
   // Option-shaped values would be read as flags by an external CLI call.
   expectError('flag-shaped model', { defaults: { opencode: { model: '--attach=https://x.example/m' } } }, 'shared', 'harf ya da rakamla başlamalı')
+  // Leading hyphen alone, with nothing else the pattern rejects.
+  expectError('leading hyphen model', { defaults: { codex: { model: '--model' } } }, 'shared', 'harf ya da rakamla başlamalı')
   expectError('model with =', { defaults: { codex: { model: 'gpt=5' } } }, 'shared', 'harf ya da rakamla başlamalı')
   expectError('flag-shaped effort', { defaults: { codex: { effort: '-c' } } }, 'shared', 'yalnız küçük harf')
   expectClean('provider model', { defaults: { opencode: { model: 'openrouter/anthropic/claude-sonnet-4.5' } } }, 'shared')

@@ -219,7 +219,9 @@ bakılmaz, ama geçiş bittiğinde koşul sağlanmıyorsa hata vardır.
    yolun sahibi developer'ı belirle. `executor` odur — **yalnız adı** (`backend-developer`),
    projedeki `TEMPLATE.md` eski biçimi (`<ekosistem>/<agent-adı>`) gösterse bile. Aracı plana
    yazma: iş yapılacağı an çözülür (*Rolün aracını çöz*).
-   Yukarıdaki üç geçerlilik kontrolünü uygula; sağlanmıyorsa plan yazma, kullanıcıya sor.
+   Plan yazarken yukarıdaki **0–2.** kontrolleri uygula; sağlanmıyorsa plan yazma, kullanıcıya
+   sor. 3. kontrol (senin oturumun mu) plan yazmayı engellemez — yalnız işe başlarken kodu
+   senin mi yazacağını, yoksa *Başka ekosistemdeki executor* ile mi yaptıracağını belirler.
    - İş birden çok domain'e dokunuyorsa **tek** `executor` seç (ağırlık merkezine göre) ve
      diğer sahiplere danışmayı `s:how` bölümüne yaz. İki executor yazma.
 2. **Araç ataması** — yalnız manifest'te `planGate.taskAssignments: true` ise, plan
@@ -458,7 +460,8 @@ dizi aynıdır.
      Codex `.codex/agents/<ad>.toml` (`model`, `model_reasoning_effort`) →
      `--model=<m> -c model_reasoning_effort="<e>"`; OpenCode `.opencode/agents/<ad>.md`
      (`model:`) → `--model=<m>`. Değer yoksa bayrağı verme. Değeri **ayrı argüman olarak
-     değil**, `--bayrak=<değer>` biçiminde bağla. Model `^[A-Za-z0-9][A-Za-z0-9._:/@+\[\]-]*$`,
+     değil**, `--bayrak=<değer>` biçiminde bağla ve **bütün argümanı tek tırnağa al**
+     (`'--model=opus[1m]'`) — köşeli parantez tırnaksız kabukta dosya deseni olarak açılır. Model `^[A-Za-z0-9][A-Za-z0-9._:/@+\[\]-]*$`,
      effort `^[a-z]+$` desenine uymuyorsa **çağırma**, kullanıcıya söyle — bayrak gibi
      okunabilen bir değer çağrıyı başka bir yere yönlendirebilir. OpenCode'da effort
      uygulanamaz (`reasoningEffort` sağlayıcı seçeneğidir, `--variant` değil): rolün effort'u
@@ -655,10 +658,10 @@ gömülür; kendi konfigürasyonu yüklenmez. Rol tanımı dosyaları:
 | `codex` | `.codex/agent-definitions/<ad>.md` |
 | `opencode` | `.opencode/agents/<ad>.md` |
 
-Konfigürasyon yüklenmediği için agent'a atanmış model ve effort/variant ayarları
-**uygulanmaz** — çağrı, o CLI'ın oturumdaki varsayılan modeliyle koşar. Bu bilinçli bir
-sınırdır: denetim kararı rol metnine dayanır. Sonucu şudur — aynı planı iki ayrı
-ekosistemdeki aynı role denetletirsen **birebir aynı kararı bekleme**.
+Konfigürasyon (`--agent`) yüklenmez; rolün model ve effort'u yukarıdaki **Rolün modeli**
+kuralıyla bayrak olarak verilir. Tek istisna OpenCode effort'udur — uygulanamaz, kullanıcıya
+söylenir. Aynı planı iki ayrı ekosistemdeki aynı role denetletirsen **birebir aynı kararı
+bekleme**.
 
 ## Kapı sahipleri değişirse
 

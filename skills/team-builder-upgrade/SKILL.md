@@ -167,9 +167,12 @@ olabilirler ve yeniden render etmek o düzenlemeyi sessizce siler.
 ### Plan kapısı açıkken: ayarları değiştir ya da skill'i güncelle
 
 Plan kapısı zaten açıksa kapatıp açmak gerekmez:
-- **"İş başına araç atamasını aç/kapat"** → yalnız `planGate.taskAssignments`'ı yaz. Kapatınca
+- **"İş başına araç atamasını aç/kapat"** → `planGate.taskAssignments`'ı yaz. Kapatınca
   planlardaki `assignments` silinmez, yok sayılır. **"Çapraz denetimi aç/kapat"** →
-  `planGate.crossReview`. Manifest'i doğrula, sync çalıştır.
+  `planGate.crossReview`. **Açarken** önce projedeki `work-plan` skill'inin bu ayarı
+  tanıdığını kontrol et (`taskAssignments` / `crossReview` geçiyor mu); geçmiyorsa ayar
+  hiçbir şey yapmaz — önce aşağıdaki güncellemeyi yap. Sonra manifest'i doğrula, sync
+  çalıştır.
 - **"Plan kapısı skill'ini güncelle"** (proje eski bir team-builder sürümüyle kurulduysa yeni
   kurallar — çapraz denetim, başka araçta işi yapan, araç ataması — ona ulaşmamıştır):
   1. `.agent-source/skills/work-plan/SKILL.md`'yi güncel şablondan `docLanguage`'de yeniden

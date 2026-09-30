@@ -113,7 +113,8 @@ Hedef aracın üretilmiş ajan dosyasından model ve effort okunur ve çağrıya
 | OpenCode | `.opencode/agents/<ad>.md` `model` | `--model=<m>` |
 
 - **Seçenek enjeksiyonuna karşı:** değer bir bayrak gibi yorumlanamamalı. Model
-  `^[A-Za-z0-9][A-Za-z0-9._:/@+-]*$`'e, effort `^[a-z]+$`'e uymalı (tire ile başlayamaz,
+  `^[A-Za-z0-9][A-Za-z0-9._:/@+\[\]-]*$`'e (köşeli parantez Claude'un `opus[1m]` adları
+  için; bütün argüman tek tırnağa alınır, kabuk onu desen olarak açmaz), effort `^[a-z]+$`'e uymalı (tire ile başlayamaz,
   boşluk/`=`/tırnak yok); uymazsa çağrı **yapılmaz**, kullanıcıya söylenir. Değer her zaman
   `--bayrak=<değer>` biçiminde bağlanır, ayrı argüman olarak değil. Aynı desen
   `validate-llm.mjs`'e de eklenir: böyle bir değer `llm.json`'a hiç giremez.
