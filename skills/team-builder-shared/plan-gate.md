@@ -1,6 +1,8 @@
 # plan-gate.md — Plan Kapısı Kurulum Sözleşmesi
 
 > Paylaşılan referans. Anayasa KARAR 5 (`planGate`) açıkken geçerlidir.
+> Kapı sahipleri ve executor başka bir ekosistemde olabilir; çağrı kuralları `work-plan`
+> skill'indedir (*Başka ekosistemdeki kapı sahibi*, *Başka ekosistemdeki executor*).
 > **Bu dosya kurulum sözleşmesidir:** hangi dosyalar üretilir, veri modeli nedir, neler
 > doğrulanır. **Runtime prosedürünü anlatmaz** — o, projeye kurulan `work-plan`
 > skill'inin tek sorumluluğudur. Aynı kuralı iki yerde anlatmak drift üretir.

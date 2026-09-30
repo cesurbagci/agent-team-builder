@@ -184,8 +184,9 @@ seçerken ve yarım işi devam ettirirken de — üçünü birden doğrula:
 3. O ekosistem **senin oturumunun ekosistemi**.
 
 İlk ikisi sağlanmıyorsa plan bozuktur — işletme, kullanıcıya bildir. Üçüncüsü
-sağlanmıyorsa plan geçerlidir ama **çalıştırma yetkisi sende değildir**; o ekosistemde
-açılmayı bekler.
+sağlanmıyorsa plan geçerlidir ama **kodu sen yazmazsın**: ya o ekosistemde açılmayı bekler,
+ya da kullanıcı onaylarsa işi executor'a **o ekosistemde** yaptırırsın — bkz. *Başka
+ekosistemdeki executor*.
 
 ### Klasör değişmezleri
 
@@ -257,7 +258,8 @@ o iş için kural atlanır.
 - **"Şunu yapalım" / "şu ikisini yapalım"** → kullanıcı seçer. **Sıra dayatma** — havuz
   FIFO değildir.
 - Seçilen dosya için `planReviewPassed`'ı ve `executor` geçerliliğini **yeniden doğrula** —
-  sahibi değişmiş, plan düzenlenmiş ya da agent projeden çıkarılmış olabilir.
+  sahibi değişmiş, plan düzenlenmiş ya da agent projeden çıkarılmış olabilir. Executor başka
+  bir ekosistemdeyse *Başka ekosistemdeki executor*'a geç.
 - Doğruysa **önce** `s:progress`'i doldur, **sonra** dosyayı `.agent-work/in-progress/`'e
   taşı. Sıra bu; boş `s:progress` ile `in-progress/`'e girilmez.
   - `s:progress` sentinel içeriyorsa (iş hiç başlamamış): sentinel'i sil, yerine son durum
@@ -318,11 +320,15 @@ dizi aynıdır.
 1. Sahibin **etkin hedeflerini** çöz (kendi `targets`'ı, yoksa `targetsDefault`).
    - `crossReview` **kapalıysa**: senin ekosistemin bunlardan biriyse **çapraz çağrı yok** —
      normal yoldan çağır.
-   - `crossReview` **açıksa**: senin ekosisteminden **farklı** bir hedef varsa çapraz çağrı
-     yaparsın. Sahip yalnız senin ekosisteminde üretiliyorsa başka yer yoktur: normal
-     yoldan çağır ve kullanıcıya "çapraz denetim bu sahip için mümkün değil" de.
+   - `crossReview` **açıksa**: denetlenen işi **yazan** ekosistemden farklı bir hedefte
+     çalıştırırsın. Kapı 1'de yazan sensin (planı sen yazdın). Kapı 3'te yazan
+     **executor'ın ekosistemidir** — kodu *Başka ekosistemdeki executor* ile başka bir
+     ekosistemde yaptırdıysan o, yoksa sen. Yazan ekosistemin dışında bir hedef yoksa
+     başka yer yoktur: normal yoldan çağır ve kullanıcıya "çapraz denetim bu sahip için
+     mümkün değil" de. Yazan ekosistem seninki değilse ve sahip senin ekosisteminde de
+     üretiliyorsa, sahibi **normal yoldan** çağırabilirsin — zaten farklı bir model denetler.
 2. Hedef ekosistem, etkin hedefler listesinin **sırasındaki ilkidir** — `crossReview`
-   açıksa seninkini atlayarak. Kullanıcıya sorma.
+   açıksa yazan ekosistemi atlayarak. Kullanıcıya sorma.
 3. Hedefin **rol tanımını oku**:
    `.claude/agents/<ad>.md`, `.codex/agent-definitions/<ad>.md`,
    `.opencode/agents/<ad>.md`. Dosya yoksa bu bir hatadır (aşağıya bak).
@@ -471,6 +477,41 @@ Bu durum aşağıdaki *Hata hâlinde kullanıcıya ne sorarsın* akışına **gi
 sunulmadan denetim doğrudan tekrarlanır, tıpkı kapı 1 ve kapı 3'ün aynı-ekosistem
 davranışında olduğu gibi.
 
+## Başka ekosistemdeki executor
+
+Seçilen planın `executor`'ı başka bir ekosistemdeyse (ör. sen Claude'dasın, plan
+`codex/backend-developer` diyor) işi o ekosistemde **harici CLI çağrısıyla** yaptırabilirsin.
+Bu çağrı projeye **yazar**; o yüzden:
+
+1. **Her seferinde kullanıcıya sor**, varsayma: "Bu işin sahibi `<ekosistem>`'deki `<ad>`.
+   İşi ona vereyim mi? `<ekosistem>` projede dosya değiştirecek." Hayır derse plan
+   `approved/`'da o ekosistemde açılmayı bekler.
+2. Evet derse, çalıştırmadan önce **sen** `s:progress`'i doldur ve dosyayı
+   `in-progress/`'e taşı (*Havuz*'daki sırayla). `.agent-work/` altına yine yalnız sen
+   yazarsın. Başlangıç noktasını not et: `git rev-parse HEAD` ve `git status --short`.
+3. Prompt'u kur: executor'ın **rol tanımının tamamı** (`.claude/agents/<ad>.md`,
+   `.codex/agent-definitions/<ad>.md`, `.opencode/agents/<ad>.md`) + **plan dosyasının
+   tamamı** + şu kurallar: "Yalnız planın `paths` alanındaki yollarda dosya değiştir.
+   `.agent-work/`'e dokunma. Bitince değiştirdiğin dosyaları ve durumu (`done` ya da
+   `blocked: <neden>`) yaz." Prompt'u *Başka ekosistemdeki kapı sahibi*'ndeki gibi **geçici
+   bir dosyadan stdin'e** ver; kabuk dizesine koyma.
+4. CLI'ı **proje kökünde** çalıştır (`planGate.cli` varsa o yolu kullan):
+
+   | Ekosistem | Komut |
+   |---|---|
+   | `claude` | `claude -p --permission-mode acceptEdits` |
+   | `codex` | `codex exec --sandbox workspace-write -` |
+   | `opencode` | `opencode run` |
+
+   `--agent` verme — rol prompt'ta. Model ayarı uygulanmaz, CLI'ın varsayılanı çalışır.
+5. **Sonucu doğrula** — executor'ın söylediğine değil diske bak: başlangıçtan beri değişen
+   dosyalar (`git diff --name-only <başlangıç>..HEAD` + `git status --short`, başlangıçta
+   zaten kirli olanları çıkararak). Planın `paths` dışında bir değişiklik varsa **dur**,
+   kullanıcıya listeyi göster; geri alma kararı onundur. Çağrı hata verdiyse ya da çıktı
+   `blocked` diyorsa kullanıcıya söyle, `s:progress`'e yaz, planı `in-progress/`'te bırak.
+6. `s:progress`'i güncelle, sonra *İşi bitirme*'ye geç. Kapı 3'te işi **yazan** ekosistem
+   executor'ınkidir (`crossReview` bunu dışarıda bırakır).
+
 ### Hata hâlinde kullanıcıya ne sorarsın
 
 1. ve 2. seçenek **kendiliğinden kayıt yazmaz**; plan bulunduğu klasörde kalır ve
@@ -480,8 +521,8 @@ Kullanıcıya bu üç seçeneği bu sırayla sun:
 1. **Tekrar dene** — taşıma hatalarında anlamlı; protokol hatasında genelde değil.
 2. **`<sahip>`'i `<başka ekosistem>`'de çalıştır** — yalnız sahibin **etkin
    hedeflerinden**, rol tanımı dosyası **gerçekten var** olanları ve **az önce
-   başarısız olan ekosistem dışındakileri** listele; `crossReview` açıksa **senin
-   ekosistemini de** listeleme — çapraz denetim istenmiştir. Geriye ekosistem kalmıyorsa bu
+   başarısız olan ekosistem dışındakileri** listele; `crossReview` açıksa işi **yazan
+   ekosistemi de** listeleme — çapraz denetim istenmiştir. Geriye ekosistem kalmıyorsa bu
    maddeyi **hiç gösterme** — aynı hedefi tekrar önermek 1. seçeneğin kopyasıdır.
    Agent adı uydurma; öneri manifest'ten türer.
 3. **Bu kapıyı atla** — **tek istisna budur: bu seçenek kaydı yazar.** Kullanıcıdan
