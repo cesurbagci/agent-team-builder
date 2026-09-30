@@ -166,8 +166,12 @@ export async function validatePlanGateArtifacts(rootDir) {
       // runs, or set explicitly under `assignments`.
       const executorLine = /^executor:(.*)$/m.exec(fm)
       const executorValue = executorLine ? executorLine[1].trim() : ''
+      // An indented line right after `executor:` continues its value in YAML.
+      const continued = executorLine
+        ? /^[ \t]+\S/.test(fm.slice(executorLine.index + executorLine[0].length + 1).split('\n')[0] ?? '')
+        : false
       // One line, a name or placeholder: no block scalar, no continuation, no slash.
-      if (executorLine && !/^<?[A-Za-zçğıöşüİ-]+>?$/.test(executorValue)) {
+      if (executorLine && (continued || !/^<?[A-Za-zçğıöşüİ-]+>?$/.test(executorValue))) {
         errors.push('templates/plan.md executor must be a bare agent name on its line (no <ekosistem>/)')
       }
       // `reviews` is not a scalar: both gates append to their own array. The
@@ -439,6 +443,7 @@ async function runSelftest() {
       ['inline qualified executor', 'executor: claude/dev'],
       ['block-scalar qualified executor', 'executor:\n  claude/dev'],
       ['folded qualified executor', 'executor: >-\n  claude/dev'],
+      ['continued executor', 'executor: dev\n  claude/dev'],
     ]) {
       await expectError('executor must be a bare agent name', label, () =>
         fs.writeFile(planPath, GOOD_PLAN.replace('executor: dev', value))
