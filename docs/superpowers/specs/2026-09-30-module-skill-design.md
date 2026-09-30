@@ -50,8 +50,11 @@ başına yetmez.
    özellikle setup'ın ürettiği `modules/*/docs/**` gibi doküman satırlarıyla (`modules/auth/**`
    ile kısmen çakışır) — yeniden düzenleme öner: ör. `modules/auth/**` + `modules/auth/docs/**`
    → doküman sahibi. Doküman sahipliğini koru; kullanıcı onaylamazsa **hiçbir şey yazmadan dur**.
-   Sonra: kod yazan her rolün hâlâ en az bir yolu var mı (taşıma sonrası eski sahip dahil),
-   plan kapısı açıksa her hedef ekosistemde uygun executor kalıyor mu — değilse dur, söyle.
+   Sonra: **yazabilen** her rolün — kod yazanlar ve `workspace-write` doküman rolleri —
+   hâlâ en az bir yolu var mı (taşıma sonrası eski sahip dahil), plan kapısı açıksa her hedef
+   ekosistemde uygun executor kalıyor mu — değilse dur, söyle. **Önerilen manifest'in
+   tamamını dosyaya yazmadan önce doğrula** (geçici bir kopyada `validate-manifest.mjs`);
+   geçersizse hiçbir kaynak dosya yazılmaz.
 5. **İsteğe bağlı eşleşmeler** — yalnız ilgiliyse sor:
    - kod–doküman kuralı açıksa: bu klasör değişince güncellenecek doküman (`codeDocSync`
      satırı; `instructions.md` bloğu `constitution.md`'deki render kuralıyla manifest'ten
@@ -60,9 +63,13 @@ başına yetmez.
 6. **Metin kaynaklarını güncelle** — sync bunları kopyalar, manifest'ten üretmez:
    - `project/instructions.md` → routing bölümü (tablo + kurallar), `routing.md`'nin yazım
      kuralıyla;
-   - etkilenen **her** rol dosyası (`.agent-source/agents/<ad>.md`): yeni/taşınan yolun sahibi
-     ve eski sahibi için domain + "Birincil kod kaynakları" + `## Routing & Danışma`; yeni role
-     danışacak rollerin danışma satırı (`agent-md-rich.md` kalıbı);
+   - etkilenen **her** rol dosyası (`.agent-source/agents/<ad>.md`): yolun sahipliğine bağlı
+     **bütün** bölümler `agent-md-rich.md` kalıbına göre uzlaştırılır — rol sınırları, domain +
+     "Birincil kod kaynakları", çalışma dizinleri ve yasak dizinler, kısıtlar, `## Routing &
+     Danışma`. Yeni ve eski sahip dahil; başka rollerin bu yolu anan hariç tutmaları da
+     ("`<yol>` altına yazma — orası `<rol>`ün") güncellenir. Yeni role danışacak rollerin
+     danışma satırı eklenir;
+   - 5. adımda `codeDocSync` değiştiyse `instructions.md`'deki kopyalanmış tablo/blok da;
    - yeni rol: kendi rol dosyası;
    - hedeflenen ekosistemlerin roster dosyaları: `project/codex-team.md`,
      `project/opencode-team.md` (varsa).
