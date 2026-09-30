@@ -69,7 +69,9 @@ başına yetmez.
      Danışma`. Yeni ve eski sahip dahil; başka rollerin bu yolu anan hariç tutmaları da
      ("`<yol>` altına yazma — orası `<rol>`ün") güncellenir. Yeni role danışacak rollerin
      danışma satırı eklenir;
-   - 5. adımda `codeDocSync` değiştiyse `instructions.md`'deki kopyalanmış tablo/blok da;
+   - 5. adımda `codeDocSync` değiştiyse kopyalanmış **bütün** tabloları: `instructions.md`'deki
+     blok ve tabloyu taşıyan **her** rol dosyası (`agent-md-rich.md` — reviewer dahil,
+     sahipliği değişmemiş olsa da);
    - yeni rol: kendi rol dosyası;
    - hedeflenen ekosistemlerin roster dosyaları: `project/codex-team.md`,
      `project/opencode-team.md` (varsa).
