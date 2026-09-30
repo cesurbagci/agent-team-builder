@@ -166,10 +166,12 @@ export async function validatePlanGateArtifacts(rootDir) {
       // runs, or set explicitly under `assignments`.
       const executorLine = /^executor:(.*)$/m.exec(fm)
       const executorValue = executorLine ? executorLine[1].trim() : ''
-      // An indented line right after `executor:` continues its value in YAML.
-      const continued = executorLine
-        ? /^[ \t]+\S/.test(fm.slice(executorLine.index + executorLine[0].length + 1).split('\n')[0] ?? '')
-        : false
+      // In YAML the first non-blank line after `executor:` continues the value
+      // when it is indented and is not a comment.
+      const nextLine = executorLine
+        ? fm.slice(executorLine.index + executorLine[0].length).split('\n').slice(1).find(l => l.trim() !== '')
+        : undefined
+      const continued = nextLine !== undefined && /^[ \t]+[^\s#]/.test(nextLine)
       // One line, a name or placeholder: no block scalar, no continuation, no slash.
       if (executorLine && (continued || !/^<?[A-Za-zçğıöşüİ-]+>?$/.test(executorValue))) {
         errors.push('templates/plan.md executor must be a bare agent name on its line (no <ekosistem>/)')
@@ -444,6 +446,7 @@ async function runSelftest() {
       ['block-scalar qualified executor', 'executor:\n  claude/dev'],
       ['folded qualified executor', 'executor: >-\n  claude/dev'],
       ['continued executor', 'executor: dev\n  claude/dev'],
+      ['continued executor after a blank line', 'executor: dev\n\n  claude/dev'],
     ]) {
       await expectError('executor must be a bare agent name', label, () =>
         fs.writeFile(planPath, GOOD_PLAN.replace('executor: dev', value))
