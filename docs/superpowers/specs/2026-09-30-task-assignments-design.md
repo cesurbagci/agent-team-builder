@@ -31,8 +31,14 @@
 ### K2 — Plan biçimi: dondurma yok
 
 - `executor: <agent-adı>` — yalnız ad. Aracı plana **yazılmaz**.
-- Eski biçim `executor: <ekosistem>/<agent-adı>` okunmaya devam eder ve **açık bir atama**
-  gibi davranır (eski planların davranışı değişmez).
+- **Eski biçim** `executor: <ekosistem>/<agent-adı>`: bugünkü kurallarla aynen çalışır —
+  `taskAssignments` açık ya da kapalı olsun, o ekosistemde çalışır (değilse devretme teklifi).
+  K1'in "varsayılan" kuralı ona **uygulanmaz**. Yeni biçime yalnız kullanıcı o işin aracını
+  açıkça değiştirmek istediğinde çevrilir: `executor: <ad>` + `assignments.executor:
+  <istenen>`; ad değişmediği için `revision` artmaz. Nitelikli `executor` ile
+  `assignments.executor` **birlikte bulunmaz**; bulunursa plan bozuktur, kullanıcıya sorulur.
+- **Yeni planlar her zaman yalın adla** yazılır — projedeki eski `TEMPLATE.md`
+  `<ekosistem>/<agent-adı>` gösterse bile (K7 onu da yeniler).
 - Yeni, isteğe bağlı alan — yalnız kullanıcının **açıkça seçtikleri**:
   ```yaml
   assignments:
@@ -47,6 +53,10 @@
   mevcut onayları geçersiz kılmaz. Sonraki denetim kayıtları yine gerçekte **koştuğu**
   ekosistemi `by:`'a yazar.
 - `executor` adının değişmesi bugünkü gibi `revision` artırır.
+- **Kodun nerede yazıldığı ayrıca kaydedilir.** Atama bir tercihtir; gerçek, `s:progress`'e
+  yazılır: her çalıştırmada "yazan: <ekosistem>" satırı. Kod denetiminde `crossReview` bu
+  revizyonda kod yazmış **bütün** ekosistemleri dışarıda bırakır; hepsi dışarıda kalıyorsa
+  bugünkü yedek kural (uyarı + normal çağrı) işler. Kayıt yoksa (eski iş) kullanıcıya sorulur.
 
 ### K3 — Varsayılanlar (çalışma anında çözülür)
 
@@ -77,7 +87,16 @@ bu satır da yoktur.
 - danışma (yeni): salt okunur dış çağrı; prompt = rolün tanımı + soru + ilgili plan bölümü;
   cevap danışana döner. **Dış araçta koşan bir executor danışamaz** (sandbox başka CLI
   çağıramayabilir): danışma gerekiyorsa `blocked: consult <rol>: <soru>` döner; çağıran
-  danışmayı K3/`assignments`'a göre yapar ve executor'ı cevapla yeniden çağırır.
+  danışmayı K3/`assignments`'a göre yapar ve executor'ı cevapla **aynı çalıştırmanın devamı**
+  olarak yeniden çağırır:
+  - temiz ağaç şartı ve başlangıç noktası (HEAD + `.agent-work/` özetleri) yalnız **ilk**
+    çağrıda alınır; devam çağrıları aynı başlangıca göre doğrulanır — her çağrıdan sonra
+    değişenler planın `paths`'i içinde olmalı;
+  - devam prompt'u: rol + plan + danışma cevabı + o ana kadarki değişiklik listesi ve
+    `s:progress`;
+  - cevap planın içeriğini değiştiriyorsa bugünkü `revision` artırma ve `draft/`'a dönme
+    kuralı uygulanır, devam edilmez;
+  - `.agent-work/` altına yine yalnız çağıran yazar.
 
 ### K6 — Dış çağrıda rolün modeli
 
@@ -85,17 +104,24 @@ Hedef aracın üretilmiş ajan dosyasından model ve effort okunur ve çağrıya
 
 | Araç | Kaynak | Bayraklar |
 |---|---|---|
-| Claude | `.claude/agents/<ad>.md` frontmatter `model`, `effort` | `--model`, `--effort` |
-| Codex | `.codex/agents/<ad>.toml` `model`, `model_reasoning_effort` | `-m`, `-c model_reasoning_effort=<e>` |
-| OpenCode | `.opencode/agents/<ad>.md` `model`, `reasoningEffort` | `-m`, `--variant` |
+| Claude | `.claude/agents/<ad>.md` frontmatter `model`, `effort` | `--model=<m>`, `--effort=<e>` |
+| Codex | `.codex/agents/<ad>.toml` `model`, `model_reasoning_effort` | `--model=<m>`, `-c model_reasoning_effort="<e>"` |
+| OpenCode | `.opencode/agents/<ad>.md` `model` | `--model=<m>` |
 
-Değer yoksa bayrak verilmez (CLI varsayılanı). Değerler kabuk argümanı olarak tırnaklanır;
-yalnız üretilmiş dosyadan gelir.
+- **Seçenek enjeksiyonuna karşı:** değer bir bayrak gibi yorumlanamamalı. Model
+  `^[A-Za-z0-9][A-Za-z0-9._:/@+-]*$`'e, effort `^[a-z]+$`'e uymalı (tire ile başlayamaz,
+  boşluk/`=`/tırnak yok); uymazsa çağrı **yapılmaz**, kullanıcıya söylenir. Değer her zaman
+  `--bayrak=<değer>` biçiminde bağlanır, ayrı argüman olarak değil. Aynı desen
+  `validate-llm.mjs`'e de eklenir: böyle bir değer `llm.json`'a hiç giremez.
+- **OpenCode effort'u uygulanamaz:** `reasoningEffort` sağlayıcı seçeneğidir, `--variant` ise
+  yapılandırılabilir bir pakettir; eşlenemez. Rolün effort'u varsa kullanıcıya "OpenCode dış
+  çağrısında effort uygulanmıyor" denir; `--agent` ile rol yüklenmez (izinleri gelir).
+- Değer yoksa bayrak verilmez (CLI varsayılanı).
 
 ### K7 — Kurulu projede `work-plan`'ı yenileme
 
 Upgrade'e "plan kapısı skill'ini güncelle" akışı: `.agent-source/skills/work-plan/SKILL.md`'yi
-güncel şablondan `docLanguage`'de yeniden render eder, `taskAssignments` ve `crossReview`
+ve `.agent-work/TEMPLATE.md`'yi güncel şablonlardan `docLanguage`'de yeniden render eder, `taskAssignments` ve `crossReview`
 sorularını sorar, sync çalıştırır. `.agent-work/` verisine dokunmaz. Kullanıcı skill'i elle
 değiştirdiyse farkı gösterip onay alır.
 
@@ -108,4 +134,5 @@ değiştirdiyse farkı gösterip onay alır.
 
 `templates/plan.md`, `templates/work-plan-skill.md`, `plan-gate.md`, `manifest-schema.md`,
 `validate-manifest.mjs` (+selftest), `validate-plan-gate.mjs` (şablon beklentileri, +selftest),
+`validate-llm.mjs` (model/effort deseni, +selftest),
 setup 7C, upgrade (K1 ve K7), `wizard-state.md`, README.
