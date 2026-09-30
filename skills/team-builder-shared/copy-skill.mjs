@@ -123,6 +123,7 @@ export const TEAM_BUILDER_DIRS = [
   'team-builder-sync',
   'team-builder-upgrade',
   'team-builder-models',
+  'team-builder-module',
   'architecture-advisor',
   'team-builder-shared',
 ]

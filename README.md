@@ -53,6 +53,7 @@ and bakes the rules the team must follow (the "constitution") into each agent's 
 | `/team-builder-sync` | Re-generates the generated files from `.agent-source/` / runs a **drift** check. |
 | `/team-builder-upgrade` | Turns constitution presets (including the plan gate) on or off after setup, and migrates older projects to the single instructions file. |
 | `/team-builder-models` | Chooses the model and effort each agent runs with, per ecosystem: the shared `.agent-source/llm.json`, this machine's `llm.local.json`, refreshing new or retiring models, and migrating older projects. |
+| `/team-builder-module` | Adds a new folder (module) to an installed team: gives it to an existing role that can write, or opens a new role for it (skills, model, who consults it), and updates routing, the role files and the instructions together. |
 | `/architecture-advisor` | Analyzes the project, proposes ADR / architecture constraints / design, and writes them with you step by step under `docs/<arch-root>/`. Also works standalone. |
 
 `skills/team-builder-shared/` holds the shared references the skills depend on, plus the
@@ -174,6 +175,7 @@ plugin as `$<name>`):
 /team-builder-sync
 /team-builder-upgrade
 /team-builder-models
+/team-builder-module
 /architecture-advisor
 ```
 
@@ -267,12 +269,12 @@ skill folders from your global directory:
 
 ```bash
 # macOS / Linux
-rm -rf ~/.claude/skills/{team-builder-setup,team-builder-sync,team-builder-upgrade,team-builder-models,architecture-advisor,team-builder-shared}
+rm -rf ~/.claude/skills/{team-builder-setup,team-builder-sync,team-builder-upgrade,team-builder-models,team-builder-module,architecture-advisor,team-builder-shared}
 ```
 
 ```powershell
 # Windows
-'team-builder-setup','team-builder-sync','team-builder-upgrade','team-builder-models','architecture-advisor','team-builder-shared' |
+'team-builder-setup','team-builder-sync','team-builder-upgrade','team-builder-models','team-builder-module','architecture-advisor','team-builder-shared' |
   ForEach-Object { Remove-Item -Recurse -Force "$HOME\.claude\skills\$_" }
 ```
 
@@ -325,6 +327,7 @@ tanımlar ve takımın uyması gereken kuralları (anayasa) her agent'ın talima
 | `/team-builder-sync` | `.agent-source/`'tan generated dosyaları yeniden üretir / **drift** (sapma) kontrolü yapar. |
 | `/team-builder-upgrade` | Kurulumdan sonra anayasa preset'lerini (plan kapısı dahil) açar ya da kapatır; eski projeleri tek talimat dosyasına göç ettirir. |
 | `/team-builder-models` | Her agent'ın hangi model ve effort'la çalışacağını ekosistem başına ayarlar: ortak `.agent-source/llm.json`, bu makinenin `llm.local.json`'u, yeni çıkan ya da kalkan modellerin yenilenmesi ve eski projelerin göçü. |
+| `/team-builder-module` | Kurulu takıma yeni bir klasör (modül) ekler: yazabilen mevcut bir role verir ya da onun için yeni bir rol açar (skill'ler, model, kim ona danışır); routing'i, rol dosyalarını ve talimatları birlikte günceller. |
 | `/architecture-advisor` | Projeyi analiz edip ADR / mimari kısıt / tasarım önerir ve kullanıcıyla adım adım `docs/<arch-root>/` altına yazar. Takımdan bağımsız da çalışır. |
 
 `skills/team-builder-shared/`, skill'lerin dayandığı paylaşılan referansları + generator'ı
@@ -445,6 +448,7 @@ olarak gösterir):
 /team-builder-sync
 /team-builder-upgrade
 /team-builder-models
+/team-builder-module
 /architecture-advisor
 ```
 
@@ -537,12 +541,12 @@ dizinden sil:
 
 ```bash
 # macOS / Linux
-rm -rf ~/.claude/skills/{team-builder-setup,team-builder-sync,team-builder-upgrade,team-builder-models,architecture-advisor,team-builder-shared}
+rm -rf ~/.claude/skills/{team-builder-setup,team-builder-sync,team-builder-upgrade,team-builder-models,team-builder-module,architecture-advisor,team-builder-shared}
 ```
 
 ```powershell
 # Windows
-'team-builder-setup','team-builder-sync','team-builder-upgrade','team-builder-models','architecture-advisor','team-builder-shared' |
+'team-builder-setup','team-builder-sync','team-builder-upgrade','team-builder-models','team-builder-module','architecture-advisor','team-builder-shared' |
   ForEach-Object { Remove-Item -Recurse -Force "$HOME\.claude\skills\$_" }
 ```
 

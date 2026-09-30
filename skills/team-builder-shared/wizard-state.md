@@ -18,7 +18,7 @@ Böylece oturum yarıda kesilse bile en fazla bir küçük adım kaybolur.
 
 ## Ne zaman silinir
 **Üretim (Adım 8) başarıyla bittiğinde** (`.agent-source/` yazıldı + sync drift temiz) state
-dosyasını **sil**. Kurulum tamamlandı; artık `team-builder-models`, `team-builder-upgrade` ve `team-builder-sync` kullanılır; rol değişiklikleri elle yapılır (manifest, rol dosyası ve `llm.json` girdileri, sonra sync).
+dosyasını **sil**. Kurulum tamamlandı; artık `team-builder-models`, `team-builder-upgrade` ve `team-builder-sync` kullanılır; yeni klasör ya da yazabilen yeni rol için `team-builder-module`; öbür rol değişiklikleri elle yapılır (manifest, rol dosyası ve `llm.json` girdileri, sonra sync).
 
 ## Şema
 ```jsonc

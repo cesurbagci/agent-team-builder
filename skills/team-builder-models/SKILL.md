@@ -12,7 +12,7 @@ biçimi, çözümleme kuralı, doğrulama, katalog komutları —
 `${CLAUDE_SKILL_DIR}/../team-builder-shared/llm-config.md`'dedir; **önce onu oku**. Bu dosya
 yalnız prosedürdür.
 
-**Kapsam dışı:** rol eklemek/çıkarmak, routing ve hedef ekosistem (kurulu projede skill'i yok:
+**Kapsam dışı:** rol eklemek/çıkarmak, routing ve hedef ekosistem (yeni klasör ya da yazabilen yeni rol için `team-builder-module`; öbürleri için skill yok:
 manifest'i — bir rolü kaldırırken `routing`, `consults` ve `lead` atıfları dahil —, rol dosyasını ve
 `llm.json`'daki girdilerini elle düzenleyip sync çalıştır), anayasa preset'leri
 (`team-builder-upgrade`).

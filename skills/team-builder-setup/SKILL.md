@@ -76,7 +76,7 @@ Adımları **bu sırayla** uygula. Her adımda kullanıcıya sor, cevabı al, so
 
 1. Hedef proje kökünü tespit et (bulunulan çalışma dizini).
 2. `.agent-source/agents/manifest.json` var mı bak.
-   - **Varsa:** Takım zaten kurulu. Kullanıcıyı uyar: "Model ve effort değiştirmek için `/team-builder-models`, anayasa preset'lerini açıp kapatmak için `/team-builder-upgrade`, generated dosyaları tazeleyip drift kontrol için `/team-builder-sync`. Rol eklemek ya da düzenlemek için henüz bir skill yok: `.agent-source/agents/manifest.json`'ı ve `.agent-source/agents/<ad>.md`'yi elle düzenleyip sync çalıştır; bir rolü kaldırırken manifest'teki atıflarını (`routing`, başka rollerin `consults`'u, `lead`) ve `.agent-source/llm.json`'daki girdilerini de sil — sync kalan her atıfta durur." Üzerine yazmayı kullanıcı açıkça istemedikçe **DEVAM ETME**.
+   - **Varsa:** Takım zaten kurulu. Kullanıcıyı uyar: "Model ve effort değiştirmek için `/team-builder-models`, anayasa preset'lerini açıp kapatmak için `/team-builder-upgrade`, generated dosyaları tazeleyip drift kontrol için `/team-builder-sync`. Yeni bir klasörü bir role bağlamak ya da onun için yazabilen bir rol eklemek için `/team-builder-module`; öbür rol değişiklikleri (silme, yeniden adlandırma, read-only rol) için: `.agent-source/agents/manifest.json`'ı ve `.agent-source/agents/<ad>.md`'yi elle düzenleyip sync çalıştır; bir rolü kaldırırken manifest'teki atıflarını (`routing`, başka rollerin `consults`'u, `lead`) ve `.agent-source/llm.json`'daki girdilerini de sil — sync kalan her atıfta durur." Üzerine yazmayı kullanıcı açıkça istemedikçe **DEVAM ETME**.
 3. Yoksa **yarım kalmış kurulum var mı bak** (`${CLAUDE_SKILL_DIR}/../team-builder-shared/wizard-state.md`): `.claude/team-builder-state.json` varsa → kullanıcıya sade sor: "Bu projede yarım kalmış bir takım kurulumu var (en son: <adım>, <n> rol yapılandırıldı). **Devam mı, baştan mı?**"
    - **Devam** → state'i yükle; tamamlanmış cevapları TEKRAR SORMA; kısa "şu ana kadar seçtiklerin" özeti ver; `currentStep`/`currentAgentIndex`'ten sonraki adımdan sürdür.
    - **Baştan** → state dosyasını sil, sıfırdan.
@@ -327,7 +327,7 @@ Tüm cevaplar toplandı; şimdi kaynağı yaz, doğrula ve generate et. Sırayla
   ```bash
   node "${CLAUDE_SKILL_DIR}/../team-builder-shared/copy-skill.mjs" --team-builder "<proje-kökü>"
   ```
-  Beş skill ve ortak klasör `.agent-source/skills/` altına kopyalanır; 8c'deki sync onları
+  team-builder'ın skill'leri ve ortak klasör `.agent-source/skills/` altına kopyalanır; 8c'deki sync onları
   seçilen araçların proje skill dizinlerine yansıtır. Kullanıcıya bedelini söyle: repoya yaklaşık
   0,6 MB × (kaynak + her hedef aracın dizini) girer; team-builder'ı plugin ya da script ile
   **ayrıca** kuran biri skill'leri iki kez görür (Claude'da `/team-builder:…` ve `/…`, Codex'te
@@ -382,7 +382,7 @@ Tüm cevaplar toplandı; şimdi kaynağı yaz, doğrula ve generate et. Sırayla
   yaptırmadan önce plan yazılacak, [denetleyici varsa: <ad> gözden geçirecek,] sen
   onaylayacaksın. Onaylı işler `.agent-work/approved/` altında birikir; 'havuzda ne var'
   diye sorabilirsin." Kapalıysa bu satırı **hiç yazma** — var olmayan bir akışa atıf yapma.
-- **Sıradaki adımlar:** model ve effort için `/team-builder-models`, anayasa preset'leri için `/team-builder-upgrade`, yeniden generate + drift kontrol için `/team-builder-sync`. Rol eklemek ya da düzenlemek için henüz bir skill yok: `.agent-source/agents/manifest.json`'ı ve `.agent-source/agents/<ad>.md`'yi elle düzenleyip sync çalıştır; bir rolü kaldırırken manifest'teki atıflarını (`routing`, başka rollerin `consults`'u, `lead`) ve `.agent-source/llm.json`'daki girdilerini de sil — sync kalan her atıfta durur. **Hatırlat:** generated dosyalar elle değiştirilmez; her değişiklik `.agent-source/` üzerinde yapılır, sonra sync.
+- **Sıradaki adımlar:** model ve effort için `/team-builder-models`, anayasa preset'leri için `/team-builder-upgrade`, yeniden generate + drift kontrol için `/team-builder-sync`. Yeni bir klasörü bir role bağlamak ya da onun için yazabilen bir rol eklemek için `/team-builder-module`; öbür rol değişiklikleri (silme, yeniden adlandırma, read-only rol) için: `.agent-source/agents/manifest.json`'ı ve `.agent-source/agents/<ad>.md`'yi elle düzenleyip sync çalıştır; bir rolü kaldırırken manifest'teki atıflarını (`routing`, başka rollerin `consults`'u, `lead`) ve `.agent-source/llm.json`'daki girdilerini de sil — sync kalan her atıfta durur. **Hatırlat:** generated dosyalar elle değiştirilmez; her değişiklik `.agent-source/` üzerinde yapılır, sonra sync.
 
 ### Adım 10 — Mimari dokümanları birlikte doldurmayı TEKLİF ET
 

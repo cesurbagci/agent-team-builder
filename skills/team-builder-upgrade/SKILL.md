@@ -11,8 +11,8 @@ Kurulmuş bir projede **anayasa preset'lerini** açar/kapatır. Kurulum bir kez 
 (`team-builder-setup`), `sync` ince bir sarmalayıcıdır (`team-builder-sync`); bu skill
 ikisinin arasındaki boşluğu doldurur: kurulumdan sonra fikir değişince.
 
-**Kapsam dışı:** rol ekleme/çıkarma, routing değiştirme, yeni ekosistem hedefleme — kurulu
-projede bunların skill'i yok (setup kurulu takımda durur): manifest'i — bir rolü kaldırırken
+**Kapsam dışı:** rol ekleme/çıkarma, routing değiştirme, yeni ekosistem hedefleme. Yeni klasör
+ya da yazabilen yeni rol için `team-builder-module`; öbürlerinin skill'i yok (setup kurulu takımda durur): manifest'i — bir rolü kaldırırken
 `routing`, `consults` ve `lead` atıfları dahil —, rol dosyasını ve `llm.json`'daki girdilerini
 elle düzenleyip sync çalıştır. Model ve effort da kapsam dışıdır: `team-builder-models`'e yönlendir.
 
