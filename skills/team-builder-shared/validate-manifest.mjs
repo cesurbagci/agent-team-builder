@@ -136,6 +136,10 @@ function validatePlanGate(doc, errors, agentsByName) {
   if ("crossReview" in gate && typeof gate.crossReview !== "boolean") {
     errors.push("planGate.crossReview true ya da false olmalı");
   }
+  // taskAssignments: per-task tool choice for the plan's roles.
+  if ("taskAssignments" in gate && typeof gate.taskAssignments !== "boolean") {
+    errors.push("planGate.taskAssignments true ya da false olmalı");
+  }
 
   // Only the executable path is overridable — never the arguments. A free-form
   // shell command in the manifest would put arbitrary command execution into
@@ -1083,6 +1087,22 @@ if (process.argv.includes("--selftest")) {
       planGate: { planReviewer: null, codeReviewer: null, crossReview: "yes" },
     },
     "planGate.crossReview true ya da false olmalı"
+  );
+
+  // V8h — taskAssignments is optional and boolean.
+  expectAccept("V8h taskAssignments", {
+    ...gateBase(),
+    constitution: { planGate: true },
+    planGate: { planReviewer: null, codeReviewer: null, taskAssignments: false },
+  });
+  expectReject(
+    "V8i taskAssignments not boolean",
+    {
+      ...gateBase(),
+      constitution: { planGate: true },
+      planGate: { planReviewer: null, codeReviewer: null, taskAssignments: 1 },
+    },
+    "planGate.taskAssignments true ya da false olmalı"
   );
 
   // V8b — cli override accepts a path per ecosystem.

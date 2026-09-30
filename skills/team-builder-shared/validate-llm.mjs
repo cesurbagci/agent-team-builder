@@ -19,6 +19,10 @@ import { ECOSYSTEMS } from './llm-config.mjs'
 const ROOT_KEYS = ['defaults', 'agents']
 const ENTRY_KEYS = ['model', 'effort']
 const OPENCODE_MODEL = /^[^/\s]+\/\S+$/
+// Values reach external CLI calls as --model=<m> / --effort=<e>. Anything that
+// could read as an option, or break the binding, never gets into llm.json.
+const SAFE_MODEL = /^[A-Za-z0-9][A-Za-z0-9._:/@+\[\]-]*$/
+const SAFE_EFFORT = /^[a-z]+$/
 // claude-opus-5.5: Claude model IDs write the version with dashes.
 const DOTTED_CLAUDE_VERSION = /^(claude-[a-z]+-)(\d+)\.(\d+)$/
 
@@ -44,6 +48,12 @@ function checkEntry(entry, ecosystem, where, errors, warnings) {
     } else if (/\s/.test(value)) {
       errors.push(
         `${where}.${key}: boşluk içeremez ("${value}") — sürümlü tam adlarda tire kullanılır, örn. claude-opus-5-5`
+      )
+    } else if (!(key === 'model' ? SAFE_MODEL : SAFE_EFFORT).test(value)) {
+      errors.push(
+        key === 'model'
+          ? `${where}.model: harf ya da rakamla başlamalı, yalnız harf, rakam ve . _ : / @ + - [ ] içerebilir ("${value}")`
+          : `${where}.effort: yalnız küçük harf olmalı ("${value}")`
       )
     }
   }
@@ -203,6 +213,12 @@ async function runSelftest() {
   for (const effort of ['xhigh', 'max', 'ultra']) {
     expectClean(`effort ${effort}`, { defaults: { codex: { effort } } }, 'shared')
   }
+
+  // Option-shaped values would be read as flags by an external CLI call.
+  expectError('flag-shaped model', { defaults: { opencode: { model: '--attach=https://x.example/m' } } }, 'shared', 'harf ya da rakamla başlamalı')
+  expectError('model with =', { defaults: { codex: { model: 'gpt=5' } } }, 'shared', 'harf ya da rakamla başlamalı')
+  expectError('flag-shaped effort', { defaults: { codex: { effort: '-c' } } }, 'shared', 'yalnız küçük harf')
+  expectClean('provider model', { defaults: { opencode: { model: 'openrouter/anthropic/claude-sonnet-4.5' } } }, 'shared')
 
   // Closed key lists, in both files: a typo is never silently ignored.
   for (const layer of ['shared', 'local']) {

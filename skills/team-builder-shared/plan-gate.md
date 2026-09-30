@@ -69,7 +69,8 @@ agent sonradan çıkarılsa bile geçerli kalır.
 | `revision` | Zorunlu, 1'den başlar, pozitif tam sayı | — |
 | `created`, `source` | Zorunlu, **değiştirilemez** | Hayır |
 | `domain`, `paths` | Zorunlu | Evet |
-| `executor` | Zorunlu, `<ekosistem>/<agent-adı>` | Evet |
+| `executor` | Zorunlu, `<agent-adı>` — aracı çalışma anında çözülür. Eski planlarda `<ekosistem>/<agent-adı>` geçerli kalır | Evet (ad değişince) |
+| `assignments` | Opsiyonel; yalnız `planGate.taskAssignments: true` iken okunur. Kullanıcının **açıkça** seçtiği araçlar: `executor`, `plan-review`, `code-review`, `consult.<rol>` | Hayır |
 | `reviews` | Zorunlu (`plan-review` ve `code-review` dizileri) | Hayır |
 | `outcome` | **Yalnız `done/`'da**, tek değer `cancelled` | Hayır |
 | `adr` | Opsiyonel | Hayır |

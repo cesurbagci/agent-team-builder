@@ -6,7 +6,7 @@ created: <YYYY-MM-DD>
 source: <user | agent:<agent-adı>>
 domain: <backend | frontend | ...>
 paths: [<etkilenen kod yolları>]
-executor: <ekosistem>/<agent-adı>
+executor: <agent-adı>
 reviews:
   plan-review: []
   code-review: []

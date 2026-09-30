@@ -162,6 +162,12 @@ export async function validatePlanGateArtifacts(rootDir) {
           errors.push(`templates/plan.md missing frontmatter field ${field}`)
         }
       }
+      // New plans name the executor only; its tool is resolved when the work
+      // runs, or set explicitly under `assignments`.
+      const executorLine = /^executor:(.*)$/m.exec(fm)
+      if (executorLine && executorLine[1].includes('/')) {
+        errors.push('templates/plan.md executor must be a bare agent name (no <ekosistem>/)')
+      }
       // `reviews` is not a scalar: both gates append to their own array. The
       // keys have to live under `reviews` and start as empty lists — an
       // indented key elsewhere in the frontmatter is not the same thing, and
@@ -333,7 +339,7 @@ const GOOD_PLAN = [
   'source: user',
   'domain: backend',
   'paths: []',
-  'executor: claude/dev',
+  'executor: dev',
   'reviews:',
   '  plan-review: []',
   '  code-review: []',

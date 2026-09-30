@@ -34,6 +34,7 @@ Generated dosyalar **elle değiştirilmez**; kaynak burasıdır.
 | `planGate.planReviewer` | `string \| null` | Evet (nesne varsa) | Planı denetleyen agent'ın adı, ya da `null` (kapı 1 atlanır). Kod yazmayan bir agent olmalı. |
 | `planGate.codeReviewer` | `string \| null` | Evet (nesne varsa) | Biten işin kodunu denetleyen agent'ın adı, ya da `null` (kapı 3 yoktur). Kod yazmayan bir agent olmalı. |
 | `planGate.crossReview` | `boolean` | Hayır | Çapraz denetim: `true` ise kapı sahipleri denetlenen işi **yazan ekosistemden farklı** bir ekosistemde çalıştırılır — plan için planı yazan oturum, kod için executor'ın ekosistemi. Claude'da yazılan iş Codex'te (ya da sahibin sıradaki başka hedefinde) denetlenir. Sahip yalnız çağıranın ekosistemindeyse etkisizdir. Yoksa `false`. |
+| `planGate.taskAssignments` | `boolean` | Hayır | İş başına araç ataması: `true` ise plan netleşince işin rolleri (işi yapan, iki denetçi, danışılanlar) × araç tablosu gösterilir ve yalnız kullanıcının seçtikleri plana (`assignments`) yazılır; seçilmeyenler çalışma anında varsayılana çözülür. `false`/yoksa hiçbir şey sorulmaz. |
 | `planGate.cli` | `object` | Hayır | Ekosistem → **yürütülebilir dosya yolu**. Yalnız CLI'ı `PATH`'te olmayan bir yere kuranlar için. Anahtarlar `claude`/`codex`/`opencode`, değerler dolu string. Argümanlar override edilemez — serbest kabuk komutu üretilen konfigürasyona keyfi komut yerleştirmek olurdu. |
 | `focus` | `string[]` | Hayır | Projenin kalite odakları (checkbox ile seçilir). Değerler: `performance`, `code-design`, `ui-ux`, `accessibility`, `security`, `testing`. Reviewer denetim eksenlerini + kısıtları besler. Bkz. `quality-dimensions.md`. |
 | `routing` | `object[]` | Hayır | Path-based zorunlu routing tablosu. Her satır bir kod yolunu bir role bağlar. Bkz. `routing.md`. |
@@ -120,7 +121,7 @@ Generated dosyalar **elle değiştirilmez**; kaynak burasıdır.
   bulunmasını da zorunlu kılar. Kapı sahibinin **executor'ların ekosistemlerini
   kapsaması** artık gerekmiyor — ulaşılamayan sahip harici CLI çağrısıyla çalıştırılır
   (bkz. `templates/work-plan-skill.md`, *Başka ekosistemdeki kapı sahibi*).
-- `planGate.crossReview` (verildiyse) boolean olmalı.
+- `planGate.crossReview` ve `planGate.taskAssignments` (verildiyse) boolean olmalı.
 - `planGate.cli` (verildiyse) nesne olmalı; anahtarları `claude|codex|opencode`,
   değerleri dolu string. Yalnız yürütülebilir yol; argüman kurgusu araçta sabittir.
 

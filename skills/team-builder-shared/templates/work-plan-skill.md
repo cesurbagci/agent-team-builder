@@ -72,7 +72,8 @@ gerçekte hedeflenmiyor olabilir.
 
 `revision` yalnız **planlama içeriği** değişince artar: `title`, `domain`, `paths`,
 `executor` ve `s:what` / `s:how` / `s:questions` bölümleri. `s:review-notes`,
-`s:progress`, `reviews`, `outcome` ve `adr` **artırmaz**.
+`s:progress`, `reviews`, `outcome`, `adr` ve `assignments` **artırmaz** — `assignments`
+kimin hangi araçta çalışacağıdır, planın içeriği değil.
 
 `revision` artınca plan denetimi onayı bozulur — aşağıdaki `planReviewPassed` yanlış olur.
 Sonucu klasöre göre değişir:
@@ -175,12 +176,19 @@ kapı sahibi*).
 Bir planın `executor` alanını **her okuduğunda** — yalnız plan yazarken değil, havuzdan
 seçerken ve yarım işi devam ettirirken de — üçünü birden doğrula:
 
+0. **Biçim.** `executor` yalın bir addır (`backend-developer`); aracı çalışma anında çözülür
+   (*Rolün aracını çöz*). Eski planlar `<ekosistem>/<ad>` biçiminde olabilir: o ekosistem
+   **aynen geçerlidir** — `taskAssignments` açık ya da kapalı olsun — ve kullanıcı o işin
+   aracını açıkça değiştirmek isteyene kadar öyle kalır (o zaman `executor: <ad>` +
+   `assignments.executor: <istenen>` yaz; ad değişmediği için `revision` artmaz). Nitelikli
+   `executor` ile `assignments.executor` **birlikte** bulunursa plan bozuktur — işletme,
+   kullanıcıya sor.
 1. Ad gerçek bir agent ve **uygun executor'lardan** biri: manifest'in `routing`
    tablosunda bir satırın `role`'ü olarak geçiyor **ve** kod yazıyor. "Kod yazıyor"
    demek, agent'ın `writesCode` alanının `false` **olmaması** demektir — alan hiç
    verilmemişse agent **kod yazar** sayılır. Yalnız açıkça `writesCode: false` yazan
    agent'lar executor olamaz.
-2. `executor`'ın ekosistemi o agent'ın **etkin hedeflerinde** var.
+2. Çözülen ekosistem o agent'ın **etkin hedeflerinde** var.
 3. O ekosistem **senin oturumunun ekosistemi**.
 
 İlk ikisi sağlanmıyorsa plan bozuktur — işletme, kullanıcıya bildir. Üçüncüsü
@@ -208,12 +216,16 @@ bakılmaz, ama geçiş bittiğinde koşul sağlanmıyorsa hata vardır.
 ## Plan yaz
 
 1. **Sahibini bul.** İşin dokunacağı kod yollarına bak; projenin routing tablosundan o
-   yolun sahibi developer'ı belirle. `executor` odur, `<ekosistem>/<ad>` biçiminde.
-   Ekosistemi yukarıdaki tablodan çöz.
+   yolun sahibi developer'ı belirle. `executor` odur — **yalnız adı** (`backend-developer`),
+   projedeki `TEMPLATE.md` eski biçimi (`<ekosistem>/<agent-adı>`) gösterse bile. Aracı plana
+   yazma: iş yapılacağı an çözülür (*Rolün aracını çöz*).
    Yukarıdaki üç geçerlilik kontrolünü uygula; sağlanmıyorsa plan yazma, kullanıcıya sor.
    - İş birden çok domain'e dokunuyorsa **tek** `executor` seç (ağırlık merkezine göre) ve
      diğer sahiplere danışmayı `s:how` bölümüne yaz. İki executor yazma.
-2. **`.agent-work/TEMPLATE.md`'yi kopyala** → `.agent-work/draft/<id>-<slug>.md`.
+2. **Araç ataması** — yalnız manifest'te `planGate.taskAssignments: true` ise, plan
+   netleşince ve kapı 1'den **önce**: *Araç ataması* bölümünü uygula. Kapalıysa bu adımı
+   atla, hiçbir şey sorma.
+3. **`.agent-work/TEMPLATE.md`'yi kopyala** → `.agent-work/draft/<id>-<slug>.md`.
    `revision: 1`, `reviews` boş diziler, `s:progress` sentinel'li.
 3. **Gövdeyi doldur.** `s:what` sade dille ve örnekle, ölçülebilir kabul kriteriyle;
    `s:how` yaklaşım ve etkilenen bileşenler (`paths` ile tutarlı); `s:questions` boş
@@ -310,10 +322,70 @@ o iş için kural atlanır.
    yanıt, denetlenmemiş kodu geri dönüşü olmayan `done/` arşivine denetlenmiş olarak
    sokar; bu akışın telafisi olmayan tek hatasıdır.
 
+## Rolün aracını çöz
+
+Bir rolü çağırmadan hemen önce (işi yapmak, kapı 1, kapı 3, danışma) hangi araçta
+çalışacağını **o an** çöz; plana yazılmış bir tercih yoksa varsayılan geçerlidir. Sıra:
+
+1. **Eski nitelikli `executor`** (`<ekosistem>/<ad>`) — yalnız işi yapan için: o ekosistem.
+2. **`assignments`** — yalnız `planGate.taskAssignments: true` iken okunur. Anahtarlar:
+   `executor`, `plan-review`, `code-review`, `consult.<rol-adı>`. Değer o rolün etkin
+   hedeflerinden biri olmalı; değilse plan bozuktur — kullanıcıya sor. Özellik kapalıyken
+   alan **yok sayılır** (silme; yeniden açılınca geçerli olur).
+3. **Varsayılan:**
+
+   | Rol | Araç |
+   |---|---|
+   | İşi yapan | Senin ekosistemin, rol orada üretiliyorsa; değilse etkin hedeflerinin ilki |
+   | Plan / kod denetimi | *Başka ekosistemdeki kapı sahibi*'nin 1–2. adımları (`crossReview` dahil) |
+   | Danışılan rol | Danışanın koştuğu ekosistem, rol orada üretiliyorsa; değilse ilk hedefi |
+
+Açıkça seçilmiş bir denetim aracı `crossReview`'dan önce gelir — kullanıcı seçmiştir; işi
+yazan araçla aynıysa bunu bir satırla söyle, yine de onun seçtiği yerde çalıştır.
+
+**Kodun nerede yazıldığı** tercihten ayrı bir gerçektir: işi her yaptığında ya da
+yaptırdığında `s:progress`'e `yazan: <ekosistem>` satırını ekle. Bu satırlar **birikir** —
+`revision` artsa da silme; önceki revizyonun kodu da denetlenen işin parçasıdır.
+
+## Araç ataması
+
+Yalnız `planGate.taskAssignments: true` iken. Plan netleşince, kapı 1'den önce, bu işte rol
+alanları tek tabloda göster: işi yapan, plan denetçisi, kod denetçisi ve işi yapanın
+`consults`'undaki roller. Her satırda şu anki varsayılanı ve seçilebilecek araçları (rolün
+etkin hedefleri; CLI'ı bu makinede kurulu olanlar) yaz:
+
+| Görev | Rol | Varsayılan (şu an) | Seçilebilir |
+|---|---|---|---|
+| İşi yapan | backend-developer | claude | claude, codex |
+| Plan denetimi | architect | codex | claude, codex, opencode |
+| Kod denetimi | reviewer | codex | claude, codex, opencode |
+| Danışma | architect | claude | claude, codex, opencode |
+
+"Değiştirmek istediğini yaz; hepsi uygunsa `tamam`." **Yalnız değiştirilen satırları**
+`assignments`'a yaz; hiçbiri değişmezse alanı hiç yazma — varsayılanlar plana dondurulmaz.
+
+**Her adımdan önce tek satır bilgi ver:** "Kod denetimi Codex'te yapılacak (varsayılan)."
+Kullanıcı o an değiştirirse değeri `assignments`'a yaz ve adımı ona göre çalıştır.
+Özellik kapalıyken tablo da bu satır da yoktur.
+
+## Danışma
+
+İşi yapan rol `consults`'undaki bir role danışacaksa (mimari etkili karar vb.) danışılan
+rolün aracını *Rolün aracını çöz* ile bul:
+- Senin ekosistemin → normal yoldan danış.
+- Başka ekosistem → salt okunur harici çağrı, *Başka ekosistemdeki kapı sahibi*'nin 3–5.
+  adımlarıyla (rol tanımı, geçici dosyadan stdin, salt okunur komut, model bayrakları).
+  Prompt: rol tanımı + soru + planın ilgili bölümü; cevap sana döner. Çıktı sözleşmesi
+  yoktur, cevabı `s:progress`'e özetle.
+- İşi yapan **dış bir çağrıda** koşuyorsa danışamaz; *Başka ekosistemdeki executor*'daki
+  gibi `blocked: consult <rol>: <soru>` döner, danışmayı sen yaparsın.
+
 ## Başka ekosistemdeki kapı sahibi
 
-Kapı sahibi senin ekosisteminde üretilmemişse — ya da manifest'te `planGate.crossReview`
-`true` ise — onu **harici CLI çağrısıyla** başka bir ekosistemde çalıştırırsın. Çapraz
+Kapı sahibinin aracı (*Rolün aracını çöz*) senin ekosistemin değilse — sahip senin
+ekosisteminde üretilmemişse, `crossReview` açıksa ya da kullanıcı `assignments`'ta başka bir
+araç seçtiyse — onu **harici CLI çağrısıyla** o ekosistemde çalıştırırsın. `assignments`
+bir araç seçtiyse aşağıdaki 1–2. adımları atla, o aracı kullan. Çapraz
 denetimin amacı işi yazan modelden farklı bir modelin denetlemesidir. Kapı 1 ve kapı 3 için
 dizi aynıdır.
 
@@ -324,9 +396,9 @@ dizi aynıdır.
      çalıştırırsın. Kapı 1'de yazan, planın **güncel revizyonunu** yazan oturumun
      ekosistemidir: bu revizyonu bu oturumda sen yazdıysan sensin; yazmadıysan (ör.
      başarısız bir denetimden sonra başka bir araçta devam ediliyorsa) bilemezsin —
-     **kullanıcıya sor**, tahmin etme. Kapı 3'te yazan
-     **executor'ın ekosistemidir** — kodu *Başka ekosistemdeki executor* ile başka bir
-     ekosistemde yaptırdıysan o, yoksa sen. Yazan ekosistemin dışında bir hedef yoksa
+     **kullanıcıya sor**, tahmin etme. Kapı 3'te yazanlar `s:progress`'teki **bütün**
+     `yazan:` satırlarıdır (birikir, revizyonlar dahil); hepsini dışarıda bırak. Satır
+     yoksa (eski iş) kullanıcıya sor. Yazan ekosistemin dışında bir hedef yoksa
      çapraz denetim mümkün değildir: kullanıcıya "çapraz denetim bu sahip için mümkün
      değil" de ve sahibi `crossReview` kapalıymış gibi çağır — senin ekosistemindeyse
      normal yoldan, değilse etkin hedeflerinin ilkinde harici çağrıyla. Yazan ekosistem seninki değilse ve sahip senin ekosisteminde de
@@ -381,13 +453,22 @@ dizi aynıdır.
      Bir CLI sürümü stdin'i okumazsa çağrı boş prompt'la koşar ve ya hata koduyla ya da
      ayrıştırılamayan çıktıyla döner — yani **taşıma ya da protokol hatası** olarak
      yakalanır ve kullanıcı seçenekleri görür. Sessizce yanlış bir verdict üretmez.
+   - **Rolün modeli.** Hedefin üretilmiş ajan dosyasından model ve effort'u oku ve ekle:
+     Claude `.claude/agents/<ad>.md` (`model:`, `effort:`) → `--model=<m> --effort=<e>`;
+     Codex `.codex/agents/<ad>.toml` (`model`, `model_reasoning_effort`) →
+     `--model=<m> -c model_reasoning_effort="<e>"`; OpenCode `.opencode/agents/<ad>.md`
+     (`model:`) → `--model=<m>`. Değer yoksa bayrağı verme. Değeri **ayrı argüman olarak
+     değil**, `--bayrak=<değer>` biçiminde bağla. Model `^[A-Za-z0-9][A-Za-z0-9._:/@+\[\]-]*$`,
+     effort `^[a-z]+$` desenine uymuyorsa **çağırma**, kullanıcıya söyle — bayrak gibi
+     okunabilen bir değer çağrıyı başka bir yere yönlendirebilir. OpenCode'da effort
+     uygulanamaz (`reasoningEffort` sağlayıcı seçeneğidir, `--variant` değil): rolün effort'u
+     varsa "OpenCode dış çağrısında effort uygulanmıyor" de.
    - **`--agent` verme.** Rolü zaten prompt'a gömüyorsun; `--agent` bunun üstüne hedefin
      kendi konfigürasyonunu, dolayısıyla **izinlerini** yükler. OpenCode'da
      `permission.edit` doğrudan agent konfigürasyonundan gelir ve doküman sahibi bir rol
      meşru biçimde `allow`'dur — `--agent architect` demek, denetleyiciye yazma izni
-     vermek demektir. Yan etkisi: hiçbir ekosistemde agent'ın model/effort ayarı
-     uygulanmaz, çağrı o CLI'ın varsayılan modeliyle koşar. Bu kabul edilmiştir; denetim
-     kararı rol metnine dayanır ve ekosistemler arası **birebir aynı karar bekleme**.
+     vermek demektir. Model ve effort bu yüzden yukarıdaki bayraklarla verilir; ekosistemler
+     arası **birebir aynı karar bekleme**.
    - **Sahibin `sandbox_mode`'una bakma.** `writesCode: false` dosya sistemi izni
      değildir; doküman sahibi bir rol meşru biçimde `workspace-write` olabilir. Denetim
      çağrısı hiçbir şey yazmaz, o yüzden izin rolden değil çağrı türünden gelir.
@@ -483,8 +564,9 @@ davranışında olduğu gibi.
 
 ## Başka ekosistemdeki executor
 
-Seçilen planın `executor`'ı başka bir ekosistemdeyse (ör. sen Claude'dasın, plan
-`codex/backend-developer` diyor) işi o ekosistemde **harici CLI çağrısıyla** yaptırabilirsin.
+Seçilen planın işi yapanının aracı (*Rolün aracını çöz*) başka bir ekosistemse (ör. sen
+Claude'dasın, iş Codex'teki `backend-developer`'a atanmış) işi o ekosistemde **harici CLI
+çağrısıyla** yaptırabilirsin.
 Bu çağrı projeye **yazar**; o yüzden:
 
 1. **Her seferinde kullanıcıya sor**, varsayma: "Bu işin sahibi `<ekosistem>`'deki `<ad>`.
@@ -494,13 +576,17 @@ Bu çağrı projeye **yazar**; o yüzden:
    değişiklik gösteriyorsa kullanıcıdan önce commit ya da stash etmesini iste — kirli bir
    dosyaya executor'ın yaptığı değişiklik sonradan ayırt edilemez. Sonra **sen**
    `s:progress`'i doldur ve dosyayı `in-progress/`'e taşı (*Havuz*'daki sırayla);
-   `.agent-work/` altına yine yalnız sen yazarsın. Başlangıcı not et: `git rev-parse HEAD`,
-   ve `.agent-work/` altındaki her dosyanın `git hash-object` özeti.
+   `.agent-work/` altına yine yalnız sen yazarsın. **Kod başlangıcını** not et:
+   `git rev-parse HEAD`. Bu ve temiz ağaç şartı yalnız bu çalıştırmanın **ilk** çağrısında
+   alınır. `.agent-work/` altındaki her dosyanın `git hash-object` özetini ise **her
+   çağrıdan hemen önce** al — senin arada yaptığın meşru güncellemelerden sonra.
 3. Prompt'u kur: executor'ın **rol tanımının tamamı** (`.claude/agents/<ad>.md`,
    `.codex/agent-definitions/<ad>.md`, `.opencode/agents/<ad>.md`) + **plan dosyasının
    tamamı** + şu kurallar: "Yalnız planın `paths` alanındaki yollarda dosya değiştir.
    `.agent-work/`'e dokunma. Bitince değiştirdiğin dosyaları ve durumu (`done` ya da
-   `blocked: <neden>`) yaz." Prompt'u *Başka ekosistemdeki kapı sahibi*'ndeki gibi **geçici
+   `blocked: <neden>`) yaz. Bir role danışman gerekiyorsa dur ve `blocked: consult <rol>:
+   <soru>` yaz." Devam çağrısında ayrıca danışma cevabını, o ana kadarki değişiklik
+   listesini ve `s:progress`'i ekle. Prompt'u *Başka ekosistemdeki kapı sahibi*'ndeki gibi **geçici
    bir dosyadan stdin'e** ver; kabuk dizesine koyma.
 4. CLI'ı **proje kökünde** çalıştır (`planGate.cli` varsa o yolu kullan):
 
@@ -510,16 +596,21 @@ Bu çağrı projeye **yazar**; o yüzden:
    | `codex` | `codex exec --sandbox workspace-write -` |
    | `opencode` | `opencode run` |
 
-   `--agent` verme — rol prompt'ta. Model ayarı uygulanmaz, CLI'ın varsayılanı çalışır.
+   `--agent` verme — rol prompt'ta. Rolün modelini *Başka ekosistemdeki kapı sahibi*'ndeki
+   **Rolün modeli** kuralıyla ekle (desen denetimi dahil).
 5. **Sonucu doğrula** — executor'ın söylediğine değil diske bak. Değişen dosyalar:
    `git diff --name-only <başlangıç>..HEAD` ile `git status --short`'un `.agent-work/`
-   dışındaki birleşimi (ağaç başlangıçta temizdi, hepsi executor'ındır). `.agent-work/`
-   altında özeti değişen, eklenen ya da silinen bir dosya da executor'ındır. Planın `paths`
+   dışındaki birleşimi (ağaç ilk çağrıda temizdi; hepsi bu çalıştırmanındır). `.agent-work/`
+   altında, **bu çağrıdan hemen önceki** özetlere göre değişen, eklenen ya da silinen bir
+   dosya executor'ındır. Her çağrıyı sen güncelleme yapmadan **önce** doğrula. Planın `paths`
    dışında bir değişiklik ya da `.agent-work/`'te herhangi bir değişiklik varsa **dur**,
    kullanıcıya listeyi göster; geri alma kararı onundur. Çağrı hata verdiyse ya da çıktı
    `blocked` diyorsa kullanıcıya söyle, `s:progress`'e yaz, planı `in-progress/`'te bırak.
-6. `s:progress`'i güncelle, sonra *İşi bitirme*'ye geç. Kapı 3'te işi **yazan** ekosistem
-   executor'ınkidir (`crossReview` bunu dışarıda bırakır).
+   `blocked: consult <rol>: <soru>` ise *Danışma*'yı sen yap ve executor'ı **aynı
+   çalıştırmanın devamı** olarak yeniden çağır (temiz ağaç yeniden istenmez, kod başlangıcı
+   aynıdır). Cevap planın içeriğini değiştiriyorsa `revision` kuralı uygulanır, devam etme.
+6. `s:progress`'i güncelle — `yazan: <ekosistem>` satırı dahil —, sonra *İşi bitirme*'ye
+   geç.
 
 ### Hata hâlinde kullanıcıya ne sorarsın
 
