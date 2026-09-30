@@ -76,17 +76,23 @@ export async function unownedFolders(projectRoot) {
 
 // The nearest existing ancestor of `full`, resolved: a folder that does not
 // exist yet may still sit under a link that leaves the project.
+// A link whose target does not exist is not "missing": it is refused.
 async function realNearest(full) {
   let current = full
   for (;;) {
-    try {
-      return await fs.realpath(current)
-    } catch (error) {
-      if (error.code !== 'ENOENT') throw error
-      const parent = path.dirname(current)
-      if (parent === current) throw error
-      current = parent
+    const info = await fs.lstat(current).catch(error => {
+      if (error.code === 'ENOENT') return null
+      throw error
+    })
+    if (info !== null) {
+      if (info.isSymbolicLink() && (await fs.stat(current).catch(() => null)) === null) {
+        throw new Error(`${current} is a link to nothing; outside the project`)
+      }
+      return fs.realpath(current)
     }
+    const parent = path.dirname(current)
+    if (parent === current) throw new Error(`${full} has no existing ancestor`)
+    current = parent
   }
 }
 
@@ -146,7 +152,9 @@ async function selftest() {
       const outside = path.join(tmp, 'outside')
       await fs.mkdir(path.join(outside, 'secret'), { recursive: true })
       await fs.symlink(path.join(outside, 'secret'), path.join(project, 'linked'))
-      assert(!(await unownedFolders(project)).includes('linked'), 'a directory link must not be listed')
+      assert(!(await unownedFolders(project)).some(entry => entry.folder === 'linked'), 'a directory link must not be listed')
+      await fs.symlink(path.join(outside, 'not-created'), path.join(project, 'dangling'))
+      assert(await rejects(() => folderOwner(project, 'dangling/new'), 'outside the project'), 'a folder under a dangling link must be refused')
       assert(await rejects(() => folderOwner(project, 'linked'), 'outside the project'), 'a folder resolving outside must be refused')
       assert(await rejects(() => folderOwner(project, 'linked/new'), 'outside the project'), 'a future folder under an outside link must be refused')
 
@@ -164,7 +172,7 @@ async function selftest() {
       } finally {
         fs.readFile = originalReadFile
       }
-      assert(!read.some(f => f.startsWith(outside)), `the outside manifest must never be read, read ${JSON.stringify(read)}`)
+      assert(read.length === 0, `a refused manifest must not be read at all, read ${JSON.stringify(read)}`)
     }
   } finally {
     await fs.rm(tmp, { recursive: true, force: true })
