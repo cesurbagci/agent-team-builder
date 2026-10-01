@@ -163,7 +163,7 @@ export async function validatePlanGateArtifacts(rootDir) {
         }
       }
       // New plans name the executor only; its tool is resolved when the work
-      // runs, or set explicitly under `assignments`.
+      // runs.
       const executorLine = /^executor:(.*)$/m.exec(fm)
       const executorValue = executorLine ? executorLine[1].trim() : ''
       // In YAML the first non-blank line after `executor:` continues the value

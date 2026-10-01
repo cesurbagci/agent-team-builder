@@ -1,7 +1,11 @@
 # Tasarım: İş başına araç ataması (task assignments)
 
 - **Tarih:** 2026-09-30
-- **Durum:** Taslak
+- **Durum:** **Kısmen geri alındı (1.1.12).** K1 (`taskAssignments` ayarı) ve K4 (atama
+  tablosu) ile plana yazılan `assignments` kaldırıldı: kullanıcı bir adımın aracını iş
+  sırasında söyler, söylenen kaydedilmez ve yalnız o adım için geçerlidir. K2'nin yalın
+  `executor` biçimi, `yazan:` kaydı, K5'in çağrı yolları, K6 ve K7 geçerlidir. `crossReview`
+  varsayılan olarak kapalı önerilir.
 - **Kapsam:** Plan kapısı açık bir projede, bir işin rollerinin (işi yapan, plan denetimi, kod
   denetimi, danışılan roller) hangi araçta (Claude / Codex / OpenCode) çalışacağını iş başına
   kullanıcının seçmesi; seçilmeyenlerin çalışma anında proje varsayılanıyla çözülmesi; dış

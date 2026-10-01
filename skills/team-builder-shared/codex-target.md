@@ -211,8 +211,9 @@ codex exec --sandbox read-only -
   denetim için en güvenli hedef yapar.
 - **`--agent` yok** — Codex'te zaten yok, ama olsaydı da verilmezdi: `--agent` hedefin
   kendi konfigürasyonunu, dolayısıyla izinlerini yükler. Rol yalnız
-  `.codex/agent-definitions/<ad>.md` prompt'a gömülerek taşınır;
-  `.codex/agents/<ad>.toml`'daki `model` ve `model_reasoning_effort` **uygulanmaz**.
-  Çağrı, Codex'in o oturumdaki varsayılan modeliyle koşar.
+  `.codex/agent-definitions/<ad>.md` prompt'a gömülerek taşınır. Rolün modeli ve effort'u
+  `.codex/agents/<ad>.toml`'dan okunup bayrakla verilir: `--model=<m>` ve
+  `-c model_reasoning_effort="<e>"` (`work-plan` skill'i, *Başka ekosistemdeki kapı
+  sahibi*). Değer yoksa bayrak verilmez, Codex'in varsayılanı kullanılır.
 - Manifest'te `planGate.cli.codex` varsa `codex` yerine o yol kullanılır; argümanlar
   değişmez.

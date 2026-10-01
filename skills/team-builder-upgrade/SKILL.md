@@ -1,6 +1,6 @@
 ---
 name: team-builder-upgrade
-description: Kurulmuş bir projede anayasa preset'lerini (geçici çözüm yok, kod-doküman senkronizasyonu, rol başına hafıza, dil standardı, plan kapısı) açar veya kapatır; plan kapısının artefaktlarını kurar ya da bırakır; eski yapıdaki projeleri tek talimat dosyasına göç ettirir. Tetikleyiciler — "plan kapısını aç", "preset aç", "preset kapat", "anayasa değiştir", "takımı yükselt", "talimatları tek dosyaya taşı", "projeyi yeni yapıya geçir", "plan kapısı skill'ini güncelle", "çapraz denetimi aç/kapat", "iş başına araç atamasını aç/kapat". Yeni rol/routing/ekosistem eklemek için kullanma; kurulu projede bunlar elle yapılır (manifest — silinen rolün routing/consults/lead atıfları dahil —, rol dosyası ve `llm.json` girdileri, sonra sync). Model ya da effort değiştirmek için de kullanma; o team-builder-models'in işidir.
+description: Kurulmuş bir projede anayasa preset'lerini (geçici çözüm yok, kod-doküman senkronizasyonu, rol başına hafıza, dil standardı, plan kapısı) açar veya kapatır; plan kapısının artefaktlarını kurar ya da bırakır; eski yapıdaki projeleri tek talimat dosyasına göç ettirir. Tetikleyiciler — "plan kapısını aç", "preset aç", "preset kapat", "anayasa değiştir", "takımı yükselt", "talimatları tek dosyaya taşı", "projeyi yeni yapıya geçir", "plan kapısı skill'ini güncelle", "çapraz denetimi aç/kapat". Yeni rol/routing/ekosistem eklemek için kullanma; kurulu projede bunlar elle yapılır (manifest — silinen rolün routing/consults/lead atıfları dahil —, rol dosyası ve `llm.json` girdileri, sonra sync). Model ya da effort değiştirmek için de kullanma; o team-builder-models'in işidir.
 ---
 
 # team-builder-upgrade
@@ -141,8 +141,8 @@ açma ve kapatma ayrı ayrı anlatılır.
 2. **Manifest'i yaz:** `constitution.planGate: true` **ve** kök `planGate` nesnesi
    (`planReviewer`, `codeReviewer` — ikisi de zorunlu, değer ad ya da `null`). Proje birden
    çok ekosistemi hedefliyorsa **ve** en az bir sahip adı verildiyse çapraz denetimi de sor (setup Adım 7C, 3. soru) ve
-   `crossReview`'ı yaz; tek hedefte ya da iki sahip de `null` ise sorma ve yazma. Birden çok
-   hedefte iş başına araç atamasını da sor (setup Adım 7C, 4. soru) → `taskAssignments`.
+   `crossReview`'ı yaz (varsayılan kapalı); tek hedefte ya da iki sahip de `null` ise sorma
+   ve yazma.
 3. **Bloğu ekle:** `<!-- c:planGate -->` … `<!-- /c:planGate -->`, şablondan render
    edilmiş, denetleyici adları doldurulmuş.
 4. **Skill kaynağını üret:** `.agent-source/skills/work-plan/SKILL.md` —
@@ -167,20 +167,21 @@ olabilirler ve yeniden render etmek o düzenlemeyi sessizce siler.
 ### Plan kapısı açıkken: ayarları değiştir ya da skill'i güncelle
 
 Plan kapısı zaten açıksa kapatıp açmak gerekmez:
-- **"İş başına araç atamasını aç/kapat"** → `planGate.taskAssignments`'ı yaz. Kapatınca
-  planlardaki `assignments` silinmez, yok sayılır. **"Çapraz denetimi aç/kapat"** →
-  `planGate.crossReview`. **Açarken** önce projedeki `work-plan` skill'inin bu ayarı
-  tanıdığını kontrol et (`taskAssignments` / `crossReview` geçiyor mu); geçmiyorsa ayar
+- **"Çapraz denetimi aç/kapat"** → `planGate.crossReview`. **Açarken** önce projedeki
+  `work-plan` skill'inin bu ayarı tanıdığını kontrol et (`crossReview` geçiyor mu); geçmiyorsa ayar
   hiçbir şey yapmaz — önce aşağıdaki güncellemeyi yap. Sonra manifest'i doğrula, sync
   çalıştır.
 - **"Plan kapısı skill'ini güncelle"** (proje eski bir team-builder sürümüyle kurulduysa yeni
-  kurallar — çapraz denetim, başka araçta işi yapan, araç ataması — ona ulaşmamıştır):
+  kurallar — çapraz denetim, başka araçta işi yapan, bir adımın aracını o an söylemek — ona
+  ulaşmamıştır):
   1. `.agent-source/skills/work-plan/SKILL.md`'yi güncel şablondan `docLanguage`'de yeniden
      render et (Açarken 4. adımdaki kural). Mevcut dosya şablondan elle değiştirilmişse
      farkı göster, onay al.
   2. `.agent-work/TEMPLATE.md`'de `executor:` satırı `<ekosistem>/<agent-adı>` gösteriyorsa
      yalnız o satırı `executor: <agent-adı>` yap; dosyanın geri kalanına dokunma.
-  3. `crossReview` ve `taskAssignments` yoksa ilgili soruları sor.
+  3. `crossReview` yoksa soruyu sor (varsayılan kapalı). Manifest'te eski
+     `taskAssignments` varsa kullanıcıya "artık kullanılmıyor, iş sırasında söylemen
+     yeter" de ve alanı sil.
   4. Sync çalıştır. `.agent-work/` altındaki planlara **dokunma**: eski biçimli `executor`'lar
      olduğu gibi geçerlidir.
 

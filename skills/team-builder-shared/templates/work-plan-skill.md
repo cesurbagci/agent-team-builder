@@ -72,8 +72,8 @@ gerçekte hedeflenmiyor olabilir.
 
 `revision` yalnız **planlama içeriği** değişince artar: `title`, `domain`, `paths`,
 `executor` ve `s:what` / `s:how` / `s:questions` bölümleri. `s:review-notes`,
-`s:progress`, `reviews`, `outcome`, `adr` ve `assignments` **artırmaz** — `assignments`
-kimin hangi araçta çalışacağıdır, planın içeriği değil.
+`s:progress`, `reviews`, `outcome` ve `adr` **artırmaz**. Eski planlarda bulunabilen
+`assignments` alanı yok sayılır; silme.
 
 `revision` artınca plan denetimi onayı bozulur — aşağıdaki `planReviewPassed` yanlış olur.
 Sonucu klasöre göre değişir:
@@ -178,11 +178,7 @@ seçerken ve yarım işi devam ettirirken de — üçünü birden doğrula:
 
 0. **Biçim.** `executor` yalın bir addır (`backend-developer`); aracı çalışma anında çözülür
    (*Rolün aracını çöz*). Eski planlar `<ekosistem>/<ad>` biçiminde olabilir: o ekosistem
-   **aynen geçerlidir** — `taskAssignments` açık ya da kapalı olsun — ve kullanıcı o işin
-   aracını açıkça değiştirmek isteyene kadar öyle kalır (o zaman `executor: <ad>` +
-   `assignments.executor: <istenen>` yaz; ad değişmediği için `revision` artmaz). Nitelikli
-   `executor` ile `assignments.executor` **birlikte** bulunursa plan bozuktur — işletme,
-   kullanıcıya sor.
+   **aynen geçerlidir** (kullanıcı o an başka araç söylemedikçe).
 1. Ad gerçek bir agent ve **uygun executor'lardan** biri: manifest'in `routing`
    tablosunda bir satırın `role`'ü olarak geçiyor **ve** kod yazıyor. "Kod yazıyor"
    demek, agent'ın `writesCode` alanının `false` **olmaması** demektir — alan hiç
@@ -224,10 +220,7 @@ bakılmaz, ama geçiş bittiğinde koşul sağlanmıyorsa hata vardır.
    senin mi yazacağını, yoksa *Başka ekosistemdeki executor* ile mi yaptıracağını belirler.
    - İş birden çok domain'e dokunuyorsa **tek** `executor` seç (ağırlık merkezine göre) ve
      diğer sahiplere danışmayı `s:how` bölümüne yaz. İki executor yazma.
-2. **Araç ataması** — yalnız manifest'te `planGate.taskAssignments: true` ise, plan
-   netleşince ve kapı 1'den **önce**: *Araç ataması* bölümünü uygula. Kapalıysa bu adımı
-   atla, hiçbir şey sorma.
-3. **`.agent-work/TEMPLATE.md`'yi kopyala** → `.agent-work/draft/<id>-<slug>.md`.
+2. **`.agent-work/TEMPLATE.md`'yi kopyala** → `.agent-work/draft/<id>-<slug>.md`.
    `revision: 1`, `reviews` boş diziler, `s:progress` sentinel'li.
 3. **Gövdeyi doldur.** `s:what` sade dille ve örnekle, ölçülebilir kabul kriteriyle;
    `s:how` yaklaşım ve etkilenen bileşenler (`paths` ile tutarlı); `s:questions` boş
@@ -327,13 +320,15 @@ o iş için kural atlanır.
 ## Rolün aracını çöz
 
 Bir rolü çağırmadan hemen önce (işi yapmak, kapı 1, kapı 3, danışma) hangi araçta
-çalışacağını **o an** çöz; plana yazılmış bir tercih yoksa varsayılan geçerlidir. Sıra:
+çalışacağını **o an** çöz. Sıra:
 
-1. **Eski nitelikli `executor`** (`<ekosistem>/<ad>`) — yalnız işi yapan için: o ekosistem.
-2. **`assignments`** — yalnız `planGate.taskAssignments: true` iken okunur. Anahtarlar:
-   `executor`, `plan-review`, `code-review`, `consult.<rol-adı>`. Değer o rolün etkin
-   hedeflerinden biri olmalı; değilse plan bozuktur — kullanıcıya sor. Özellik kapalıyken
-   alan **yok sayılır** (silme; yeniden açılınca geçerli olur).
+1. **Kullanıcının o anki sözü.** Kullanıcı bu iş için bir adımın aracını söylediyse ("bu
+   sefer kod denetimini Claude yapsın", "geliştirmeyi Codex yapsın", "architect'e
+   Codex'te danış") o adımı orada çalıştır. **Hiçbir yere kaydetme** — yalnız bu iş ve o
+   adım için geçerlidir, `crossReview` dahil kuralları esnetir. Araç o rolün etkin
+   hedeflerinden biri değilse ya da CLI'ı kurulu değilse söyle, sor. Söylediği araç işi
+   yazan araçsa "çapraz denetim olmaz" de, yine de orada çalıştır.
+2. **Eski nitelikli `executor`** (`<ekosistem>/<ad>`) — yalnız işi yapan için: o ekosistem.
 3. **Varsayılan:**
 
    | Rol | Araç |
@@ -342,37 +337,9 @@ Bir rolü çağırmadan hemen önce (işi yapmak, kapı 1, kapı 3, danışma) h
    | Plan / kod denetimi | *Başka ekosistemdeki kapı sahibi*'nin 1–2. adımları (`crossReview` dahil) |
    | Danışılan rol | Danışanın koştuğu ekosistem, rol orada üretiliyorsa; değilse ilk hedefi |
 
-Açıkça seçilmiş bir denetim aracı `crossReview`'dan önce gelir — kullanıcı seçmiştir; işi
-yazan araçla aynıysa bunu bir satırla söyle, yine de onun seçtiği yerde çalıştır.
-
 **Kodun nerede yazıldığı** tercihten ayrı bir gerçektir: işi her yaptığında ya da
 yaptırdığında `s:progress`'e `yazan: <ekosistem>` satırını ekle. Bu satırlar **birikir** —
 `revision` artsa da silme; önceki revizyonun kodu da denetlenen işin parçasıdır.
-
-## Araç ataması
-
-Yalnız `planGate.taskAssignments: true` iken. Plan netleşince, kapı 1'den önce, bu işte rol
-alanları tek tabloda göster: işi yapan, plan denetçisi, kod denetçisi ve işi yapanın
-`consults`'undaki roller. Her satırda şu anki varsayılanı ve seçilebilecek araçları (rolün
-etkin hedefleri; CLI'ı bu makinede kurulu olanlar) yaz:
-
-| Görev | Rol | Varsayılan (şu an) | Seçilebilir |
-|---|---|---|---|
-| İşi yapan | backend-developer | claude | claude, codex |
-| Plan denetimi | architect | codex | claude, codex, opencode |
-| Kod denetimi | reviewer | codex | claude, codex, opencode |
-| Danışma | architect | claude | claude, codex, opencode |
-
-"Seçilebilir" **yalnız** bu iki koşulla daraltılır. `crossReview` onu daraltmaz; yalnız
-varsayılanı belirler. Kullanıcı denetimi işi yazan araca verebilir (bkz. *Rolün aracını
-çöz*); tabloda o satıra "çapraz denetim olmaz" notu düş.
-
-"Değiştirmek istediğini yaz; hepsi uygunsa `tamam`." **Yalnız değiştirilen satırları**
-`assignments`'a yaz; hiçbiri değişmezse alanı hiç yazma — varsayılanlar plana dondurulmaz.
-
-**Her adımdan önce tek satır bilgi ver:** "Kod denetimi Codex'te yapılacak (varsayılan)."
-Kullanıcı o an değiştirirse değeri `assignments`'a yaz ve adımı ona göre çalıştır.
-Özellik kapalıyken tablo da bu satır da yoktur.
 
 ## Danışma
 
@@ -389,9 +356,9 @@ rolün aracını *Rolün aracını çöz* ile bul:
 ## Başka ekosistemdeki kapı sahibi
 
 Kapı sahibinin aracı (*Rolün aracını çöz*) senin ekosistemin değilse — sahip senin
-ekosisteminde üretilmemişse, `crossReview` açıksa ya da kullanıcı `assignments`'ta başka bir
-araç seçtiyse — onu **harici CLI çağrısıyla** o ekosistemde çalıştırırsın. `assignments`
-bir araç seçtiyse aşağıdaki 1–2. adımları atla, o aracı kullan. Çapraz
+ekosisteminde üretilmemişse, `crossReview` açıksa ya da kullanıcı o an başka bir araç
+söylediyse — onu **harici CLI çağrısıyla** o ekosistemde çalıştırırsın. Kullanıcı bir araç
+söylediyse aşağıdaki 1–2. adımları atla, o aracı kullan. Çapraz
 denetimin amacı işi yazan modelden farklı bir modelin denetlemesidir. Kapı 1 ve kapı 3 için
 dizi aynıdır.
 
@@ -578,7 +545,8 @@ Bu çağrı projeye **yazar**; o yüzden:
 
 1. **Her seferinde kullanıcıya sor**, varsayma: "Bu işin sahibi `<ekosistem>`'deki `<ad>`.
    İşi ona vereyim mi? `<ekosistem>` projede dosya değiştirecek." Hayır derse plan
-   `approved/`'da o ekosistemde açılmayı bekler.
+   `approved/`'da o ekosistemde açılmayı bekler. Kullanıcı bu işi o araca az önce kendisi
+   verdiyse ("geliştirmeyi Codex yapsın") bu onaydır; yeniden sorma.
 2. **Çalışma ağacı `.agent-work/` dışında temiz olmalı.** `git status --short` başka bir
    değişiklik gösteriyorsa kullanıcıdan önce commit ya da stash etmesini iste — kirli bir
    dosyaya executor'ın yaptığı değişiklik sonradan ayırt edilemez. Sonra **sen**
@@ -592,7 +560,8 @@ Bu çağrı projeye **yazar**; o yüzden:
    tamamı** + şu kurallar: "Yalnız planın `paths` alanındaki yollarda dosya değiştir.
    `.agent-work/`'e dokunma. Bitince değiştirdiğin dosyaları ve durumu (`done` ya da
    `blocked: <neden>`) yaz. Bir role danışman gerekiyorsa dur ve `blocked: consult <rol>:
-   <soru>` yaz." Devam çağrısında ayrıca danışma cevabını, o ana kadarki değişiklik
+   <soru>` yaz. Bu iş bu çağrı için sana verildi; planın `executor` alanındaki
+   ekosisteme bakma, kodu sen yaz." Devam çağrısında ayrıca danışma cevabını, o ana kadarki değişiklik
    listesini ve `s:progress`'i ekle. Prompt'u *Başka ekosistemdeki kapı sahibi*'ndeki gibi **geçici
    bir dosyadan stdin'e** ver; kabuk dizesine koyma.
 4. CLI'ı **proje kökünde** çalıştır (`planGate.cli` varsa o yolu kullan):

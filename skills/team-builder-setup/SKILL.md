@@ -229,8 +229,9 @@ atama.
 
 3. **Birden çok hedef seçildiyse** (Adım 2) ve en az bir sahip adı verildiyse sor:
    > "Kodu yazan ile denetleyen farklı araçta olsun mu? Örneğin Claude'da yapılan iş Codex'te
-   > denetlenir, Codex'te yapılan iş Claude'da. Farklı bir model gözden kaçanı yakalar.
-   > **Önerim: evet.**"
+   > denetlenir, Codex'te yapılan iş Claude'da. Farklı bir model gözden kaçanı yakalar, ama
+   > her denetim bir dış çağrıdır ve daha uzun sürer. **Varsayılan: kapalı** — istersen
+   > açarım. İş sırasında 'bu sefer denetimi Codex yapsın' demen de yeter."
    → `manifest.planGate.crossReview` (`true`/`false`). Evet derse sahibin birden çok hedefte
    üretildiğini kontrol et (varsayılan `targetsDefault` öyledir); yalnız bir hedefteyse
    çapraz denetim o sahip için işlemez — kullanıcıya söyle. Sıra önemlidir: sahip, kendi
@@ -238,11 +239,6 @@ atama.
    (`[claude, codex, opencode]` için Claude'dan çağrılınca Codex, Codex'ten çağrılınca Claude);
    kullanıcı belirli bir aracı istiyorsa (ör. "denetim hep Codex'te") sahibin `targets`'ını ona göre sırala
    ya da daralt. Tek hedef seçildiyse bu soruyu **sorma** ve alanı yazma.
-4. **Birden çok hedef seçildiyse** sor:
-   > "Bir iş planlanınca, o işte kimin hangi araçta çalışacağını (işi yapan, denetçiler,
-   > danışılan roller) her seferinde sana tablo olarak göstereyim mi? Değiştirmediğin her
-   > şey proje varsayılanıyla çalışır. Bunu sonra da açıp kapatabilirsin."
-   → `manifest.planGate.taskAssignments` (`true`/`false`). Tek hedefte sorma, yazma.
 
 **Her cevaptan sonra state'i yaz** (`answers.planGate` altına tek tek) — kullanıcı
 soruların ortasında çıkarsa resume'da cevapladığı soru yeniden sorulmaz.

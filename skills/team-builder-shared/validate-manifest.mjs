@@ -136,7 +136,8 @@ function validatePlanGate(doc, errors, agentsByName) {
   if ("crossReview" in gate && typeof gate.crossReview !== "boolean") {
     errors.push("planGate.crossReview true ya da false olmalı");
   }
-  // taskAssignments: per-task tool choice for the plan's roles.
+  // taskAssignments: retired and ignored; still accepted so installed projects
+  // that carry it stay valid.
   if ("taskAssignments" in gate && typeof gate.taskAssignments !== "boolean") {
     errors.push("planGate.taskAssignments true ya da false olmalı");
   }
