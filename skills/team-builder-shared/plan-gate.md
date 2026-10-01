@@ -82,18 +82,22 @@ içindir.
 ### Denetim kaydı
 
 ```yaml
-{ by: <ekosistem>/<agent-adı> | system | user/<agent-adı>, at: <YYYY-MM-DD>,
+{ by: <ekosistem>/<agent-adı> | system | user/<agent-adı> | self/<agent-adı>, at: <YYYY-MM-DD>,
   revision: <n>, verdict: approved | rejected | skipped,
   reasons: [<madde>, ...] }
 ```
 
-- `by`: üç biçim — `<ekosistem>/<agent-adı>`, `system`, `user/<agent-adı>` (`user` bir
-  ekosistem değil, ayrı bir ön ek). İki yönlü kural: `system` ve `user/` **yalnız**
-  `skipped` kayıtlarında bulunur, **ve** her `skipped` kaydı ikisinden birini taşır;
-  `approved`/`rejected` ikisini de asla taşımaz. Çıplak `user` geçersiz: feragat bir
-  sahibe bağlıdır, sahip değişirse düşer.
+- `by`: dört biçim — `<ekosistem>/<agent-adı>`, `system`, `user/<agent-adı>`,
+  `self/<agent-adı>` (`user` ve `self` ekosistem değil, ayrı ön ek). İki yönlü kural:
+  `system`, `user/` ve `self/` **yalnız** `skipped` kayıtlarında bulunur, **ve** her
+  `skipped` kaydı bunlardan birini taşır; `approved`/`rejected` hiçbirini asla taşımaz.
+  Çıplak `user` ya da `self` geçersiz: feragat bir sahibe bağlıdır, sahip değişirse düşer.
+  `self/` — sahibin son kararından sonra yalnız onun önerdiği küçük düzeltmeler yapıldığı
+  için yeniden denetimi çalışan oturum atladı; yalnız sahibin `approved`/`rejected`
+  kaydının hemen ardından, bir kez.
 - `reasons`: **her zaman dizi**; `rejected` boş olamaz, `skipped` + `by: user/<agent-adı>`
-  de boş olamaz (kullanıcının gerekçesi). `approved` ve `skipped` + `by: system` → `[]`.
+  de boş olamaz (kullanıcının gerekçesi), `skipped` + `by: self/<agent-adı>` de (bulgu →
+  düzeltme). `approved` ve `skipped` + `by: system` → `[]`.
 - Kayıtlar **asla silinmez**; sonraki kayıt öncekini geçersiz kılar.
 
 ## Kapı yüklemleri
@@ -109,9 +113,10 @@ olmalıdır; denetleyici projenin başka bir ekosisteminde üretilmiş olabilir.
 |---|---|---|
 | Bir agent adı | `approved` | `<denetimin ekosistemi>/<güncel sahip>` — ekosistem sahibin etkin hedeflerinden biri |
 | Bir agent adı | `skipped` | `user/<güncel sahip>` — kullanıcı feragati |
+| Bir agent adı | `skipped` | `self/<güncel sahip>` — sahibin önerdiği küçük düzeltmeler uygulandı, yeniden denetim atlandı; hemen önceki kayıt güncel sahibin `approved`/`rejected` kaydı |
 | `null` | `skipped` | `system`, sahip hâlâ `null` |
 
-Üçünde de `kayıt.revision === plan.revision`. Ad karşılaştırması **güncel** sahibe
+Hepsinde `kayıt.revision === plan.revision`. Ad karşılaştırması **güncel** sahibe
 karşıdır: sahip değişirse onay da feragat de düşer.
 
 **`doneAuthorized` — anlık.** `in-progress/ → done/` hareketini yetkilendirir, saklanmaz;

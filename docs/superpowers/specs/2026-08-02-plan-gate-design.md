@@ -541,9 +541,10 @@ orada koşar. `currentEcosystem` bu hesaba **girmez**.
 |---|---|---|
 | Bir agent adı | `approved` | `<denetimin ekosistemi>/<güncel sahip>` — ekosistem sahibin etkin hedeflerinden biri |
 | Bir agent adı | `skipped` | `user/<güncel sahip>` — kullanıcı feragati |
+| Bir agent adı | `skipped` | `self/<güncel sahip>` — sahibin önerdiği küçük düzeltmeler uygulandı; hemen önceki kayıt güncel sahibin `approved`/`rejected` kaydı (1.1.13) |
 | `null` | `skipped` | `system`, sahip hâlâ `null` |
 
-Üçünde de `kayıt.revision === plan.revision`. Ad karşılaştırması **güncel** sahibe
+Hepsinde `kayıt.revision === plan.revision`. Ad karşılaştırması **güncel** sahibe
 karşıdır: sahip değişirse onay da feragat de düşer.
 
 **`null` durumunda da `revision` eşitliği aranır.** İlk taslak atlamayı revizyondan muaf
@@ -571,9 +572,10 @@ Kayıt bu turun ürünüyse, biçimi şunlardan biri olmalıdır:
 |---|---|---|
 | Bir agent adı | `approved` | `kayıt.by` güncel denetleyiciyle aynı |
 | Bir agent adı | `skipped` | `kayıt.by` = `user/<güncel denetleyici adı>` — kapıya ulaşılamadı, kullanıcı feragat etti |
+| Bir agent adı | `skipped` | `kayıt.by` = `self/<güncel denetleyici adı>` — yeniden denetim atlandı; hemen önceki kayıt güncel denetleyicinin `approved`/`rejected` kaydı (1.1.13) |
 | `null` | `skipped` | Kapı yoktur, ama hareket serbest değildir: `skipped` kaydı düşülür, `kayıt.by` = `system` **ve** `codeReviewer` **hâlâ** `null` olmalıdır |
 
-Üçünde de `kayıt.revision === plan.revision`. Bu bir **tutarlılık kontrolüdür**, yetkinin
+Hepsinde `kayıt.revision === plan.revision`. Bu bir **tutarlılık kontrolüdür**, yetkinin
 kaynağı değil: kapı 3 zaten `reviewed_revision` diskteki `revision`'la uyuşmayan bir kaydı
 hiç yazmaz. Eşitliğin **tek başına** yetki verdiğini okumak, bu bölümün kapattığı hatadır.
 
@@ -775,9 +777,10 @@ eklenmez.
 | N11 | `id` biçimi bozuk (`2026-8-1`, `abc`, sıra yok) | Reddedilir |
 | N12 | Dosya adı `id` ile uyuşmuyor (`20260802-01-x.md` içinde `id: 20260803-02`) | Reddedilir |
 | N13 | Denetim kaydında `at` yok ya da `YYYY-MM-DD` değil | Reddedilir |
-| N14 | `skipped` kaydında `by` değeri `system` ya da `user/<agent-adı>` değil (çıplak `user` dahil) | Reddedilir |
+| N14 | `skipped` kaydında `by` değeri `system`, `user/<agent-adı>` ya da `self/<agent-adı>` değil (çıplak `user`/`self` dahil) | Reddedilir |
+| N14b | `self/<agent-adı>` kaydının hemen öncesinde güncel sahibin `approved`/`rejected` kaydı yok (zincirleme dahil) | Reddedilir |
 | N15 | `approved`/`rejected` kaydında `by` değeri `system` | Reddedilir |
-| N15b | `approved`/`rejected` kaydında `by` değeri `user/` ile başlıyor | Reddedilir |
+| N15b | `approved`/`rejected` kaydında `by` değeri `user/` ya da `self/` ile başlıyor | Reddedilir |
 | N16 | `rejected` kaydında `reasons` boş dizi | Reddedilir |
 | N17 | İptal geçişinde `s:review-notes`'ta yalnız eski notlar var, yeni iptal kaydı yok | Reddedilir |
 | N18 | Denetim kaydında `by` biçimi bozuk (`architect`, `claude/`, `//x`) | Reddedilir |

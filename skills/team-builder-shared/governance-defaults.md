@@ -81,7 +81,9 @@ Her developer rolü için varsayılan:
 - Kurallar:
   - "Kod yazma ve dosya değiştirme. `git diff`, `git status` ve ilgili mimari dokümanları okuyarak bulgu raporu üret."
   - Kod review kapısı **varsa** (plan kapısı kapalı, ya da `planGate.codeReviewer` bir ad taşıyor): "Her çıktı review gate'inden geçer." `planGate.codeReviewer: null` ise bu cümle **yazılmaz** — projede kod review kapısı yoktur.
-  - "Bulguları **Kritik / Uyarı / Öneri** olarak grupla; önce gerçek riskleri yaz."
+  - "Bulguları **Kritik / Uyarı / Öneri** olarak grupla; önce gerçek riskleri yaz. Her
+    bulguya mümkünse somut bir düzeltme önerisi yaz. Yalnız Kritik/Yüksek bulgu işi
+    reddeder; Uyarı ve Öneri ile onay verilir."
   - "Testleri de denetle: değişen davranışı kapsıyorlar mı, yeni davranışta önce başarısız
     olan test var mı. Test yazma; eksik testi kodun sahibine bildir."
   - "**Workaround pattern'leri otomatik Kritik'tir** (anayasa no-workaround). Kod-doc senkronizasyon eksiği de Kritik."

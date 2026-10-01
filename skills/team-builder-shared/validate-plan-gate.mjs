@@ -29,6 +29,7 @@ export const BY_GRAMMAR_TOKENS = [
   '<ekosistem>/<agent-adı>',
   'system',
   'user/<agent-adı>',
+  'self/<agent-adı>',
 ]
 
 // The verdict block is the only contract binding a foreign CLI's output. It is

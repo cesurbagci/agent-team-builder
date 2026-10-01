@@ -116,21 +116,26 @@ Her kapı sonucu `reviews.plan-review` ya da `reviews.code-review` dizisine **ta
 şekilde yazılır — beş alanın hepsi zorunludur:
 
 ```yaml
-{ by: <ekosistem>/<agent-adı> | system | user/<agent-adı>, at: <YYYY-MM-DD>,
+{ by: <ekosistem>/<agent-adı> | system | user/<agent-adı> | self/<agent-adı>, at: <YYYY-MM-DD>,
   revision: <n>, verdict: approved | rejected | skipped,
   reasons: [<madde>, ...] }
 ```
 
-- `by`: üç biçimden biri — `<ekosistem>/<agent-adı>`, `system`, ya da
-  `user/<agent-adı>`. Çıplak ad (`architect`), eksik parça (`claude/`), boş parça
+- `by`: dört biçimden biri — `<ekosistem>/<agent-adı>`, `system`, `user/<agent-adı>` ya
+  da `self/<agent-adı>`. Çıplak ad (`architect`), eksik parça (`claude/`), boş parça
   (`//x`) ve **çıplak `user`** geçersizdir. Ekosistem yalnız `claude`, `codex` ya da
   `opencode` olabilir; `user` bir ekosistem değildir, ayrı bir ön ektir.
   - `system` — denetleyici tanımsız. Yalnız `skipped`.
   - `user/<agent-adı>` — adı geçen kapı sahibine ulaşılamadı, kullanıcı kapıyı atladı.
     Yalnız `skipped`. Ad **zorunludur**: feragat o sahibe verilmiştir, sahip sonradan
     değişirse feragat düşmelidir — tıpkı onay gibi.
-  - `approved` ve `rejected` kayıtlarında `system` ve `user/` **asla** bulunmaz.
-  - `skipped` kayıtlarında `by` **yalnız** `system` ya da `user/<agent-adı>` olabilir;
+  - `self/<agent-adı>` — adı geçen kapı sahibinin son kararından sonra yapılan değişiklikler
+    yalnız onun önerdiği küçük düzeltmeler olduğu için yeniden denetimi **sen** atladın
+    (*Bulgular ve yeniden denetim*). Yalnız `skipped`; ad zorunlu, `user/` gibi güncel
+    sahibe bağlıdır.
+  - `approved` ve `rejected` kayıtlarında `system`, `user/` ve `self/` **asla** bulunmaz.
+  - `skipped` kayıtlarında `by` **yalnız** `system`, `user/<agent-adı>` ya da
+    `self/<agent-adı>` olabilir;
     `<ekosistem>/<agent-adı>` biçimi `skipped`'te geçersizdir — denetleyici karar
     verdiyse `approved` ya da `rejected` yazar, kendisi hiçbir zaman `skipped` yazmaz.
 - `at`: `YYYY-MM-DD`; eksik ya da başka biçim geçersizdir.
@@ -145,6 +150,8 @@ Her kapı sonucu `reviews.plan-review` ya da `reviews.code-review` dizisine **ta
   - `skipped` + `by: user/<agent-adı>` → **boş olamaz**. Kaydın bütün denetim değeri
     burada: hangi planın hangi kapıyı neden atladığı. Kullanıcı gerekçe vermezse kapı
     atlanmaz.
+  - `skipped` + `by: self/<agent-adı>` → **boş olamaz**: her bulgu için "bulgu → yapılan
+    düzeltme".
 - Kayıtlar **asla silinmez**; sonraki kayıt öncekini geçersiz kılar.
 
 ### `planReviewPassed` — plan onayı geçerli mi?
@@ -155,21 +162,53 @@ güncel denetleyiciden gelir, senin oturumundan değil — plan dosyaları payla
 hangi oturumdan bakıldığına göre değişmemelidir. **Ekosistem** ise denetimin fiilen
 çalıştığı yerdir; denetleyici projenin başka bir ekosisteminde üretilmiş olabilir.
 
-Üç yoldan biriyle doğru olur. Hepsinde ortak: bakılan kayıt `plan-review`'ın **son**
+Dört yoldan biriyle doğru olur. Hepsinde ortak: bakılan kayıt `plan-review`'ın **son**
 kaydıdır ve `kayıt.revision === plan.revision` olmalıdır.
 
 | Projenin plan denetleyicisi | Son kayıt | `kayıt.by` |
 |---|---|---|
 | Bir agent adı | `approved` | `<denetimin çalıştığı ekosistem>/<güncel denetleyici adı>` — ekosistem, denetleyicinin **etkin hedeflerinden biri** olmalı |
 | Bir agent adı | `skipped` | `user/<güncel denetleyici adı>` — kullanıcı feragati |
+| Bir agent adı | `skipped` | `self/<güncel denetleyici adı>` — **ve** hemen önceki kayıt güncel denetleyicinin `approved` ya da `rejected` kaydı |
 | Tanımsız (`null`) | `skipped` | `system`, ve denetleyici **hâlâ** tanımsız |
 
-Ad karşılaştırması üç satırda da **güncel** denetleyiciye karşıdır. Kapı sahibi
+Ad karşılaştırması bütün satırlarda da **güncel** denetleyiciye karşıdır. Kapı sahibi
 değişirse hem eski onaylar hem eski feragatler düşer; yeni sahiple kapıyı yeniden geç.
 
 Ekosistem kısıtı `approved` satırında **denetimin çalıştığı** ekosistemdir, executor'ınki
 değil — denetleyici başka bir ekosistemde çalışıyor olabilir (bkz. *Başka ekosistemdeki
 kapı sahibi*).
+
+### Bulgular ve yeniden denetim
+
+**Denetçiye verilecek ölçüt** (kapı 1 ve kapı 3; yerel çağrıda da, harici çağrıda da
+prompt'a ekle): "`rejected` yalnız Kritik ya da Yüksek bir bulgu varsa — hata, güvenlik,
+veri kaybı, mimari ya da plan ihlali. Her bulguya mümkünse **somut bir düzeltme önerisi**
+yaz. Yalnız Uyarı/Öneri düzeyinde bulgu varsa `approved` ver; onları karar bloğunun
+dışında yaz."
+
+**Bulguları körü körüne kabul etme.** Her bulgu için karar ver: haklıysa düzelt, değilse
+gerekçesiyle reddet. Kararları ve yaptıklarını madde madde `s:review-notes`'a yaz.
+`approved` ile gelen notlar için de aynısı.
+
+**Yeniden denetim gerekir mi?** Sahibin son kararından (`approved` ya da `rejected`)
+sonra yaptığın değişiklikler için:
+- **Atla** — üçü **birlikte** sağlanıyorsa: (1) her bulgu için denetçi somut bir düzeltme
+  önermiş; (2) hepsini kabul edip önerildiği gibi uyguladın, hiçbirini reddetmedin; (3)
+  her düzeltme küçük ve yerel — bulgunun gösterdiği yerde birkaç satır; yeni dosya, yeni
+  davranış, arayüz ya da şema değişikliği yok. Kullanıcıya sorma; şu kaydı yaz ve tek
+  satırla bildir: `{ by: self/<sahibin adı>, at: <bugün>, revision: <plan.revision>,
+  verdict: skipped, reasons: [<bulgu → yapılan düzeltme>, ...] }`. Kapı 3'te sahip
+  `approved` kaydını **bu turda** verdiyse ek kayıt gerekmez — kod değişikliği
+  `revision`'ı artırmaz ve onay bu turundur. Onay önceki bir turdansa `self/` kaydını
+  yaz.
+- **Gönder** — biri bile sağlanmıyorsa (önerisiz bir bulgu, öneriden farklı bir çözüm,
+  reddettiğin bir bulgu, kritik ya da büyük bir değişiklik): kapıyı **yeniden** çalıştır.
+  Prompt'a son karardan bu yana yaptığın **bütün** değişiklikleri ve her bulguya
+  cevabını ekle.
+
+Atlama **zincirlenmez**: `self/` kaydı yalnız sahibin bir kararının **hemen ardından**,
+bir kez yazılır. Sonra yine değişiklik yaparsan kapıyı çalıştır.
 
 ### `executor` geçerli mi?
 
@@ -242,7 +281,9 @@ bakılmaz, ama geçiş bittiğinde koşul sağlanmıyorsa hata vardır.
      `reasons: []`; `rejected` ise `reasons` boş olamaz ve gerekçeyi `s:review-notes`'a
      da yaz.
    - **Reddedildiyse kapı 2'ye geçme.** Plan `draft/`'ta kalır; düzelt — `revision` artar
-     — ve kapı 1'i **yeniden** geç. Eski kayıt durur.
+     — ve *Bulgular ve yeniden denetim*'e göre kapı 1'i **yeniden** geç ya da `self/`
+     kaydıyla atla. Eski kayıt durur. `approved` ile gelen notları uygulayıp planı
+     değiştirirsen de aynı kural geçerlidir.
    - Denetleyici tanımlı değilse kaydı yine yaz, şemanın tamamıyla:
      `{ by: system, at: <bugün>, revision: <plan.revision>, verdict: skipped,
      reasons: [] }`. Plan sonradan düzeltilip `revision` artarsa **yeni** bir `skipped`
@@ -288,7 +329,9 @@ o iş için kural atlanır.
      arşivdir ve geri dönüşü yoktur; bayat bir onayla oraya taşımak, denetlenmemiş işi
      kalıcı olarak denetlenmiş göstermek demektir.
    - Sonucu `reviews.code-review`'a şemaya göre kaydet. `rejected` ise `reasons` boş
-     olamaz, gerekçeyi `s:review-notes`'a da yaz ve iş `in-progress/`'te kalır.
+     olamaz, gerekçeyi `s:review-notes`'a da yaz ve iş `in-progress/`'te kalır. Düzelttikten
+     sonra *Bulgular ve yeniden denetim*'e göre kapı 3'ü yeniden çalıştır ya da `self/`
+     kaydıyla atla.
    Denetleyici tanımlı değilse `{ by: system, at: <bugün>, revision: <plan.revision>,
    verdict: skipped, reasons: [] }` kaydı düş.
 2. Kalıcı bir mimari karar çıktıysa ADR yazılmalı: projede mimarlık rolü **varsa** ona
@@ -298,15 +341,18 @@ o iş için kural atlanır.
    1. adımda senin yazmış olman**. Diskte hazır duran bir `code-review` kaydı, bu turun
    ürünü değilse geçmiştir: ne derse desin yetki vermez. Onu okuyup "hâlâ geçerli mi"
    diye sınama — 1. adıma dön ve kapı 3'ü çalıştır.
-   Bu turda yazdığın kaydın biçimi şu üçünden biri olmalı:
+   Bu turda yazdığın kaydın biçimi şu dördünden biri olmalı:
    - denetleyici bir ad taşıyorsa: kayıt `approved` **ve** `kayıt.by` **güncel**
      denetleyiciyle aynı — ekosistem kısmı denetleyicinin etkin hedeflerinden biri
      olmalı;
    - denetleyici bir ad taşıyor ve kapıya ulaşılamadıysa: kayıt `skipped` **ve**
      `kayıt.by` = `user/<güncel denetleyici adı>`;
+   - denetleyici bir ad taşıyor ve yeniden denetimi atladıysan: kayıt `skipped`,
+     `kayıt.by` = `self/<güncel denetleyici adı>` **ve** hemen önceki kayıt güncel
+     denetleyicinin bu turda ya da önceki turda yazılmış `approved`/`rejected` kaydı;
    - denetleyici tanımsızsa: kayıt `skipped`, `kayıt.by` = `system` **ve** denetleyici
      **hâlâ** tanımsız.
-   Üçünde de `kayıt.revision === plan.revision` olmalı. Bu bir **tutarlılık
+   Hepsinde `kayıt.revision === plan.revision` olmalı. Bu bir **tutarlılık
    kontrolüdür**, yetkinin kaynağı değil: 1. adım uyuşmayan bir kaydı zaten yazmaz.
    Denetleyici tanımsızken kullanıcıdan **ek onay isteme** — kapı 3 yoktur, iş doğrudan
    biter.
@@ -381,8 +427,9 @@ dizi aynıdır.
 3. Hedefin **rol tanımını oku**:
    `.claude/agents/<ad>.md`, `.codex/agent-definitions/<ad>.md`,
    `.opencode/agents/<ad>.md`. Dosya yoksa bu bir hatadır (aşağıya bak).
-4. Prompt'u kur: **rol tanımının tamamı** + **plan dosyasının tamamı** + aşağıdaki çıktı
-   sözleşmesi.
+4. Prompt'u kur: **rol tanımının tamamı** + **plan dosyasının tamamı** + denetçi ölçütü
+   (*Bulgular ve yeniden denetim*) + aşağıdaki çıktı sözleşmesi. Yeniden denetimse son
+   karardan bu yana yapılan bütün değişiklikleri ve her bulguya verilen cevabı da ekle.
    - **Kapı 3'te ayrıca** uygulama farkını ekle. Taze bir denetleyici süreci depoyu
      okuyabilir ama hangi değişikliğin bu plana ait olduğunu göremez — çalışma ağacı
      zaten kirliyse ya da birden çok plan sürüyorsa okumak yanıltır. Kapı 1'de bu bölüm
@@ -497,7 +544,9 @@ Ayrıştırma kuralları:
 - `reasons` maddelerini hedef **iki biçimde** yazabilir ve ikisi de geçerlidir: alt
   satırlarda `- <madde>` listesi, ya da tek satırda `[<madde>, <madde>]`. İçerik aynıysa
   biçim fark etmez.
-- Blok **dışındaki** metni yok say; modeller düşünme/özet metni yazar.
+- Kararı ayrıştırırken blok **dışındaki** metni yok say; modeller düşünme/özet metni
+  yazar. Ama `approved` ile gelen bulgular ve öneriler blok dışındadır: onları
+  *Bulgular ve yeniden denetim*'e göre ayrıca oku ve değerlendir.
 - `reasons`: `approved` için hedefin bloğunda **boş dizi** (`reasons: []`) kabul edilen
   biçimdir — alan **eksik değildir**, değeri boştur. Alan var ama altında hiç madde yoksa
   (`reasons:` tek başına) bu da **boş sayılır**, hata değildir. Kayda her hâlde **`[]`**
