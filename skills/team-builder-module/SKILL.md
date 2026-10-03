@@ -88,7 +88,7 @@ Read-only bir rol (yeni denetçi) istenirse bu skill'in işi değildir; manifest
 
 1. Önerilen satır: `{ "path": "<klasör>/**", "role": "<rol>" }`.
 2. **Bütün** mevcut satırlarla karşılaştır: ya biri ötekini kapsar ya tamamen ayrıdır
-   (`routing.md`). Kısmi çakışma — özellikle setup'ın ürettiği `modules/*/docs/**` gibi
+   (`routing.md`). Kısmi çakışma — özellikle eski kurulumların `modules/*/docs/**` gibi joker
    doküman satırları, `modules/auth/**` ile kısmen çakışır — varsa yeniden düzenleme öner:
    ör. `modules/auth/**` → yeni rol + `modules/auth/docs/**` → doküman sahibi. Doküman
    sahipliğini koru. Kullanıcı onaylamazsa **hiçbir şey yazmadan dur**.
@@ -100,6 +100,12 @@ Read-only bir rol (yeni denetçi) istenirse bu skill'in işi değildir; manifest
    node "${CLAUDE_SKILL_DIR}/../team-builder-shared/validate-manifest.mjs" "<geçici-dosya>"
    ```
    `MANIFEST OK` değilse hiçbir kaynak dosya yazılmaz.
+
+Yeni klasör bir **servisse** (üst düzey kod alanı, `<klasör>/**` kod yazan bir role) ve
+manifest'te `architectureDocs.layout: per-module` ile architect varsa,
+`<klasör>/docs/<mimari-klasör>/**` → architect satırını **kendiliğinden** ekle
+(`routing.md` → *Standart satır*) ve kullanıcıya söyle; "servis değil" derse ekleme. Bu
+satır 2. ve 4. maddelerdeki denetimlerden de geçer.
 
 ## 5. İsteğe bağlı eşleşmeler (yalnız ilgiliyse sor)
 

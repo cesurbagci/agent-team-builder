@@ -73,12 +73,18 @@ sync `team-builder-upgrade`'in "Rol dosyalarını sahiplikten arındır" göçü
   **Kod yazmayan hiçbir doküman rolü yoksa bu satır üretilmez.** O zaman `docs/` özel
   sahipliği olmayan sıradan bir dizindir ve kod yolu sahipliği kuralları neyse o geçerlidir.
 
-- **`layout: per-module` ise ayrıca `modules/*/docs/**` → aynı sahip.** Modül dokümanı
-  (`architecture-docs.md` → per-module ağacı) `modules/<name>/docs/` altındadır ve bu yol
-  `modules/<name>/**` → extension-developer satırının **içinde** kalır. Ayrı satır
-  yazılmazsa modül dokümanının sahibi doküman rolü değil developer olur; en özgül yol
-  kazandığı için bu satır developer satırını modül `docs/`'u için doğru şekilde daraltır.
-  `layout: central` ise bu satır yazılmaz.
+- **`layout: per-module` ise her servis için `<servis>/docs/<mimari-klasör>/**` → architect.**
+  Servis, routing'de kod yazan bir role verilmiş üst düzey kod alanıdır (`<servis>/**`,
+  `modules/<ad>/**`); hangi satırların servis olduğunu setup kullanıcıya onaylatır.
+  `<mimari-klasör>`, `architectureDocs.root`'un son parçasıdır (`docs/architecture` →
+  `architecture`, `docs/mimari` → `mimari`). Satır **servis başına** yazılır, joker değil:
+  `*/docs/architecture/**` gibi bir satır başka bir servisin `<servis>/docs/**` satırıyla
+  kısmen çakışır. Servis satırı `<servis>/**`'ın ve varsa `<servis>/docs/**`'ın içine iç içe
+  düşer; servisin `docs/` klasörünün geri kalanı servis için seçilen sahipte (developer ya da
+  `<servis>/docs/**` satırının sahibi) kalır. Architect yoksa satır yazılmaz — mimari kararı
+  kullanıcı verir, belgeyi değişikliği yapan rol yazar. `layout: central` ise yazılmaz.
+  Eski kurulumların `modules/*/docs/**` → doküman sahibi satırı geçerlidir; göç onu
+  yeniden yazmaz.
 
   > Bu satırı atlamak sahipliği sessizce yok eder: sahiplik generator'a **yalnız routing
   > üzerinden** geçer. Tabloya yazılmayan bir sahiplik üretilen talimatlarda yoktur — o rol

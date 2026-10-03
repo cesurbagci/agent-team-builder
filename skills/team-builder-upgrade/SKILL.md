@@ -1,6 +1,6 @@
 ---
 name: team-builder-upgrade
-description: Kurulmuş bir projede anayasa preset'lerini (geçici çözüm yok, kod-doküman senkronizasyonu, rol başına hafıza, dil standardı, plan kapısı) açar veya kapatır; plan kapısının artefaktlarını kurar ya da bırakır; eski yapıdaki projeleri tek talimat dosyasına göç ettirir; rol dosyalarındaki kopyalanmış yol sahipliğini routing tablosuna atıf yapan genel metne çevirir. Tetikleyiciler — "plan kapısını aç", "preset aç", "preset kapat", "anayasa değiştir", "takımı yükselt", "talimatları tek dosyaya taşı", "projeyi yeni yapıya geçir", "plan kapısı skill'ini güncelle", "çapraz denetimi aç/kapat", "rol dosyalarını genelleştir", "rol dosyalarını sahiplikten arındır", "sahipliği tek kaynağa taşı", "sync ownership uyarısı veriyor". Yeni rol/routing/ekosistem eklemek için kullanma; kurulu projede bunlar elle yapılır (manifest — silinen rolün routing/consults/lead atıfları dahil —, rol dosyası ve `llm.json` girdileri, sonra sync). Model ya da effort değiştirmek için de kullanma; o team-builder-models'in işidir.
+description: Kurulmuş bir projede anayasa preset'lerini (geçici çözüm yok, kod-doküman senkronizasyonu, rol başına hafıza, dil standardı, plan kapısı) açar veya kapatır; plan kapısının artefaktlarını kurar ya da bırakır; eski yapıdaki projeleri tek talimat dosyasına göç ettirir; rol dosyalarındaki kopyalanmış yol sahipliğini routing tablosuna atıf yapan genel metne çevirir. Tetikleyiciler — "plan kapısını aç", "preset aç", "preset kapat", "anayasa değiştir", "takımı yükselt", "talimatları tek dosyaya taşı", "projeyi yeni yapıya geçir", "plan kapısı skill'ini güncelle", "çapraz denetimi aç/kapat", "kod-doküman kuralını gevşet", "belge etkisi yok kuralı", "rol dosyalarını genelleştir", "rol dosyalarını sahiplikten arındır", "sahipliği tek kaynağa taşı", "sync ownership uyarısı veriyor". Yeni rol/routing/ekosistem eklemek için kullanma; kurulu projede bunlar elle yapılır (manifest — silinen rolün routing/consults/lead atıfları dahil —, rol dosyası ve `llm.json` girdileri, sonra sync). Model ya da effort değiştirmek için de kullanma; o team-builder-models'in işidir.
 ---
 
 # team-builder-upgrade
@@ -108,8 +108,13 @@ projenin cevaplarıyla doldur. Bloğu `instructions.md`'nin sonuna ekle.
 alan adı ya da "glob" gibi jargon gösterme.
 
 - `noWorkaround` → reddedilen desen listesi. Çekirdek bir liste öner, kullanıcı ekler.
-- `codeDocSync` → kod→doküman satırları. **Boş liste geçerlidir**; kullanıcı
-  istemiyorsa `[]` yaz ve bloğun son cümlesi bunu zaten açıklıyor.
+- `codeDocSync` → kod→doküman satırları ve biçim (sıkı — varsayılan — ya da davranışa
+  bağlı; `constitution.md` → KARAR 2). **Boş liste geçerlidir**; kullanıcı istemiyorsa `[]`
+  yaz ve bloğun son cümlesi bunu zaten açıklıyor.
+- **Açık `codeDocSync`'in biçimini değiştirmek** ("doküman yalnız davranış değişince
+  güncellensin" / "her değişiklikte güncellensin"): yalnız bloğun giriş cümlesini ve
+  davranışa bağlı biçimin "belge etkisi yok" cümlesini değiştir; tabloya ve öbür metne
+  dokunma, farkı göster, onay al (*Projenin metnini koru*).
 
 **Cevap nereye yazılır — ikisi farklı:**
 

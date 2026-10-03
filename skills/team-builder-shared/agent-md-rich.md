@@ -194,7 +194,7 @@ Role özel sıkı kurallar (madde listesi):
 `reviewer` (ve `security`) rolünün gövdesine, **neyi denetleyeceğini** sıralayan bir
 `## Denetim Eksenleri` bölümü eklenir. Bu liste şunlardan üretilir:
 - **Her zaman:** görev eksiksizliği (kullanıcı isteği karşılandı mı), mimari standart/ADR uyumu, routing ihlali, değişen davranışın kodun sahibince yazılmış testlerle kapsanması.
-- **Açık anayasa presetlerinden:** no-workaround (otomatik Kritik), kod-doc senkronizasyonu (otomatik Kritik), yorum/dil standardı.
+- **Açık anayasa presetlerinden:** no-workaround (otomatik Kritik), kod–doküman kuralı (`instructions.md`'deki biçimine göre — sıkı ya da davranışa bağlı; ihlal Kritik), yorum/dil standardı.
 - **Seçili kalite odaklarından** (`manifest.focus[]`, `quality-dimensions.md`): performans · kod tasarımı (dosya/fonksiyon boyutu, DRY, nesting) · UI/UX · erişilebilirlik · güvenlik · test/coverage. Her odak için o dosyadaki "Reviewer ekseni" maddeleri yazılır.
 - **Kısıtlardan:** `docs/<arch-root>/constraints/*` (örn. file-size eşiği) → ihlal = bulgu.
 

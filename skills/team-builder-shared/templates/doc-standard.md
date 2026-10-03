@@ -10,7 +10,10 @@
 - `adr/NNNN-<kebab-ingilizce-baslik>.md` — numara o klasörde en yüksek+1, 4 hane (`0001`).
 - `constraints/<konu>.md` — mimari kısıtlar.
 - `design/<konu>.md` — tasarım notları/diyagramlar.
-- per-module ise modüle özel kararlar: `modules/<name>/docs/kararlar/NNNN-*.md`.
+- Servise özel mimari (layout `per-module`): `<servis>/docs/<mimari-klasör>/` —
+  `<mimari-klasör>` kökün son parçasıdır (`architecture` / `mimari`). Kararlar
+  `<servis>/docs/<mimari-klasör>/kararlar/NNNN-*.md`; birden çok servisi bağlayan kararlar
+  ortak kökte kalır. Servisin `docs/` klasörünün geri kalanı servisin sahibinindir.
 - **Dosya adı kebab-case İngilizce; içerik `docLanguage` dilinde** (örn. tr).
 
 ## Üç doküman tipi ve şablonu
@@ -33,7 +36,7 @@ Bir agent (architect/developer/reviewer) bir konuda karar/standart ararken:
 1. Önce `docs/<arch-root>/README.md` (index) ve `ilkeler.md`.
 2. İlgili domain klasörü: `docs/<arch-root>/<domain>/` (README + `*-registry.md`).
 3. İlgili `adr/` ve `constraints/` dosyaları — **dosya adından** konuyu, **Status**'tan geçerliliği, **Karar** + **Sonuçlar** bölümlerinden bağlayıcı kuralı oku.
-4. per-module konularda `modules/<name>/docs/`.
+4. Bir servise özgü konularda `<servis>/docs/<mimari-klasör>/` (README → kararlar).
 5. Çelişki/boşluk varsa uydurma → mimarlık rolü varsa ona, yoksa kullanıcıya danış (no-workaround).
 
 > Bu okuma sırası agent md'lerin "Sorumluluk Alanı" / "Routing & Danışma" bölümlerine yansır.

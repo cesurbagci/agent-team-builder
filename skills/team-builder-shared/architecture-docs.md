@@ -15,10 +15,12 @@ Aşağıda `<arch-root>` bu seçimi temsil eder.
 ## Layout Seçimi
 
 - **central:** tüm mimari dokümanlar `docs/<arch-root>/` altında toplanır.
-- **per-module:** central'a ek olarak her modül kendi dokümanını tutar:
-  `modules/<name>/docs/{README.md, api.md, kararlar/}`. Modül listesi SORULMAZ; ADR'ler
-  yazıldıkça organik oluşur. Seçilen kural, dokümantasyonu sahiplenen rolün md'sine
-  yazılır; öyle bir rol yoksa `project/instructions.md`'nin doküman bölümüne.
+- **per-module:** ortak mimari `docs/<arch-root>/` altında kalır; her servisin kendine özel
+  mimarisi `<servis>/docs/<mimari-klasör>/` altındadır (`<mimari-klasör>` = arch-root'un son
+  parçası, ör. `architecture`). Kararlar `<servis>/docs/<mimari-klasör>/kararlar/NNNN-*.md`.
+  Routing'de servis başına `<servis>/docs/<mimari-klasör>/**` → architect satırı vardır
+  (`routing.md`); servisin `docs/` klasörünün geri kalanı servisin sahibindedir. Kural
+  `doc-standard.md`'de durur; rol dosyasına kopyalanmaz.
 
 ---
 
@@ -40,22 +42,21 @@ docs/<arch-root>/
 │       └── 0001-...md
 └── templates/
     ├── adr-sablonu.md        → Yeni ADR kalıbı (MADR — aşağıda)
-    └── <module-docs-sablonu>/→ per-module docs şablonu (layout=per-module ise kopyalanır)
-        ├── README.md
-        ├── api.md
-        └── kararlar/
-            └── 0001-ornek-karar.md
+    └── doc-standard.md       → Konum ve okuma standardı (servise özel düzen dahil)
 ```
 
-### per-module ek ağaç (layout=per-module)
+### Servise özel ağaç (layout=per-module)
 
 ```
-modules/<name>/docs/
-├── README.md     → Modülün ne yaptığı, mimari yeri
-├── api.md        → Modülün dışa açtığı yüzey (kodla senkron)
-└── kararlar/     → Modüle özel ADR'lar (cross-cutting'e taşınana kadar burada)
-    └── 0001-...md
+<servis>/docs/
+├── <mimari-klasör>/     → architect'in (routing satırı servis başına)
+│   ├── README.md        → Servisin mimari yeri, dosya ve paket düzeni
+│   └── kararlar/        → Servise özel ADR'lar (cross-cutting'e taşınana kadar burada)
+│       └── 0001-...md
+└── …                    → Geri kalanı servisin sahibinin (ör. API belgesi, README)
 ```
+
+İlk servis belgesi kararlar yazıldıkça oluşur; setup boş klasör açmaz.
 
 > `<domain>` klasörleri, `governance-defaults.md` domain-split developer rolleriyle birebir
 > eşleşir (ör. `backend/`, `frontend/`, `extension/`). Her registry
@@ -111,8 +112,8 @@ Sihirbaz, onaylanan domain'lere göre üretir:
 1. `docs/<arch-root>/README.md` + `ilkeler.md` (docLanguage dilinde kısa içerik).
 2. Her domain için `<domain>/{README.md, adr/}` (registry dosyaları boş başlık + "kodla senkron" notu ile).
 3. `cross-cutting/{README.md, adr/}` + seçilen standart dosyaları (anayasa presetlerinden türetilir).
-4. `templates/adr-sablonu.md` (yukarıdaki MADR) + `templates/<module-docs-sablonu>/` (per-module ise).
-5. layout=per-module ise her modülün ilk dokümanı şablondan organik kopyalanır (ADR yazıldıkça).
+4. `templates/` altına standart ve şablonlar (`doc-standard.md`, `adr.md`, `constraint.md`, `design.md`).
+5. layout=per-module ise servis klasörleri açılmaz; servisin ilk mimari belgesi ilk kararla oluşur.
 
 Bu kuralların tamamı (architect varsa yalnız o yazar; ADR konum kuralı; registry kod-doc senkron disiplini)
 architect agent md'sine ve `project/instructions.md`'ye işlenir.

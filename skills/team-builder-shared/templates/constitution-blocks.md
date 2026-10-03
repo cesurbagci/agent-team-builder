@@ -39,18 +39,25 @@ Reddedilen desenler:
 <!-- c:codeDocSync -->
 ## Kod–doküman senkronizasyonu
 
-Şu kod yolları değiştiğinde ilgili doküman da güncellenir:
+<giriş cümlesi — biçime göre:
+  sıkı: "Şu kod yolları değiştiğinde ilgili doküman da aynı işte güncellenir:"
+  davranışa bağlı: "Şu kod yolları değişip dokümanda anlatılan davranışı etkilediğinde ilgili
+  doküman aynı işte güncellenir:">
 
 | Kod | Doküman |
 |---|---|
 <manifest.codeDocSync[] satırları — kod | doc>
+
+<yalnız davranışa bağlı biçimde: "Anlatılan davranışı etkilemeyen değişiklikte doküman
+güncellenmez; kod sahibi raporunda 'belge etkisi yok' der ve reviewer bu beyanı denetler.">
 
 Liste boşsa bu kural yalnız bir disiplindir; otomatik denetimi yoktur.
 <!-- /c:codeDocSync -->
 ```
 
 **Yer tutucular:** tablo `manifest.codeDocSync[]`'ten üretilir. Boş dizi geçerlidir —
-o hâlde tablo yazılmaz, yalnız son cümle kalır.
+o hâlde tablo yazılmaz, yalnız son cümle kalır. Biçim (`constitution.md` → KARAR 2) yalnız
+bu blokta yaşar; varsayılan sıkıdır.
 
 ## `c:perAgentMemory`
 

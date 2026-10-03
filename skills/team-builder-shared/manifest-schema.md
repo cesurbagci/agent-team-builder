@@ -23,7 +23,7 @@ Generated dosyalar **elle değiştirilmez**; kaynak burasıdır.
 | `docLanguage` | `string` | Hayır | Doküman ve cevap dili (örn. `tr`, `en`). Dil & yorum standardını (anayasa preset 4) besler. Default: proje analizinden tahmin (`tr`). |
 | `architectureDocs` | `object` | Hayır | Mimari doküman ağacının kökü ve düzeni. Bkz. `architecture-docs.md`. |
 | `architectureDocs.root` | `string` | Hayır | Mimari doküman kök dizini. `docs/mimari` veya `docs/architecture`. |
-| `architectureDocs.layout` | `string` | Hayır | `central` (tüm kararlar `architectureDocs.root` altında) veya `per-module` (modül başına `modules/<name>/docs/`). |
+| `architectureDocs.layout` | `string` | Hayır | `central` (tüm kararlar `architectureDocs.root` altında) veya `per-module` (ortak mimari `architectureDocs.root` altında, servise özel mimari her servisin `<servis>/docs/<mimari-klasör>/` altında; routing'de servis başına bir architect satırı — `routing.md`). Eski kurulumların `modules/*/docs/**` satırı geçerli kalır. |
 | `constitution` | `object` | Hayır | 5 cross-cutting anayasa presetinin aç/kapat durumu. İlk dördü default `true`, `planGate` default `false`. Bkz. `constitution.md`. |
 | `constitution.noWorkaround` | `boolean` | Hayır | No-workaround disiplini açık mı. Workaround pattern'leri reviewer'da otomatik Kritik. |
 | `constitution.codeDocSync` | `boolean` | Hayır | Kod-doküman senkronizasyonu açık mı. `codeDocSync[]` tablosu zorunlu kılınır. |

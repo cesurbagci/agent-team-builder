@@ -95,9 +95,19 @@ ihlali vb.), kullanıcı projeye özgü desenler ekler.
 **Ne:** `kod-yeri → beklenen doküman` tablosu. Belirli kod yolları değiştiğinde ilgili
 dokümanın da güncel olması beklenir; eksikse reviewer Kritik verir.
 
+**İki biçim** — kural metni `c:codeDocSync` bloğunda durur, manifest'te ayrı alan yoktur:
+- **Sıkı (varsayılan):** eşleşen kod değişince doküman aynı işte güncellenir.
+- **Davranışa bağlı (seçenek):** doküman yalnız kod değişikliği dokümanda **anlatılan
+  davranışı** etkiliyorsa aynı işte güncellenir. Etkilemiyorsa kod sahibi raporunda "belge
+  etkisi yok" der; reviewer bu beyanı denetler.
+
 **Agent'lara yansıması:**
-- **reviewer:** `manifest.codeDocSync[]` satırlarına göre, ilgili kod değişti ama
-  beklenen doc güncellenmediyse **otomatik Kritik**.
+- **reviewer:** `manifest.codeDocSync[]` satırlarına göre, bloktaki biçimle: sıkıda ilgili
+  kod değişti ama doküman güncellenmediyse **otomatik Kritik**; davranışa bağlıda anlatılan
+  davranış değiştiği hâlde doküman güncellenmediyse **Kritik**; anlatılan davranışı
+  etkilemeyen eşleşen bir değişiklikte "belge etkisi yok" beyanı eksikse ya da davranış
+  aslında etkilendiği hâlde bu beyan verildiyse **Kritik**. Doküman doğru güncellendiyse
+  beyan gerekmez.
 - **architect:** standart/kontrat dosyalarını kararla birlikte günceller (kayıt kod
   ile senkron tutulur).
 - **developer'lar:** kendi alanlarındaki kod-doc eşleşmesini gözetir.
@@ -111,6 +121,12 @@ gibi jargon GÖSTERME). Önce ne olduğunu bir örnekle anlat, sonra nasıl baş
 > **1) Şimdilik boş bırak (önerilen)** — sonra ihtiyaç oldukça eklenir.
 > **2) Senin için birkaç satır önereyim** — projeni inceleyip taslak çıkarırım, onaylarsın.
 > **3) Satırları ben yazayım.**"
+
+Satır varsa biçimi de sor:
+
+> "Eşleşen kod her değiştiğinde doküman da güncellensin mi (**önerilen**), yoksa yalnız
+> dokümanda anlatılan davranış değiştiğinde mi? İkincisinde kodu değiştiren 'belge etkisi
+> yok' der, reviewer bunu kontrol eder."
 
 Seçime göre `manifest.codeDocSync[]`'i doldur (boş `[]` de geçerli). Kullanıcıya hiçbir
 zaman ham `{code, doc}` JSON'u veya "glob deseni" terimini sorma; "hangi klasör → hangi

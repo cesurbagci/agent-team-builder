@@ -25,7 +25,7 @@ sonra seçilenleri **tek tek, kullanıcıyla birlikte** yazar.
    - `architectureDocs.root` (örn. `docs/mimari`), `architectureDocs.layout` (`central`|`per-module`), `docLanguage`.
    - Yapı/format için `${CLAUDE_SKILL_DIR}/../team-builder-shared/architecture-docs.md`.
 2. **Yoksa kullanıcıya sade sor:** mimari dokümanlar nereye (`docs/mimari` | `docs/architecture`), dil ne (tr/en). (Bu skill takımdan bağımsız da çalışır.)
-3. Yazma yetkisi yalnızca `docs/<arch-root>/` (ve per-module ise `modules/<name>/docs/`) altındadır — **production koduna yazma**, sadece oku (architect disiplini).
+3. Yazma yetkisi yalnızca `docs/<arch-root>/` (ve per-module ise servislerin `<servis>/docs/<mimari-klasör>/` klasörleri) altındadır — takım kurulu ise kesin alan routing tablosundadır — **production koduna yazma**, sadece oku (architect disiplini).
 4. **STANDART ZORUNLU:** Tüm dokümanları `${CLAUDE_SKILL_DIR}/../team-builder-shared/templates/doc-standard.md` standardına ve şablonlarına göre yaz:
    - ADR → `templates/adr.md`, kısıt → `templates/constraint.md`, tasarım → `templates/design.md`.
    - Proje kökünde `docs/<arch-root>/templates/` zaten varsa (setup kopyalamış) onları kullan; yoksa `team-builder-shared/templates/`'ten oku. Yapı için `${CLAUDE_SKILL_DIR}/../team-builder-shared/architecture-docs.md`.
@@ -58,7 +58,7 @@ Her seçilen madde için:
    - ADR → `docs/<arch-root>/adr/NNNN-<kebab-ingilizce-baslik>.md` (numara = o klasördeki en yüksek + 1; başlık/içerik docLanguage'de).
    - Kısıt → `docs/<arch-root>/constraints/<konu>.md`.
    - Tasarım → `docs/<arch-root>/design/<konu>.md`.
-   - per-module ve karar modüle özelse → `modules/<name>/docs/kararlar/NNNN-*.md`.
+   - per-module ve karar bir servise özelse → `<servis>/docs/<mimari-klasör>/kararlar/NNNN-*.md` (`<mimari-klasör>` = arch-root'un son parçası). Eski kurulumda servis satırı yoksa ve proje `modules/<name>/docs/kararlar/` kullanıyorsa orada kal.
 4. **Index/registry güncelle:** `docs/<arch-root>/README.md` (ve varsa registry) ilgili linki ekle.
 5. Sonraki maddeye geç. Aralarda kullanıcıya "devam edelim mi / başka eklemek istediğin var mı?" diye sor.
 

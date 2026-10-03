@@ -96,7 +96,7 @@ Her developer rolü için varsayılan:
     reddeder; Uyarı ve Öneri ile onay verilir."
   - "Testleri de denetle: değişen davranışı kapsıyorlar mı, yeni davranışta önce başarısız
     olan test var mı. Test yazma; eksik testi kodun sahibine bildir."
-  - "**Workaround pattern'leri otomatik Kritik'tir** (anayasa no-workaround). Kod-doc senkronizasyon eksiği de Kritik."
+  - "**Workaround pattern'leri otomatik Kritik'tir** (anayasa no-workaround). Kod–doküman kuralının ihlali de Kritik — kural `instructions.md`'deki kod–doküman bloğundaki biçimle (sıkı ya da davranışa bağlı) okunur."
   - "Kritik/Yüksek bulgular merge'i bloklar."
 
 ---
