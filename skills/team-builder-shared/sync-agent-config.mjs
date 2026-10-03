@@ -19,6 +19,7 @@ import path from 'node:path'
 import os from 'node:os'
 import { fileURLToPath } from 'node:url'
 import { routeContains } from './route-globs.mjs'
+import { OWNERSHIP_CLOSE, OWNERSHIP_OPEN, ownershipDrift, routingTableDrift } from './ownership-drift.mjs'
 import {
   LLM_LOCAL_RELATIVE,
   LLM_SHARED_RELATIVE,
@@ -689,6 +690,34 @@ async function warnConstitutionMarkerDrift(ctx, manifest, warn) {
   }
 }
 
+// Ownership lives in routing and its instructions.md table only (see
+// ownership-drift.mjs). Once a project's role files carry ownership markers it
+// has moved to that layout, and a copy elsewhere is drift: a warning in sync,
+// a failure in --check. Before that the same findings are only warnings, so a
+// team-builder update does not fail --check on a project nobody migrated yet.
+async function checkOwnershipDrift(ctx, manifest, warn) {
+  const instructionsPath = ctx.resolveSource('project', 'instructions.md')
+  const instructions = (await pathExists(instructionsPath))
+    ? await ctx.readSourceText(instructionsPath)
+    : null
+  const roleFiles = {}
+  for (const agent of manifest.agents) {
+    const source = ctx.resolveSource('agents', `${agent.name}.md`)
+    if (await pathExists(source)) roleFiles[agent.name] = await ctx.readSourceText(source)
+  }
+  const findings = ownershipDrift({ manifest, instructions, roleFiles })
+  if (Object.values(roleFiles).some(body => body.includes(OWNERSHIP_OPEN))) {
+    ctx.mismatches.push(...findings)
+  } else if (findings.length > 0) {
+    for (const finding of findings) warn(`! ${finding}`)
+    warn('! Role files predate the single-source ownership layout; run team-builder-upgrade to move them.')
+  }
+  if (instructions !== null && (manifest.routing ?? []).length > 0 &&
+      !routingTableDrift(instructions, manifest).found) {
+    warn('! .agent-source/project/instructions.md has no routing table; ownership is only in the manifest. Run team-builder-upgrade.')
+  }
+}
+
 async function syncProjectFiles(ctx, manifest) {
   // Project files are templated/compiled generated outputs → prepend header.
   const withHeader = source => GENERATED_HEADER + source
@@ -1096,6 +1125,7 @@ async function generate({ root, checkOnly, quiet = false, catalogs = null, noLoc
 
   await warnMissingInstructionsRef(ctx, manifest, warn)
   await warnConstitutionMarkerDrift(ctx, manifest, warn)
+  await checkOwnershipDrift(ctx, manifest, warn)
   await syncProjectFiles(ctx, manifest)
   try {
     await syncAgents(ctx, manifest, layers)
@@ -2262,6 +2292,26 @@ async function runSelftest() {
     (checkClean.mismatches ?? []).length === 0,
     '--check should report zero mismatches after generate'
   )
+
+  // Ownership markers move the project to the single-source layout: a routing
+  // row inside them then fails --check; generic text passes. Without markers
+  // the same finding is only a warning.
+  {
+    const architectSource = path.join(sourceRoot, 'agents', 'architect.md')
+    const original = await readText(architectSource)
+    await fs.writeFile(architectSource, `${original}\n${OWNERSHIP_OPEN}\nYazma alanin \`docs/**\`.\n${OWNERSHIP_CLOSE}\n`)
+    const leaked = await silentGenerate({ root: fixtureRoot, checkOnly: true })
+    assert(
+      leaked.ok === false && leaked.mismatches.some(m => m.includes('architect.md') && m.includes('docs/**')),
+      `a routing row inside ownership markers must fail --check, got ${JSON.stringify(leaked.mismatches)}`
+    )
+    await fs.writeFile(architectSource, `${original}\n${OWNERSHIP_OPEN}\nYazma alanin routing tablosundadir.\n${OWNERSHIP_CLOSE}\n`)
+    await silentGenerate({ root: fixtureRoot, checkOnly: false })
+    const generic = await silentGenerate({ root: fixtureRoot, checkOnly: true })
+    assert(generic.ok === true, `generic ownership text must pass --check, got ${JSON.stringify(generic.mismatches)}`)
+    await fs.writeFile(architectSource, original)
+    await silentGenerate({ root: fixtureRoot, checkOnly: false })
+  }
 
   // --- Local output and .gitignore ---
   {

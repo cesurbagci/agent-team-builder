@@ -132,7 +132,7 @@ Adımları **bu sırayla** uygula. Her adımda kullanıcıya sor, cevabı al, so
 1. **Önce kısa proje analizi yap** (sessizce): kod köklerini tara (`apps/*`, `modules/*`, `packages/*`, `src/*` vb.) ve **domain-split developer rolleri öner** (örn. `backend-developer`, `frontend-developer`, `extension-developer`). Bunu kullanıcıya "şu rolleri öneriyorum" diye sun.
 
 2. **Rolleri CHECKBOX (çoklu seçim) ile seçtir**, ≤4'lük gruplara bölerek; önerilen rolleri önceden işaretli sun (bkz. "Soru Sorma Biçimi"). Örn. **Grup 1:** architect, ios/web/backend-developer'lar (analizden çıkanlar); **Grup 2:** reviewer, qa, security, doc-writer; **Grup 3** (projede veritabanı varsa ya da kullanıcı olacak dediyse): database-engineer. Önce kısa bir "şu rolleri öneriyorum" özeti verip sonra checkbox'ları sun; tabloyu serbest-metin soruya ÇEVİRME. Aday/öneri sırası: 
-   - **architect** (öneri: EKLE) — takım lideri (`lead`), kod yazmaz; **routing'de kendisine verilen doküman yollarına yetkilidir** — varsayılanda tek satır `docs/**`, yani "tüm `docs/` dizini"; doc-writer da eklendiyse yalnız kendi payı. Mimari kararlar/ADR'ler `docs/<arch-root>/` altında toplanır ama yetkisini klasör klasör sayma, tablodaki yolla ifade et. Routing'de `docs/**` → architect (architect eklenmezse bu satır doc-writer'a geçer; ikisi de yoksa üretilmez).
+   - **architect** (öneri: EKLE) — takım lideri (`lead`), kod yazmaz; **routing'de kendisine verilen doküman yollarına yetkilidir** — varsayılanda tek satır `docs/**`, yani "tüm `docs/` dizini"; doc-writer da eklendiyse yalnız kendi payı. Mimari kararlar/ADR'ler `docs/<arch-root>/` altında toplanır ama yetkisi rol dosyasında ve kurallarında yolla yazılmaz — routing tablosuna atıfla ifade edilir. Routing'de `docs/**` → architect (architect eklenmezse bu satır doc-writer'a geçer; ikisi de yoksa üretilmez).
    - **developer(lar)** (öneri: EKLE) — analizden önerdiğin her domain için ayrı developer (architect de önerildiyse `consults: [architect]`, önerilmediyse `consults: []`).
    - **reviewer** (öneri: EKLE) — kod da test de yazmaz, sadece inceler (gate). Testleri kodu
      yazan developer yazar (`governance-defaults.md` → *Developer(lar)*).
@@ -273,9 +273,19 @@ Tüm cevaplar toplandı; şimdi kaynağı yaz, doğrula ve generate et. Sırayla
 - `.agent-source/agents/manifest.json` — kök alanlar (`targetsDefault`, `topology`, `docLanguage`, `architectureDocs`, `constitution`, `focus[]`, `routing[]`, `codeDocSync[]`, `lead`) + `agents[]`; `${CLAUDE_SKILL_DIR}/../team-builder-shared/manifest-schema.md` şemasına birebir uygun.
 - **Kalite odaklarından kısıt dosyaları** (Adım 7A, `quality-dimensions.md`): seçili boyutlardan somut olanlar için `docs/<arch-root>/constraints/<konu>.md`'yi `templates/constraint.md` standardıyla üret — örn. `code-design` → `file-size.md` (max satır eşiğiyle), `security` → `secrets.md`, `testing` → `coverage.md`.
 - `.agent-source/agents/<name>.md` — her üye için zengin rol talimatı (`${CLAUDE_SKILL_DIR}/../team-builder-shared/agent-md-rich.md` kalıbı, docLanguage dilinde). **`İletişim` bölümü topolojiye göre yazılır** (`subagent` → lead'e raporla; `native` → peer-to-peer mesajlaş — `topologies.md`).
+  **Sahiplik rol dosyasına kopyalanmaz.** Yazma alanı, kod–doküman ve routing cümleleri
+  `agent-md-rich.md`'deki genel metinle, `<!-- ownership -->` … `<!-- /ownership -->`
+  işaretleri arasında yazılır; routing satırı (`apps/api/**`, `docs/`), yasak klasör listesi,
+  başka rollerin yolları ve kod–doküman tablosu yazılmaz — rol bunları `instructions.md`'deki
+  tablolardan çözer. Domain sözle anılır. Manifest `rules[]` ve `extra_instructions[]`'a da
+  routing satırı yazılmaz (`governance-defaults.md`). Sync bunları arar; `--check` kopyayı
+  kayma sayar.
 - **Her zaman:** `.agent-source/project/instructions.md` — **ortak talimat kaynağı.**
   Routing tablosu (+ çözüm kuralı: "bir dosya birden fazla satıra uyarsa **en özgül (en
-  dar) yol kazanır**"), kod-doküman satırları, mimari kaynaklar ve **açık olan her
+  dar) yol kazanır**") — sahipliğin rol dosyalarının atıf yaptığı tek metni; satırlar
+  `manifest.routing[]` ile birebir aynı, biçim `` | `<yol>` | `<rol>` | `` (birinci hücre bir
+  ya da daha çok backtick'li yol, ikinci hücre yalnız backtick'li rol adı; sync bu satırları
+  manifest'le karşılaştırır) —, kod-doküman satırları, mimari kaynaklar ve **açık olan her
   anayasa preset'inin işaretli bloğu**. Bloklar
   `${CLAUDE_SKILL_DIR}/../team-builder-shared/templates/constitution-blocks.md`'den render
   edilir — verbatim kopyalanmaz, `docLanguage`'e çevrilir ve yer tutucular projenin
@@ -413,6 +423,7 @@ Tüm cevaplar toplandı; şimdi kaynağı yaz, doğrula ve generate et. Sırayla
 - **Routing/domain taslağını onaylatmadan yazma.** Adım 6 taslağı kullanıcı onayı olmadan manifest'e geçmez.
 - **Manifest'i doğrulamadan generate etme.** 8b geçmeden 8c'ye geçme.
 - **Drift'i yok sayma.** 8d temiz çıkmadan iş bitmiş sayılmaz.
+- **Rol dosyasına ya da manifest kurallarına yol sahipliği kopyalama.** Sahiplik yalnız `manifest.routing[]` + `instructions.md` routing tablosunda, kod–doküman yalnız `manifest.codeDocSync[]` + `c:codeDocSync` tablosunda durur; rol dosyası işaretli genel metinle onlara atıf yapar.
 - **Generated dosyayı elle yazma/düzenleme.** Tek kaynak `.agent-source/`; generated hedefler yalnız sync ile üretilir, elle değişiklik bir sonraki `--check`'te drift olarak yakalanır.
 - **Mevcut takımın üzerine sessizce yazma.** Adım 1'de `.agent-source/agents/manifest.json` varsa kullanıcıyı uyar ve var olan skill'lere yönlendir (`team-builder-models`, `team-builder-upgrade`, `team-builder-sync`).
 - **docLanguage dışı dil kullanma.** Tüm üretilen metinler seçilen dilde; kod/dosya/commit İngilizce.

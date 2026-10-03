@@ -1,6 +1,6 @@
 ---
 name: team-builder-module
-description: Kurulmuş bir team-builder projesine yeni bir klasör (modül) ekler — klasörü mevcut, yazabilen bir role bağlar ya da onun için yeni bir rol açıp bağlar; routing'i, rol dosyalarını, talimatları ve modeli birlikte günceller. Tetikleyiciler — "yeni modül ekle", "yeni klasör açtım", "bu klasörü şu role ver", "company klasörünü backend-developer'a bağla", "auth için security-developer ekle", "sahipsiz klasör var mı", "routing'e ekle". Rol silmek, yeniden adlandırmak, read-only bir denetçi eklemek ya da yeni bir araç (ekosistem) hedeflemek için kullanma; model/effort için team-builder-models, anayasa preset'leri için team-builder-upgrade.
+description: Kurulmuş bir team-builder projesine yeni bir klasör (modül) ekler — klasörü mevcut, yazabilen bir role bağlar ya da onun için yeni bir rol açıp bağlar; routing'i ve routing tablosunu (instructions.md) günceller, yeni rol açılırsa onun dosyasını ve modelini de yazar. Tetikleyiciler — "yeni modül ekle", "yeni klasör açtım", "bu klasörü şu role ver", "billing klasörünü backend-developer'a bağla", "auth için security-developer ekle", "sahipsiz klasör var mı", "routing'e ekle". Rol silmek, yeniden adlandırmak, read-only bir denetçi eklemek ya da yeni bir araç (ekosistem) hedeflemek için kullanma; model/effort için team-builder-models, anayasa preset'leri için team-builder-upgrade.
 ---
 
 # team-builder-module
@@ -13,9 +13,12 @@ dilbilgisi, çakışma kuralı, `instructions.md`'nin routing bölümü), `manif
 `constitution.md` — hepsi `${CLAUDE_SKILL_DIR}/../team-builder-shared/` altında. **Önce
 `routing.md`'yi oku.** Kullanıcıya dosya adı, alan adı ya da JSON gösterme; sade dille sor.
 
-**Neden bu kadar dosya:** sync `instructions.md`'yi ve rol dosyalarını manifest'ten
-**üretmez**, olduğu gibi kopyalar. Manifest'i değiştirip metinleri bırakırsan ajanlar eski
-sahipliği okur; `--check` bunu yakalamaz.
+**Hangi dosyalar:** sahiplik tek kaynaktadır — `manifest.routing[]` ve onun
+`instructions.md`'deki routing tablosu (kod–doküman eşleştirmesi: `manifest.codeDocSync[]` ve
+`c:codeDocSync` bloğunun tablosu). Rol dosyaları yol taşımaz, tabloya atıf yapar
+(`agent-md-rich.md`, `<!-- ownership -->` işaretleri). Bu yüzden sahiplik değişince **rol
+dosyalarına dokunulmaz**. Sync `instructions.md`'yi manifest'ten üretmez, kopyalar; tabloyu
+güncellemeyi unutursan `sync --check` tablo ile manifest arasındaki kaymayı yakalar.
 
 ## 0. Ön kontrol
 
@@ -27,6 +30,13 @@ sahipliği okur; `--check` bunu yakalamaz.
 - `.agent-source/project/instructions.md` yoksa, ya da manifest'te açık olan her anayasa
   preset'inin işaret çifti (`<!-- c:<preset> -->` … `<!-- /c:<preset> -->`) o dosyada yoksa,
   önce `team-builder-upgrade` göçü gerekir (routing bölümü o dosyadadır) — söyle, dur.
+- **Rol dosyalarında `<!-- ownership -->` işareti yoksa** (eski kurulum) rol dosyaları hâlâ
+  yol listeleri taşır; bu skill onlara dokunmadığı için o kopyalar bayatlar. Önce
+  `team-builder-upgrade`'in "Rol dosyalarını sahiplikten arındır" göçünü öner. Kullanıcıya
+  söyle, seçtir: göçü önce yapmak ya da yine de devam etmek (o zaman eski rol dosyalarındaki
+  yol cümleleri güncellenmez; sync bunları uyarı olarak gösterir). Devam ederse 6. adımda
+  yeni rolün dosyasını **işaretsiz** yaz: işaretli tek bir dosya projeyi yeni yapıya geçmiş
+  sayar ve eski rollerin uyarıları `--check` hatasına döner.
 
 ## 1. Klasörü bul
 
@@ -50,7 +60,7 @@ Aday roller **yalnız yazabilen** rollerdir: `sandbox_mode` yazma izni veriyor (
 developer'lar ve yazabilen doküman rolleri). Read-only roller (reviewer, security reviewer)
 **aday değildir** — onlara klasör verilmez. Her adayı şu anki yollarıyla göster:
 
-> "`company/` henüz kimsenin değil. `product/**`'ı yöneten `backend-developer`'a vereyim mi,
+> "`billing/` henüz kimsenin değil. `orders/**`'ı yöneten `backend-developer`'a vereyim mi,
 > yoksa yeni bir rol mü açalım?"
 
 - Klasörün zaten **aynı** sahibi varsa: değişiklik yok, söyle, geç.
@@ -99,24 +109,27 @@ Read-only bir rol (yeni denetçi) istenirse bu skill'in işi değildir; manifest
 
 ## 6. Metin kaynaklarını güncelle
 
-Sync bunları kopyalar; burada güncellemezsen ajanlar eskisini okur.
+Sync `instructions.md`'yi ve takım dosyalarını kopyalar; burada güncellemezsen ajanlar
+eskisini okur. Güncellenenler yalnız şunlardır:
 - `.agent-source/project/instructions.md` → routing bölümü (tablo + kurallar), `routing.md`'nin
-  yazım kuralıyla.
-- Etkilenen **her** rol dosyası (`.agent-source/agents/<ad>.md`): sahipliğe bağlı **bütün**
-  bölümler `agent-md-rich.md` kalıbına göre uzlaştırılır — `## Rol & Sınırlar`,
-  `## Sorumluluk Alanı` (domain + birincil kod kaynakları), `## Çalışma / Yasak Klasörleri`,
-  `## Routing & Danışma`, `## Kısıtlar`. Yeni ve eski sahip dahil; başka rollerin bu yolu anan
-  hariç tutmaları ("`<yol>` altına yazma — orası `<rol>`ün") da güncellenir. Yeni role
-  danışacak rollerin danışma satırı eklenir.
-- Manifest'teki `agents[].extra_instructions`: sahipliğe dayanan her cümle (bir yolun sahibi
-  olduğunu ya da bir yola yazmadığını söyleyen) aynı şekilde uzlaştırılır — eski ve yeni sahip,
-  başka rollerin hariç tutmaları. Sync bunları Codex çıktısına olduğu gibi kopyalar.
-- Yeni rol: kendi rol dosyası (`agent-md-rich.md`).
-- 5. adımda `codeDocSync` değiştiyse kopyalanmış **bütün** tablolar: `instructions.md`'deki
-  blok (`constitution.md`'deki render kuralı) ve tabloyu taşıyan **her** rol dosyası —
-  reviewer dahil, sahipliği değişmemiş olsa da.
+  yazım kuralıyla. Tablo `manifest.routing[]` ile birebir aynı olmalı; `sync --check` farkı
+  yakalar.
+- 5. adımda `codeDocSync` değiştiyse `instructions.md`'deki `c:codeDocSync` bloğunun tablosu
+  (`constitution.md`'deki render kuralı). `sync --check` bu tabloyu da manifest'le karşılaştırır.
 - Hedeflenen araçların takım dosyaları: `project/codex-team.md`, `project/opencode-team.md`
-  (varsa) — yeni rol ve yeni sahiplik.
+  (varsa) — yeni rol ve, sahiplik listeliyorlarsa, yeni sahiplik.
+
+**Rol dosyalarına sahiplik için dokunulmaz.** Rol dosyası yazma alanını routing tablosundan
+çözer. İki istisna:
+- **Yeni rol:** kendi rol dosyası `agent-md-rich.md` kalıbıyla, sahiplik metni
+  `<!-- ownership -->` … `<!-- /ownership -->` işaretleri arasında genel ifadeyle yazılır —
+  yol yazılmaz. Proje henüz göç etmediyse (0. adım) aynı genel metin işaretsiz yazılır.
+- **Yeni role danışacak mevcut roller:** danışma satırlarına yalnız yeni rolün **adı**
+  eklenir (manifest `consults[]` ile birlikte). Başka bir şey değişmez.
+
+Manifest `agents[].rules` ve `extra_instructions` maddelerine routing satırı (`services/orders/**`,
+`services/orders/`) **yazılmaz**; sync bunları arar ve kayma sayar. Rolün işini tarif eden daha
+derin bir yol serbesttir.
 
 ## 7. Onay → yaz → doğrula → üret
 
@@ -132,14 +145,18 @@ Sync bunları kopyalar; burada güncellemezsen ajanlar eskisini okur.
    node "${CLAUDE_SKILL_DIR}/../team-builder-shared/sync-agent-config.mjs" --root "<proje>"
    node "${CLAUDE_SKILL_DIR}/../team-builder-shared/sync-agent-config.mjs" --root "<proje>" --check
    ```
-4. Kullanıcıya commit'e girecekleri söyle: manifest, değişen rol dosyaları, `instructions.md`,
-   varsa takım dosyaları ve `llm.json`, kopyalanan skill'ler, sync'in ürettikleri. Commit'i
+4. Kullanıcıya commit'e girecekleri söyle: manifest, `instructions.md`, varsa takım
+   dosyaları, yeni rolün dosyası ve `llm.json`, danışma satırı eklenen rol dosyaları,
+   kopyalanan skill'ler, sync'in ürettikleri. Commit'i
    **sen yapma**. `--no-local` kullandıysan commit'ten sonra normal sync gerektiğini ekle.
 
 ## Yapma
 
 - Read-only bir role klasör verme.
 - Manifest'i doğrulamadan kaynak dosya yazma.
-- Metin kaynaklarını (instructions, rol dosyaları, takım dosyaları) güncellemeden bırakma.
+- `instructions.md`'deki routing tablosunu (ve değiştiyse `c:codeDocSync` tablosunu) ya da
+  takım dosyalarını güncellemeden bırakma.
+- Sahiplik değişikliği için mevcut rol dosyalarına yol yazma; manifest `rules`/
+  `extra_instructions`'a routing satırı koyma.
 - Kısmi çakışan bir satırı onaysız yeniden düzenleme.
 - Commit ya da push yapma.

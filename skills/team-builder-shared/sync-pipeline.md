@@ -81,6 +81,8 @@ Her generated dosyanın başına sabit bir header yazılır:
   2. Defterde kayıtlı olup bu turda üretilmeyen, hâlâ diskte duran bayat generated
      dosya (bkz. §8).
   3. `.agent-source/agents/` altında manifest'te listelenmeyen `<role>.md` kaynağı.
+  4. Sahiplik kayması — kopyalanmış routing satırı ya da tablo–manifest farkı (bkz. §14;
+     yalnız rol dosyaları `<!-- ownership -->` işareti taşıyorsa).
 - Karşılaştırmadan önce satır sonları normalize edilir (`\r\n` → `\n`); CRLF/LF
   farkı drift sayılmaz.
 - **Sonuç:**
@@ -264,3 +266,37 @@ Katalogda olmayan model, modelin desteklemediği effort ve emekliliği duyurulmu
 **uyarıdır**; `--check` modunda da uyarıdır ve çıkış kodunu etkilemez. CLI yoksa kontrol
 sessizce atlanır; CLI hata verirse tek bilgi satırı yazılır. Her uyarı
 `team-builder-models`'e yönlendirir.
+
+## 14. Sahiplik kayması
+
+Yol sahipliğinin tek kaynağı `manifest.routing[]` ve `instructions.md`'deki routing
+tablosu, kod–doküman eşleştirmesinin tek kaynağı `manifest.codeDocSync[]` ve `c:codeDocSync`
+tablosudur (`routing.md`). Sync rol dosyalarını ve `instructions.md`'yi kopyalar, manifest'ten
+üretmez; kopyalanmış bir sahiplik ya da elle güncellenmemiş bir tablo başka hiçbir kontrolde
+görünmezdi. Üretimden önce `ownership-drift.mjs` şunları arar:
+
+1. **Rol dosyasında kopya.** `<!-- ownership -->` … `<!-- /ownership -->` çiftlerinin
+   içinde bir routing satırının literal'i: yol (`services/orders/**`), glob'suz dizin biçimi
+   (`services/orders/`, `services/orders`), dosya satırı. Yalnız `/` içeren biçimler aranır; eşleşme
+   sınırlıdır — önündeki karakter yol karakteri olamaz, arkasındaki yolu derinleştiremez —
+   bu yüzden daha derin domain yolları (`services/gateway/docs/<api>/sources/`) yakalanmaz.
+   Kopuk ya da ters işaret çifti de raporlanır. İşaretlerin dışı (skill'ler, Denetim
+   Eksenleri, projeye özel bölümler) aranmaz.
+2. **Manifest kuralında kopya.** Aynı arama her agent'ın `rules[]` ve
+   `extra_instructions[]` maddelerinde.
+3. **Routing tablosu.** `instructions.md`'de ikinci hücresi tek backtick'li agent adı,
+   birinci hücresi backtick'li yol(lar) olan satırlar (`c:codeDocSync` bloğu hariç) manifest'in
+   `{path, role}` kümesiyle birebir aynı olmalı; eksik ve fazla satırlar raporlanır.
+4. **Kod–doküman tablosu.** `c:codeDocSync` bloğundaki, iki hücresi de tek backtick'li yol
+   olan satırlar `manifest.codeDocSync[]`'in `{code, doc}` kümesiyle aynı olmalı. Blok yoksa
+   kontrol yok.
+
+**Uyarı mı kayma mı:** rol dosyalarından en az biri `<!-- ownership -->` işareti taşıyorsa
+bulgular `ctx.mismatches`'e girer — sync'te `!` satırı, `--check`'te exit 1. Hiçbiri
+taşımıyorsa kurulum göç edilmemiştir: aynı bulgular yalnız uyarıdır ve sync
+`team-builder-upgrade`'i önerir. `manifest.routing` dolu ama `instructions.md`'de tablo
+bulunamazsa da yalnız uyarı verilir.
+
+Makine düzeyindeki çıktılar bu kontrolden etkilenmez: Codex `sandbox_mode`, OpenCode
+`permission.edit` ve Codex `developer_instructions`'a routing'den üretilen yol satırları
+eskisi gibi üretilir.

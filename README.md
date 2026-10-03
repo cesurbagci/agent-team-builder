@@ -43,7 +43,9 @@ and bakes the rules the team must follow (the "constitution") into each agent's 
 - **Mandatory routing:** path-based routing like "if this code path changes, that developer;
   on architectural uncertainty, the architect".
 - **Single source:** everything is generated from `.agent-source/`; generated files are never
-  hand-edited.
+  hand-edited. Path ownership is written once — in the manifest's routing and its table in
+  `instructions.md`. Role files don't list paths; they point to that table, so changing an
+  owner doesn't touch them.
 
 ## Skills
 
@@ -51,14 +53,14 @@ and bakes the rules the team must follow (the "constitution") into each agent's 
 |---|---|
 | `/team-builder-setup` | Full wizard: targets (Claude/Codex/OpenCode), topology, roles, routing, constitution presets (including the optional plan gate) → `.agent-source/` + generate. At the end it offers to fill in architecture docs with you. |
 | `/team-builder-sync` | Re-generates the generated files from `.agent-source/` / runs a **drift** check. |
-| `/team-builder-upgrade` | Turns constitution presets (including the plan gate) on or off after setup, and migrates older projects to the single instructions file. |
+| `/team-builder-upgrade` | Turns constitution presets (including the plan gate) on or off after setup, and migrates older projects: to the single instructions file, and role files that still copy path ownership to the generic wording that points at the routing table. |
 | `/team-builder-models` | Chooses the model and effort each agent runs with, per ecosystem: the shared `.agent-source/llm.json`, this machine's `llm.local.json`, refreshing new or retiring models, and migrating older projects. |
-| `/team-builder-module` | Adds a new folder (module) to an installed team: gives it to an existing role that can write, or opens a new role for it (skills, model, who consults it), and updates routing, the role files and the instructions together. |
+| `/team-builder-module` | Adds a new folder (module) to an installed team: gives it to an existing role that can write, or opens a new role for it (skills, model, who consults it), and updates the routing and its table in the instructions. Existing role files stay as they are. |
 | `/architecture-advisor` | Analyzes the project, proposes ADR / architecture constraints / design, and writes them with you step by step under `docs/<arch-root>/`. Also works standalone. |
 
 `skills/team-builder-shared/` holds the shared references the skills depend on, plus the
-generator (`sync-agent-config.mjs`) and the validators (`validate-manifest.mjs`,
-`validate-llm.mjs`).
+generator (`sync-agent-config.mjs`), its ownership drift check (`ownership-drift.mjs`) and the
+validators (`validate-manifest.mjs`, `validate-llm.mjs`).
 
 ## Requirements
 
@@ -219,6 +221,14 @@ The single source of truth is `.agent-source/`:
 - Generated files are **never hand-edited**; you update the source and `sync` regenerates them.
 - `/team-builder-sync` refreshes the outputs; `--check` mode catches **drift** between the
   source and the generated files.
+- **Ownership has one source.** Which role owns which path lives only in the manifest's
+  `routing` and the routing table in `.agent-source/project/instructions.md`; code–doc pairs
+  only in `codeDocSync` and its table. Role files keep their ownership text between
+  `<!-- ownership -->` markers and refer to the table instead of copying it. `sync --check`
+  fails when the routing or code–doc table differs from the manifest, or when a role file's
+  ownership section or a manifest rule copies a routing row. Projects set up before this get
+  warnings instead; `/team-builder-upgrade` migrates their role files. Codex and OpenCode
+  permissions, and the path lines generated into Codex `developer_instructions`, are unchanged.
 - Each generated file starts with the header
   `# This file is generated from .agent-source. Run sync.`
 - **Agent files are committed.** They carry the team's models from `.agent-source/llm.json`, so
@@ -318,6 +328,8 @@ tanımlar ve takımın uyması gereken kuralları (anayasa) her agent'ın talima
 - **Zorunlu routing:** "şu kod yolu değişiyorsa şu developer'a, mimari belirsizlikte
   architect'e" gibi path-bazlı yönlendirme.
 - **Tek kaynak:** her şey `.agent-source/`'tan üretilir; generated dosyalar elle düzenlenmez.
+  Yol sahipliği tek yerde yazar — manifest'in routing'inde ve onun `instructions.md`'deki
+  tablosunda. Rol dosyaları yol saymaz, o tabloya atıf yapar; sahip değişince onlara dokunulmaz.
 
 ## Skill'ler
 
@@ -325,13 +337,14 @@ tanımlar ve takımın uyması gereken kuralları (anayasa) her agent'ın talima
 |---|---|
 | `/team-builder-setup` | Tam sihirbaz: hedefler (Claude/Codex/OpenCode), topoloji, roller, routing, anayasa presetleri (isteğe bağlı plan kapısı dahil) → `.agent-source/` + generate. Sonunda mimari dokümanları birlikte doldurmayı teklif eder. |
 | `/team-builder-sync` | `.agent-source/`'tan generated dosyaları yeniden üretir / **drift** (sapma) kontrolü yapar. |
-| `/team-builder-upgrade` | Kurulumdan sonra anayasa preset'lerini (plan kapısı dahil) açar ya da kapatır; eski projeleri tek talimat dosyasına göç ettirir. |
+| `/team-builder-upgrade` | Kurulumdan sonra anayasa preset'lerini (plan kapısı dahil) açar ya da kapatır; eski projeleri göç ettirir: tek talimat dosyasına, ve yol sahipliğini hâlâ kopyalayan rol dosyalarını routing tablosuna atıf yapan genel metne ("rol dosyalarını sahiplikten arındır"). |
 | `/team-builder-models` | Her agent'ın hangi model ve effort'la çalışacağını ekosistem başına ayarlar: ortak `.agent-source/llm.json`, bu makinenin `llm.local.json`'u, yeni çıkan ya da kalkan modellerin yenilenmesi ve eski projelerin göçü. |
-| `/team-builder-module` | Kurulu takıma yeni bir klasör (modül) ekler: yazabilen mevcut bir role verir ya da onun için yeni bir rol açar (skill'ler, model, kim ona danışır); routing'i, rol dosyalarını ve talimatları birlikte günceller. |
+| `/team-builder-module` | Kurulu takıma yeni bir klasör (modül) ekler: yazabilen mevcut bir role verir ya da onun için yeni bir rol açar (skill'ler, model, kim ona danışır); routing'i ve talimatlardaki routing tablosunu günceller. Mevcut rol dosyalarına dokunmaz. |
 | `/architecture-advisor` | Projeyi analiz edip ADR / mimari kısıt / tasarım önerir ve kullanıcıyla adım adım `docs/<arch-root>/` altına yazar. Takımdan bağımsız da çalışır. |
 
 `skills/team-builder-shared/`, skill'lerin dayandığı paylaşılan referansları + generator'ı
-(`sync-agent-config.mjs`) ve doğrulayıcıları (`validate-manifest.mjs`, `validate-llm.mjs`) barındırır.
+(`sync-agent-config.mjs`), onun sahiplik kayması kontrolünü (`ownership-drift.mjs`) ve
+doğrulayıcıları (`validate-manifest.mjs`, `validate-llm.mjs`) barındırır.
 
 ## Gereksinimler
 
@@ -492,6 +505,14 @@ Tek gerçek kaynak `.agent-source/`'tur:
 - Generated dosyalar **elle değiştirilmez**; kaynak güncellenir ve `sync` yeniden üretir.
 - `/team-builder-sync` çıktıları tazeler; `--check` modu kaynak ile üretilen arasındaki
   **drift**'i (sapmayı) yakalar.
+- **Sahipliğin tek kaynağı var.** Hangi yolun hangi rolün olduğu yalnız manifest'in
+  `routing`'inde ve `.agent-source/project/instructions.md`'deki routing tablosunda; kod–doküman
+  eşleştirmeleri yalnız `codeDocSync`'te ve onun tablosunda yazar. Rol dosyaları sahiplik
+  metnini `<!-- ownership -->` işaretleri arasında tutar ve tabloyu kopyalamaz, ona atıf yapar.
+  Routing ya da kod–doküman tablosu manifest'ten farklıysa, ya da bir rol dosyasının sahiplik
+  bölümü veya bir manifest kuralı routing satırı kopyalıyorsa `sync --check` düşer. Bundan önce
+  kurulmuş projeler uyarı alır; rol dosyalarını `/team-builder-upgrade` göç ettirir. Codex ve
+  OpenCode izinleri ile Codex `developer_instructions`'a üretilen yol satırları değişmez.
 - Her generated dosyanın başına `# This file is generated from .agent-source. Run sync.`
   header'ı yazılır.
 - **Ajan dosyaları commit edilir.** Takımın `.agent-source/llm.json`'daki modellerini

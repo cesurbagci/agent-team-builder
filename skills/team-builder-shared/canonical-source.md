@@ -47,6 +47,20 @@ kaynağın `.agent-source/` olduğunu görür.
 `.agent-source/README.md` kullanıcıya net bir not düşer: *generated'ı elleme, burayı
 güncelle ve sync çalıştır.*
 
+### Sahipliğin tek kaynağı
+
+Kaynak ağacının içinde de her bilgi tek yerde durur. Yol sahipliği yalnız
+`agents/manifest.json` → `routing[]` ve onun `project/instructions.md`'deki routing
+tablosunda; kod–doküman eşleştirmesi yalnız `codeDocSync[]` ve `instructions.md`'deki
+`c:codeDocSync` tablosunda yazar. `agents/<role>.md` ile manifest `rules[]`/
+`extra_instructions[]` bunları **kopyalamaz**: rol dosyası tabloya atıf yapan genel metni
+`<!-- ownership -->` … `<!-- /ownership -->` işaretleri arasında taşır (`agent-md-rich.md`).
+Sync rol dosyalarını ve `instructions.md`'yi olduğu gibi kopyaladığı için bir kopya ilk
+sahiplik değişikliğinde bayatlardı; sync bu yüzden kopyaları ve tablo–manifest farkını arar
+(`routing.md` → *Kayma kontrolleri*, `sync-pipeline.md` §14). Codex
+`developer_instructions`'daki yol satırları ise kaynak değil üretimdir — her sync'te
+`routing[]`'ten yeniden yazılır.
+
 ## Generated Hedefler Haritası (kaynak → hedef)
 
 Senkronizasyon scripti aşağıdaki eşlemeyi uygular. Sağ taraftaki **tüm hedefler
@@ -73,8 +87,9 @@ GENERATED'dır**; elle düzenlenmez, kaynaktan üretilir.
 
 > **`instructions.md` üretilen dosya değildir.** `.agent-source/project/` altında yaşar
 > ve `CLAUDE.md`/`AGENTS.md` ona referans verir; `opencode.json` `instructions` dizisine
-> ekler. Kopyalanmadığı için ledger'a girmez ve drift kontrolüne konu olmaz — ama
-> **referansın kendisi** denetlenir (`sync-pipeline.md`).
+> ekler. Kopyalanmadığı için ledger'a girmez ve dosya drift'ine konu olmaz — ama
+> **referansın kendisi** ve routing / kod–doküman tablolarının manifest'le uyumu denetlenir
+> (`sync-pipeline.md` §10, §14).
 
 - `agents/<role>.md`'nin hangi hedeflere gideceği o agent'ın **`targets`** alanına
   bağlıdır (yoksa kök `targetsDefault`): örn. `["claude"]`, `["opencode"]`,

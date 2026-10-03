@@ -14,7 +14,7 @@ Bir rol için "ekleyelim mi?" → EVET ise sırayla:
 1. **Governance varsayılanlarını göster → kabul/değiştir.**
    `governance-defaults.md`'den o rolün varsayılanlarını GÖSTER: `sandbox_mode`,
    `writesCode`, `color`, varsayılan kurallar
-   (`rules[]`), `consults` (architect takımdaysa developer için `["architect"]`, **yoksa boş `[]`**). Kullanıcı kabul eder/düzenler. Model ve effort burada **sorulmaz**: bütün roller bittikten sonra `team-builder-models`'in Akış 1'i sorar ve `.agent-source/llm.json`'a yazar.
+   (`rules[]` — yol taşımaz, routing tablosuna atıf yapar), `consults` (architect takımdaysa developer için `["architect"]`, **yoksa boş `[]`**). Kullanıcı kabul eder/düzenler. Model ve effort burada **sorulmaz**: bütün roller bittikten sonra `team-builder-models`'in Akış 1'i sorar ve `.agent-source/llm.json`'a yazar.
 
 2. **Hedefleri sor (`targets`).**
    Bu agent hangi ekosistem(ler)de üretilsin: `claude`, `codex`, `opencode` veya bir
@@ -39,7 +39,9 @@ Bir rol için "ekleyelim mi?" → EVET ise sırayla:
    yolu **dizine çevir** (`src/**`) ve nedenini söyle — sohbette kabul edip sonda
    doğrulamada patlatma. Onaylanan satırlar
    manifest **kök** `routing[]`'ine `{ path, role: <name> }` olarak eklenir (agent objesine
-   değil — routing tablo köktedir).
+   değil — routing tablo köktedir) ve `instructions.md`'nin routing tablosuna yazılır. Bu iki
+   yer sahipliğin **tek kaynağıdır**: yollar rol dosyasına, `rules[]`'a ya da
+   `extra_instructions[]`'a kopyalanmaz.
 
 6. **Manifest'e agent ekle.**
    `manifest.agents[]`'a `manifest-schema.md`'ye uygun obje ekle. Codex metadata dahil:
@@ -49,7 +51,11 @@ Bir rol için "ekleyelim mi?" → EVET ise sırayla:
 
 7. **Agent-source md yaz.**
    `.agent-source/agents/<name>.md` dosyasını `agent-md-rich.md` kalıbıyla üret (frontmatter
-   + zengin gövde, docLanguage dilinde). Bu md, sync sırasında `.claude/agents/<name>.md`
+   + zengin gövde, docLanguage dilinde). Sahiplik bölümleri (Rol & Sınırlar, Sorumluluk
+   Alanı, Çalışma / Yasak, Kod–Doküman, Routing & Danışma) kalıptaki genel metinle
+   `<!-- ownership -->` … `<!-- /ownership -->` işaretleri arasında yazılır — yol listesi,
+   yasak klasör ve başka rollerin yolları yazılmaz; domain sözle anılır, danışılan roller
+   adlarıyla. Bu md, sync sırasında `.claude/agents/<name>.md`
    olarak ve (codex hedefliyse) `.codex/agent-definitions/<name>.md` verbatim kopyası olarak
    üretilecektir.
 
@@ -62,7 +68,7 @@ Bir rol için "ekleyelim mi?" → EVET ise sırayla:
 | Çıktı | Nereye | Kalıp |
 |---|---|---|
 | Agent metadata | `.agent-source/agents/manifest.json` → `agents[]` girişi | `manifest-schema.md` |
-| Routing satırı (varsa) | aynı manifest → kök `routing[]` | `{ path, role }` |
+| Routing satırı (varsa) | aynı manifest → kök `routing[]` + `instructions.md` routing tablosu | `{ path, role }` |
 | Zengin rol talimatı | `.agent-source/agents/<name>.md` | `agent-md-rich.md` |
 
 Generated dosyalar (`.claude/agents/*.md`, `.codex/agents/*.toml`,

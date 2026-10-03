@@ -52,12 +52,44 @@ color: <purple | blue | green | red | yellow | ...>
 Projenin stack'ini ve agent'ın domain'ini özetleyen 2-4 cümle. writesCode=false ise burada
 **"Production kodu YAZMAZSIN"** net belirtilir.
 
+> **Sahiplik tek kaynaktadır.** Hangi yolun kimin olduğu yalnız `manifest.routing[]`'te ve
+> onun `instructions.md`'deki routing tablosunda yazar; kod–doküman eşleştirmesi yalnız
+> `manifest.codeDocSync[]`'te ve `c:codeDocSync` bloğunun tablosunda. Rol dosyası bunları
+> **kopyalamaz**: sync rol dosyasını olduğu gibi kopyalar, bir kopya ilk sahiplik
+> değişikliğinde bayatlar. Sahiplikle ilgili metin `<!-- ownership -->` …
+> `<!-- /ownership -->` işaretleri arasında durur (dosyada birden çok çift olabilir). Sync,
+> işaretlerin içinde bir routing satırı (`services/orders/**`, `services/orders/`, `services/gateway/docs/README.md`)
+> görürse kayma sayar. Rolün kimliğini anlatan domain atfı ("yalnız bir servis için var olan
+> analist") serbesttir; başka rollerin yollarını sayan cümle ve routing satırı yazılmaz.
+>
+> **Yalnız sahiplik cümleleri işaretlenir:** rolün hangi yollara yazabildiğini ya da yazamadığını söyleyen
+> cümleler. Rolün görevi, danışılan rol adları ve iş kuralları ("kararı şu belgeye yaz",
+> bir görev için okunacak belirli bir dosya) işaretlerin dışında kalır; içlerinde daha derin
+> bir yol geçebilir. Başlıklar `docLanguage`'e çevrilir ve projede farklı yazılabilir —
+> bölümler başlığa göre değil anlamına göre tanınır.
+>
+> **Okuma listeleri desenle yazılır.** Rolün okuyacağı yerler (reviewer'ın odakları, güvenlik
+> rolünün gereksinim belgeleri) servis servis sayılmaz: `<servis>/docs/`, `<servis>/src/…`
+> gibi bir desen kullanılır, yoksa yeni servis eklenince liste eskir. Tek servise özgü bir rol
+> o servisin adını kimliği gereği anabilir.
+>
+> **Genel metin projenin koşulunu düşürmez.** Proje bir kuralı koşula bağlamışsa ("yalnız
+> anlatılan davranış etkilenirse") rol metni onu daha katı hâle getirmez; koşul ya aynen
+> durur ya da yaşadığı yere (`instructions.md`'deki blok) atıf yapılır.
+
 ### `## Rol & Sınırlar`
-- Ne yapar, ne yapmaz.
-- `writesCode=false` → **"Kod yazma"** net madde. Yazma alanı **routing tablosundan** yazılır, "tüm `docs/`" gibi sabit bir ifadeyle değil (architect: "**routing'de bana verilen yollara yetkiliyim** — `<yollar>`; production koduna yazmam, sadece okurum"; reviewer: "kod yazmam, dosya değiştirmem, yalnız rapor üretirim"). Tabloda `docs/**` tek satırsa ifade "tüm `docs/`" olur; bölünmüşse (`docs/guides/**` doc-writer'da) ya da per-module satır varsa **kendi yolları** sayılır.
-- `writesCode=true` → "Sadece kendi domain'imde kod yazarım." Routing'de kod yazmayan bir
-  role verilmiş **her** yol için cümleye "`<yol>` altına yazmam (orası `<rol>`ün)" eklenir —
-  sahip architect de olabilir doc-writer da. Böyle bir yol yoksa eklenmez.
+```
+- <Ne yapar, ne yapmaz — rolün işi, yol yok.>
+<!-- ownership -->
+- Yazma alanın, `instructions.md`'deki routing tablosunda rolüne atanmış yollardır. Bir dosya
+  birden çok satıra uyarsa en özgül yol kazanır. Diğer yolları yalnız oku; değişiklik
+  gerekiyorsa lider üzerinden sahibine yönlendir.
+<!-- /ownership -->
+```
+- `writesCode=false` → ilk maddeye **"Kod yazma"** eklenir. Routing'de yolu olmayan rol
+  (reviewer, security) için ikinci madde: "Hiçbir dosyayı değiştirme; yalnız oku ve rapor
+  üret."
+- `writesCode=true` → "Kendi alanında kod yazarsın."
 
 ### `## Memory` *(anayasa preset 3 açıksa)*
 > Canonical memory dizinin `.agent-memory/<name>/` altındadır. Göreve başlamadan önce varsa
@@ -66,37 +98,56 @@ Projenin stack'ini ve agent'ın domain'ini özetleyen 2-4 cümle. writesCode=fal
 > `.codex/agent-memory/` altına yazma.
 
 ### `## Sorumluluk Alanı`
-Agent'ın domain(ler)i. Her domain için **+ Birincil kod kaynakları** alt listesi: bu role
-ait kontratların yaşadığı gerçek kod yolları (proje analizinden; örn.
-`packages/plugin-sdk/`, `apps/**/main/src/preload/namespaces/`). "Birincil bilgi kaynağın
-koddur; doküman kodu açıklar, yerine geçmez."
+Agent'ın domain(ler)i **sözle**: ne tür işler, hangi kontratlar (ör. "süreç motoru: görevler,
+geçişler, zamanlayıcılar"). Yol listesi **yazılmaz**. İşaretli tek cümle:
+```
+<!-- ownership -->
+Birincil kod kaynakların routing tablosunda rolüne atanmış yollardır.
+<!-- /ownership -->
+Birincil bilgi kaynağın koddur; doküman kodu açıklar, yerine geçmez.
+```
+Yolu olmayan salt-okunur rol (reviewer, security): işaretli cümle "Yazma alanın yoktur;
+bütün yolları yalnız okursun." olur.
 
 ### `## Çalışma / Yasak Klasörleri`
-- **Çalışma:** yalnız yazabildiği yollar (writesCode=true → kendi domain kod yolları;
-  **architect → routing'de kendisine verilen yollar** (tek satırsa `docs/**`, bölünmüşse yalnız kendi payı, per-module ise `modules/*/docs/**` de dahil); reviewer → hiçbiri).
-- **Yasak:** yalnız okuduğu yollar. Doküman sahibi rol için tüm production kod yolları
-  "sadece okurum". developer için diğer domainler — ayrıca **routing'de kod yazmayan bir
-  role verilmiş her yol**, sahibinin adıyla (`docs/**` → architect, `docs/guides/**` →
-  doc-writer gibi). Böyle bir yol yoksa yasak listesinde doküman yolu **yer almaz**.
-  reviewer için "her şeyi okurum, hiçbir şeye yazmam".
+Ayrı bir yol listesi **yoktur**; bölüm ya hiç yazılmaz ya da tek işaretli cümledir:
+```
+<!-- ownership -->
+Çalışma ve yasak yolların routing tablosundan çözülür: rolüne atanmış yollara yazarsın,
+gerisini yalnız okursun.
+<!-- /ownership -->
+```
+Yolu olmayan salt-okunur rol: "Hiçbir dosyayı değiştirme; bütün yolları yalnız okursun."
 
 ### `## Kod-Doküman Senkronizasyonu` *(anayasa preset 2 açıksa)*
-manifest `codeDocSync[]` tablosu: `<kod yeri> → <beklenen doküman>`. Eksikse reviewer için
-**Kritik**. Architect **varsa** — architect: doc tarafını ben güncellerim; bir karar kod + doc + (bağlayıcıysa)
-ADR üçü tamamlanmadan "bitti" sayılmaz. developer: kod kontratı değiştiyse ilgili dokümanın
-güncellenmesi için architect'e sevk eder. Architect **yoksa** bu iki cümle **yazılmaz**;
-doküman güncellemesi kod değişikliğini yapan rolün işidir.
+```
+<!-- ownership -->
+Kod–doküman eşleştirmeleri `instructions.md`'deki kod–doküman bölümündedir. Kod sahibi
+eşleşen dokümanın etkilendiğini bildirir; dokümanı sahibi günceller.
+<!-- /ownership -->
+```
+Eşleştirme tablosu rol dosyasına **kopyalanmaz**. Role göre ek (yol yok): architect
+**varsa** — architect: "Bir karar kod + doküman + (bağlayıcıysa) ADR üçü tamamlanmadan bitti
+sayılmaz."; developer: "Kod kontratı değiştiyse dokümanın güncellenmesi için architect'e
+sevk et." Architect **yoksa** bu iki cümle yazılmaz; doküman güncellemesi kod değişikliğini
+yapan rolün işidir. Eksik doküman reviewer için **Kritik**.
 
-**Doküman standardı (her agent md'sine yazılır):** Mimari dokümanlar `docs/<arch-root>/templates/doc-standard.md` standardına göredir.
+**Doküman standardı (her agent md'sine yazılır, işaretlerin dışında):** Mimari dokümanlar `docs/<arch-root>/templates/doc-standard.md` standardına göredir.
 - **architect:** ADR/kısıt/tasarım yazarken `templates/{adr,constraint,design}.md` şablonlarını kullanır; başka format uydurmaz.
 - **tüm roller (okuma):** bir konuda karar/kuralı `doc-standard.md`'deki okuma sırasıyla bulur (README index → ilgili domain → adr/constraints; Status + Karar + Sonuçlar bölümleri bağlayıcıdır).
 
 ### `## Routing & Danışma`
-- **Routing:** manifest `routing[]`'ten bu role atanan yollar. "Bu yollardaki işler bana
-  gelir; tabloyu bypass eden doğrudan kod yazımı mimari ihlaldir."
-- **Danışma:** `consults[]` varsa "Şu durumlarda `<consult>` rolüne danış/sevk et"
-  (developer → architect: mimari karar, yeni API yüzeyi, breaking change, kanal belirsizliği;
-  reviewer → "mimarı ben çağırmam, Mimar'a Sevk listesine yazarım").
+```
+<!-- ownership -->
+- Sahipliği `instructions.md`'deki routing tablosundan çöz; en özgül yol kazanır. Tabloyu
+  atlayan doğrudan kod yazımı mimari ihlaldir; kendi alanının dışındaki işi lider üzerinden
+  sahibine yönlendir.
+<!-- /ownership -->
+```
+- **Danışma:** `consults[]` varsa rol adlarıyla "Şu durumlarda `<consult>` rolüne danış/sevk
+  et" (developer → architect: mimari karar, yeni API yüzeyi, breaking change, kanal
+  belirsizliği; reviewer → "mimarı ben çağırmam, Mimar'a Sevk listesine yazarım"). Rol
+  adları sahiplik değildir; işaretlerin dışında kalabilir.
 
 ### `## Zorunlu Skill'ler` *(enforcement=mandatory)*
 `skills[]` içinde `enforcement: mandatory` olanlar **emir kipiyle**: "Bu tür görevlerde
@@ -117,12 +168,14 @@ doküman güncellemesi kod değişikliğini yapan rolün işidir.
 
 ### `## Kısıtlar`
 Role özel sıkı kurallar (madde listesi):
-- writesCode=false → "Asla `<kod yolları>` altına yazma; sadece okursun."
-- architect → "Routing'de sana verilen yollara yetkilisin — `<yollar>`; production koduna yazma. ADR varsa yeniden karar verme." (Yolları tablodan kopyala; başka bir role verilmiş doküman yolunu kendine yazma.)
+- writesCode=false → "Production koda yazma; sadece okursun." (yol sayma)
+- architect → "Production koduna yazma. ADR varsa yeniden karar verme."
 - reviewer → "Hiç kod ya da test yazma, hiç düzeltme; read-only. Eksik testi kodun sahibine bildir."
 - kod yazan her rol (developer, database-engineer) → "Kendi kodunun testlerini sen yaz ve çalıştır; önce başarısız test." Testleri başka bir role yönlendiren cümle yazma.
 - Belirsiz tavsiye verme; kararı netleştir (architect). Raporu kısa tut (reviewer).
-- `extra_instructions[]` maddeleri burada veya ilgili bölümde yer alır.
+- `extra_instructions[]` maddeleri burada veya ilgili bölümde yer alır. Bu maddelerde de
+  routing satırı geçmez (sync manifest'te de arar); daha derin, rolün işini tarif eden yol
+  (`services/gateway/docs/<api>/sources/`) serbesttir.
 
 ---
 
@@ -130,8 +183,8 @@ Role özel sıkı kurallar (madde listesi):
 
 | manifest | gövdeye yansıma |
 |---|---|
-| `writesCode: false` | Rol & Sınırlar + Kısıtlar'da **"Kod yazma"** net; Çalışma klasörü dar — **routing'de o role verilen yollar** (tek `docs/**` satırı varsa "tüm `docs/`"; bölünmüşse yalnız kendi payı; reviewer: yok). |
-| `writesCode: true` | Çalışma klasörü = kendi domain kod yolları; Yasak = diğer domain + **routing'de kod yazmayan bir role verilmiş her yol**, sahibinin adıyla (ölçü architect'in varlığı değil, tablodaki sahiplik: architect yoksa doc-writer'ın yolları da yazılır). Böyle bir yol yoksa yalnız diğer domainler. |
+| `writesCode: false` | Rol & Sınırlar + Kısıtlar'da **"Kod yazma"** net. Yazma alanı routing tablosuna atıfla, yol sayılmadan; yolu olmayan rol: "hiçbir dosyayı değiştirme". |
+| `writesCode: true` | "Kendi alanında kod yazarsın" + routing tablosu cümlesi. Başka rollerin yolları **sayılmaz**; Codex `developer_instructions`'daki doküman yasakları sync'te routing'den üretilir. |
 | `skills[].enforcement: mandatory` | `## Zorunlu Skill'ler` altında **MUTLAKA** emir kipi. |
 | `skills[].enforcement: when-needed` | `## Gerektiğinde Skill'ler` altında öneri dili. |
 | `consults: [architect]` | `## Routing & Danışma`'da "mimari belirsizlikte architect'e sevk". Liste **boşsa** (architect yoksa) "mimari belirsizlikte **kullanıcıya sor**". |

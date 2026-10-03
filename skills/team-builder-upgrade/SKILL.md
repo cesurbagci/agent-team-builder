@@ -1,13 +1,16 @@
 ---
 name: team-builder-upgrade
-description: Kurulmuş bir projede anayasa preset'lerini (geçici çözüm yok, kod-doküman senkronizasyonu, rol başına hafıza, dil standardı, plan kapısı) açar veya kapatır; plan kapısının artefaktlarını kurar ya da bırakır; eski yapıdaki projeleri tek talimat dosyasına göç ettirir. Tetikleyiciler — "plan kapısını aç", "preset aç", "preset kapat", "anayasa değiştir", "takımı yükselt", "talimatları tek dosyaya taşı", "projeyi yeni yapıya geçir", "plan kapısı skill'ini güncelle", "çapraz denetimi aç/kapat". Yeni rol/routing/ekosistem eklemek için kullanma; kurulu projede bunlar elle yapılır (manifest — silinen rolün routing/consults/lead atıfları dahil —, rol dosyası ve `llm.json` girdileri, sonra sync). Model ya da effort değiştirmek için de kullanma; o team-builder-models'in işidir.
+description: Kurulmuş bir projede anayasa preset'lerini (geçici çözüm yok, kod-doküman senkronizasyonu, rol başına hafıza, dil standardı, plan kapısı) açar veya kapatır; plan kapısının artefaktlarını kurar ya da bırakır; eski yapıdaki projeleri tek talimat dosyasına göç ettirir; rol dosyalarındaki kopyalanmış yol sahipliğini routing tablosuna atıf yapan genel metne çevirir. Tetikleyiciler — "plan kapısını aç", "preset aç", "preset kapat", "anayasa değiştir", "takımı yükselt", "talimatları tek dosyaya taşı", "projeyi yeni yapıya geçir", "plan kapısı skill'ini güncelle", "çapraz denetimi aç/kapat", "rol dosyalarını genelleştir", "rol dosyalarını sahiplikten arındır", "sahipliği tek kaynağa taşı", "sync ownership uyarısı veriyor". Yeni rol/routing/ekosistem eklemek için kullanma; kurulu projede bunlar elle yapılır (manifest — silinen rolün routing/consults/lead atıfları dahil —, rol dosyası ve `llm.json` girdileri, sonra sync). Model ya da effort değiştirmek için de kullanma; o team-builder-models'in işidir.
 ---
 
 # team-builder-upgrade
 
 > **Dosya yolları:** team-builder'ın betik ve belgeleri `${CLAUDE_SKILL_DIR}/../team-builder-shared/` altındadır; bu dosyadaki yollar buna göre yazılmıştır. Yol `CLAUDE_SKILL_DIR` adıyla çözülmeden görünüyorsa (Codex plugin'i onu çözmez), onu bu SKILL.md'nin bulunduğu klasörün mutlak yoluyla değiştir.
 
-Kurulmuş bir projede **anayasa preset'lerini** açar/kapatır. Kurulum bir kez çalışır
+Kurulmuş bir projede **anayasa preset'lerini** açar/kapatır ve eski yapıdaki projeleri
+göç ettirir: talimatları tek dosyaya taşıma (*Göç — eski yapıdaki projeler*) ve rol
+dosyalarındaki yol sahipliğini tek kaynağa taşıma (*Rol dosyalarını sahiplikten arındır*).
+Kurulum bir kez çalışır
 (`team-builder-setup`), `sync` ince bir sarmalayıcıdır (`team-builder-sync`); bu skill
 ikisinin arasındaki boşluğu doldurur: kurulumdan sonra fikir değişince.
 
@@ -15,6 +18,19 @@ ikisinin arasındaki boşluğu doldurur: kurulumdan sonra fikir değişince.
 ya da yazabilen yeni rol için `team-builder-module`; öbürlerinin skill'i yok (setup kurulu takımda durur): manifest'i — bir rolü kaldırırken
 `routing`, `consults` ve `lead` atıfları dahil —, rol dosyasını ve `llm.json`'daki girdilerini
 elle düzenleyip sync çalıştır. Model ve effort da kapsam dışıdır: `team-builder-models`'e yönlendir.
+
+## Projenin metnini koru
+
+Kurulumdan sonra proje kendi metnini yazmış olabilir; bu skill onu şablonla ezmez.
+- **`instructions.md`'deki `c:` blokları:** var olan bir bloğu şablondan yeniden üretme.
+  Bir akış bloğu yenilemek isterse (ör. `codeDocSync` tablosu manifest'le ayrıştı) yalnız
+  gereken kısmı — tabloyu — değiştir, projenin düz metnini koru; ya da farkı göster ve sor.
+  Şablondan render yalnız blok **yokken** (preset ilk kez açılırken) yapılır.
+- **Kurulumda kopyalanan şablonlar** (`docs/<arch-root>/templates/` ve benzerleri): projede
+  değiştirilmiş olabilirler. Üzerine yazma; güncel team-builder şablonu farklıysa farkı
+  göster, kullanıcı isterse yalnız onayladığı kısmı al.
+- Bu skill'in hiçbir akışı kullanıcının elle yazdığı bir cümleyi sessizce silmez: silinecek
+  ya da taşınacak her cümle farkta ayrıca listelenir.
 
 ## Beş preset, üç sınıf
 
@@ -309,7 +325,8 @@ Preset çeviremezsin — önce göç.
    elle düzenlenmiş olabilir. Onaydan **önce** metni manifest ile karşılaştır:
    - Aynıysa → normal onay akışı.
    - Farklıysa → **DUR** ve kullanıcıya farkı göster: hangisi doğru? Cevaba göre ya
-     manifest'i güncelle ya bloğu manifest'ten yeniden render et. Prose'u olduğu gibi
+     manifest'i güncelle ya bloğun **tablosunu** manifest'ten yeniden yaz (düz metne
+     dokunma — *Projenin metnini koru*). Prose'u olduğu gibi
      sarma — sardığın anda yalan kalıcılaşır ve hiçbir doğrulayıcı bunu yakalamaz.
 
 5. **Hedef kaynaklarını yeniden yaz.**
@@ -337,6 +354,142 @@ Bu da göç sayılır — yalnız 4. adım çalışır. 2., 3. ve 5. adımlar at
 **Yarım işaretli dosya da buraya girer.** Önceki bir göç yarıda kesilmiş ya da bir blok
 bilerek işaretsiz bırakılmış olabilir. 4. adımı yalnız **işaretsiz kalan** açık
 preset'ler için çalıştır; zaten işaretli olanlara dokunma.
+
+## Rol dosyalarını sahiplikten arındır
+
+Eski kurulumlarda her rol dosyası yol sahipliğini kopyalar (yazma alanı, yasak klasörler,
+birincil kod kaynakları, kod–doküman tablosu). Sync bu dosyaları olduğu gibi kopyaladığı için
+ilk sahiplik değişikliğinde kopyalar bayatlar. Yeni yapıda sahiplik yalnız
+`manifest.routing[]` + `instructions.md` routing tablosunda, kod–doküman eşleştirmesi yalnız
+`manifest.codeDocSync[]` + `c:codeDocSync` tablosunda durur; rol dosyası onlara
+`<!-- ownership -->` … `<!-- /ownership -->` işaretleri arasında genel metinle atıf yapar
+(`${CLAUDE_SKILL_DIR}/../team-builder-shared/agent-md-rich.md`).
+
+**Ne zaman:** sync "Role files predate the single-source ownership layout" uyarısı
+veriyorsa, `team-builder-module` bu göçü önerdiyse ya da kullanıcı istediyse. Hiçbir rol
+dosyasında `<!-- ownership -->` yoksa proje göç etmemiştir.
+
+Kullanıcıya söyle: göç tek seferliktir, git ile geri alınabilir; makine izinleri (Codex
+`sandbox_mode`, OpenCode `permission.edit`) ve Codex `developer_instructions`'daki routing'den
+üretilen yol satırları değişmez. Göçten sonra sync kopyalanmış sahipliği **kayma** sayar
+(`--check` exit 1) — önce uyarıydı.
+
+### Sıra
+
+1. **Önkoşul: tablo manifest'le aynı.** `.agent-source/project/instructions.md` yoksa önce
+   *Göç — eski yapıdaki projeler*. Varsa
+   `node "${CLAUDE_SKILL_DIR}/../team-builder-shared/sync-agent-config.mjs" --root "<proje>" --check`
+   çalıştır (`llm.local.json` varsa `--no-local` ile) ve çıktıyı oku:
+   - `routing table lacks …` / `routing table has …, not in the manifest` ya da
+     `has no routing table` → önce tabloyu `manifest.routing[]`'e göre düzelt (farkı göster,
+     onay al). Tablo biçimi: `` | `<yol>` | `<rol>` | `` (`routing.md` → *Tablonun biçimi*).
+     Rol dosyaları tabloya atıf yapacağı için tablo yanlışsa göç sahipliği bozar. Manifest
+     tablodan farklı bir sahiplik istiyorsa bu göçün işi değildir — kullanıcıya söyle
+     (`team-builder-module`).
+   - `code–doc table lacks/has …` → `c:codeDocSync` bloğunun **yalnız tablosunu**
+     `manifest.codeDocSync[]`'e göre düzelt ya da (kullanıcı tablonun doğru olduğunu
+     söylerse) manifest'i tabloya göre güncelle — farkı göster, onay al. Bloğun düz metnine
+     dokunma (*Projenin metnini koru*). Kullanıcı ikisini de istemezse **dur**: göçten sonra
+     bu fark `--check` hatası olur.
+   İki tablo da düzelmeden 2. adıma geçme.
+
+   **Bu göç routing'i değiştirmez ve `instructions.md`'nin düz metnine dokunmaz.**
+   `manifest.routing[]` olduğu gibi kalır — servise özel satırlar
+   (`services/orders/docs/architecture/**` → architect gibi) dahil, yeniden yazılmaz. `instructions.md`'de
+   yalnız routing ve kod–doküman tabloları, yalnız `--check` tablo kayması bildirdiyse
+   düzeltilir;
+   `c:codeDocSync` bloğu dahil öbür metin aynen kalır (proje orada daha gevşek bir kural
+   kullanıyor olabilir).
+
+2. **Her rol dosyasını yeniden yaz — yalnız sahiplik cümlelerini.**
+   `.agent-source/agents/<ad>.md` için, `docLanguage` dilinde:
+   - **Bölümleri anlamından tanı, başlığa göre değil.** Başlıklar projede farklı yazılmış ya
+     da birleştirilmiş olabilir ("Rol ve Sınırlar", "Kod–Doküman ve Doküman Standardı").
+     Başlıkları değiştirme; birleşik bir bölümde yalnız sahiplik cümlelerini işaretle.
+   - **Sahiplik cümlesi**, rolün **hangi yollara** yazabildiğini ya da yazamadığını söyleyen
+     cümledir — yolu olsun olmasın: yol listeleri, "`<yol>` altına yazma — orası `<rol>`ün",
+     "yalnız kendine ayrılan yollarda çalış", "şu yollar ayrılmış sahiplik alanlarıdır",
+     rolün sahip olduğu yerleri yeniden sayan "birincil kod kaynakları" listeleri, rol
+     dosyasına kopyalanmış kod–doküman eşleştirmesi. **Sahiplik değildir:** görev ve sorumluluk
+     cümleleri ("testleri sen yazarsın", "uygulama kodu yazma" gibi rol türünden gelen yasak),
+     hafıza ve `.agent-work/` kuralları, rolün işi için okuyacağı dosya ya da odak listeleri
+     (yalnız okuduğu yerler), göreli yol tabanı açıklamaları.
+   - **Nasıl değişir:** sahiplik cümlesi `agent-md-rich.md`'deki genel metinle değişir ve
+     `<!-- ownership -->` … `<!-- /ownership -->` ile sarılır. Genel metnin anlamı dosyada bir
+     proje cümlesiyle zaten karşılanıyorsa (yolsuz bir sahiplik cümlesi gibi) genel metni
+     ekleme; o cümleyi işaretle. Kısmen karşılanıyorsa yalnız eksik kalan kısmı ekle. Genel
+     metin role uymayan bir sözcük taşıyorsa (doküman yazan role "kod kaynakları") rolün
+     işine göre uyarla; anlamı değiştirme.
+   - **Koşulu düşürme.** Genel metin projenin cümlesinden daha katı olamaz. Proje bir koşul
+     ya da gevşetme yazmışsa ("yalnız anlatılan davranış etkilenirse", "etkilemiyorsa 'belge
+     etkisi yok' demek yeter") önerilen metin onu korur — ya koşulu aynen taşır ya da koşulun
+     yaşadığı yere (`instructions.md`'deki blok) açıkça atıf yapar. Koşulun o yerde gerçekten
+     durduğunu kontrol et; durmuyorsa koşulu rol dosyasında, işaretlerin dışında bırak.
+   - **Karışık cümle:** bir cümle hem sahiplik hem iş kuralı taşıyorsa ikiye ayır: sahiplik
+     kısmı genel metne gider (işaretli), iş kuralı kısmı **kelimesi kelimesine** işaretlerin
+     dışında kalır.
+   - **Kopyalanmış kod–doküman metni:** `c:codeDocSync` bloğunun rol dosyasına kopyası —
+     eşleştirmeler ve bloğun kuralı ("etkilemiyorsa 'belge etkisi yok' de" gibi) — genel
+     kod–doküman cümlesiyle değişir; anlamı zaten blokta durur. Blokta **olmayan** bir
+     cümle (projenin role özel eklediği bir eşleştirme ya da görev) kopya değildir:
+     işaretlerin dışında kalır; bir eşleştirmeyse kullanıcıya `manifest.codeDocSync[]`'e
+     eklemeyi öner.
+   - **Yolu olmayan salt-okunur rol** (reviewer, security gibi): Rol & Sınırlar'ın yazma
+     maddesi, Sorumluluk ve Çalışma bölümlerinin işaretli cümlesi `agent-md-rich.md`'deki
+     salt-okunur metindir. Dosyada aynı anlamda bir cümle varsa yukarıdaki kural geçerlidir.
+   - **Okuma ve odak listeleri servis saymaz.** Rolün işi için okuyacağı yerleri servis servis
+     sayan listeler (her servisin `docs/` klasörü, her servisin yapılandırma dosyası) sahiplik
+     değildir ama yeni servis eklenince eskir. Bunlar için `<servis>/docs/`, `<servis>/src/…`
+     gibi bir desen öner; farkta ayrıca listele, kullanıcı onaylarsa uygula. Tek bir servise
+     özgü, rolün kimliğinden gelen okuma yeri (rol yalnız o servis için varsa) kalabilir.
+   - **Sahiplik dışı cümleleri silme.** Sahiplik bölümlerinin içindeki iş ve çalışma
+     kurallarını ("şu klasörden başka kaynak okuma", "kararı şu belgeye yaz") işaretlerin
+     dışında, aynı bölümde bırak; farkta **ayrı bir liste** olarak göster. Emin değilsen
+     dokunma ve sor.
+   - **Yeni kural ekleme.** Göç yalnız sahiplik kopyalarını genel metne çevirir;
+     `agent-md-rich.md`'de olup dosyada olmayan rol eklerini (role göre kod–doküman cümleleri
+     gibi) ekleme.
+   - **Bire bir korunanlar:** sahiplik cümleleri dışındaki her şey — `## Denetim Eksenleri`,
+     `## Plan Kapısı`, skill bölümleri, dil kuralları, Memory, İletişim, frontmatter.
+     **Elle eklenmiş projeye özel bölümler** (çıktı şablonları, geliştirme standartları)
+     yeniden yazılmaz; içlerinde bir sahiplik cümlesi görürsen değiştirme, farkta listele ve
+     kullanıcıya sor.
+
+3. **Manifest kurallarını rol dosyasıyla aynı ölçüyle daralt.** `rules[]` ve
+   `extra_instructions[]` maddelerine 2. adımdaki tanım ve dönüşümü **aynen** uygula: maddenin
+   sahiplik kısmı rol dosyasında vardığın cümleye döner, geri kalanı kelimesi kelimesine
+   kalır. Madde silinmez — rol dosyasındaki karşılığıyla aynı kalsın (`rules[]` setup'ın rol
+   metni için kaynağıdır). Daha derin, rolün işini tarif eden yol içeren maddeler aynen kalır. Not:
+   `rules[]` hiçbir üretilen dosyaya girmez (setup'ın rol metni için kaynağıdır);
+   `extra_instructions[]` Codex `developer_instructions`'a kopyalanır.
+
+4. **Farkı göster, onay al.** Rol başına üç liste:
+   - sahiplik cümlelerinin önce/sonra hâli;
+   - işaretlerin dışına taşınan ya da yerinde bırakılan **sahiplik dışı cümleler**;
+   - manifest maddelerinin değişimi.
+   Ardından `node "${CLAUDE_SKILL_DIR}/../team-builder-shared/ownership-drift.mjs" --scan "<proje>"`
+   çıktısını göster: işaretlerin **dışında** kalan routing satırları. Sync oraya bakmaz; her
+   biri için kullanıcı "iş kuralı, kalsın" ya da "sahiplik, genelleştir" der. Her satırın
+   yanına kendi tahminini yaz (okuma listesi, göreli yol tabanı ve iş kuralı genelde
+   "kalsın"dır), karar kullanıcınındır. Onay rol
+   başınadır; onaylanmayan rol dosyası değişmez. **Onaysız hiçbir dosya yazılmaz.**
+
+5. **Yaz ve doğrula.**
+   ```bash
+   node "${CLAUDE_SKILL_DIR}/../team-builder-shared/validate-manifest.mjs" "<proje>/.agent-source/agents/manifest.json"
+   node "${CLAUDE_SKILL_DIR}/../team-builder-shared/sync-agent-config.mjs" --root "<proje>"
+   node "${CLAUDE_SKILL_DIR}/../team-builder-shared/sync-agent-config.mjs" --root "<proje>" --check
+   ```
+   Bu makinede `.agent-source/llm.local.json` varsa sync ve `--check`'i `--no-local` ile
+   çalıştır (sonuç commit edilecek). `MANIFEST OK` ve `Agent configuration is in sync.`
+   görmelisin. Bu iki çıktı **yetmez**: sync yalnız işaretlerin içine bakar. Yol listelerinin
+   gerçekten gittiğini 4. adımdaki fark ve `--scan` gösterir. `--check` bir rol dosyasında ya
+   da maddede routing satırı bildiriyorsa o yeri genel metne çevir (kullanıcıya göster) ve
+   tekrarla; bir rolü onaylanmadığı için eski bıraktıysan söyle.
+
+6. **Raporla:** hangi rol dosyaları değişti, hangi bölümler korundu, hangi manifest
+   maddeleri değişti ya da çıktı. Commit'i **sen yapma**; `--no-local` kullandıysan commit'ten
+   sonra normal sync gerektiğini ekle.
 
 ## Referans eksikse
 

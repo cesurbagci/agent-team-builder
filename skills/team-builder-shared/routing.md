@@ -14,8 +14,51 @@ v2 governance modelinin çekirdeği **kod-yolu → zorunlu rol** tablosudur. Gen
    `project/AGENTS.md`) yazılmaz — onlar `instructions.md`'ye referans verir.
 2. **manifest.routing[]** — makine-okunur kaynak (`{ "path": "<glob>", "role": "<agent-name>" }`).
 
-İkisi aynı kaynaktan (`.agent-source/`) gelir, böylece drift olmaz: `instructions.md`'deki
-tablo ile `manifest.routing` elle ayrı tutulmaz.
+Bu ikisi yol sahipliğinin **tek kaynağıdır**. Sync `instructions.md`'yi manifest'ten
+üretmez, kopyalar; bu yüzden tablo ile `manifest.routing` her değişiklikte birlikte
+güncellenir ve `sync` ikisini karşılaştırır (aşağıda *Kayma kontrolleri*).
+
+### Rol dosyaları ve kurallar sahiplik taşımaz
+
+Rol dosyaları (`.agent-source/agents/<ad>.md`) ve manifest `agents[].rules` /
+`extra_instructions` **yol kopyalamaz**. Rol dosyası yazma alanını "`instructions.md`'deki
+routing tablosunda rolüne atanmış yollar" diye tabloya atıfla anlatır; bu metin
+`<!-- ownership -->` … `<!-- /ownership -->` işaretleri arasında durur (`agent-md-rich.md`).
+Kod–doküman eşleştirmesi de aynı şekilde yalnız `manifest.codeDocSync[]` ve
+`instructions.md`'deki `c:codeDocSync` tablosunda durur. Böylece bir sahiplik değişikliği
+yalnız manifest'i ve `instructions.md`'yi değiştirir; rol dosyaları dokunulmadan doğru kalır.
+
+Makine düzeyindeki izinler değişmez: Codex `sandbox_mode`, OpenCode `permission.edit` rol
+bazındadır; sync'in Codex `developer_instructions`'a routing'den ürettiği yol satırları da
+kalır — her sync'te manifest'ten yeniden üretildikleri için bayatlamazlar.
+
+### Tablonun biçimi
+
+Sync tabloyu şu satırlardan tanır: ikinci hücre **yalnız** backtick'li bir agent adı, birinci
+hücre bir ya da daha çok backtick'li yol (`` | `apps/api/**` | `backend-developer` | ``).
+`c:codeDocSync` bloğu hariç tutulur. Başka biçimde yazılmış satırlar (açıklama ekli rol
+hücresi, iş türü satırları) tabloya sayılmaz — iş türü satırları (aşağıda) bu yüzden
+serbesttir.
+
+### Kayma kontrolleri
+
+`sync` her çalışmada şunlara bakar (`ownership-drift.mjs`):
+
+1. **Kopyalanmış routing satırı.** Bir routing satırının kendisi — yolu (`services/orders/**`),
+   glob'suz dizin biçimi (`services/orders/`, `services/orders`) ya da dosya satırı — bir rol dosyasının
+   `ownership` işaretleri içinde ya da bir agent'ın `rules[]`/`extra_instructions[]`
+   maddesinde geçerse. Yalnız `/` içeren biçimler aranır (`build.gradle` gibi tek parçalı
+   satırlar düz metinde sıradan sözcük olabilir). Daha derin bir yol
+   (`services/gateway/docs/<api>/sources/`) yakalanmaz: o, rolün işini tarif eder.
+2. **Routing tablosu.** Tablonun `{yol, rol}` kümesi `manifest.routing[]` ile birebir aynı
+   olmalı; eksik ve fazla satırlar raporlanır. Tablo hiç bulunmazsa uyarı verilir (eski
+   biçim).
+3. **Kod–doküman tablosu.** `c:codeDocSync` bloğundaki iki hücresi de tek backtick'li yol olan
+   satırlar `manifest.codeDocSync[]` ile aynı olmalı. Blok yoksa kontrol yok.
+
+Bulgular, rol dosyalarından **en az biri** `<!-- ownership -->` işareti taşıdığında kaymadır
+(`--check` exit 1). Hiçbiri taşımıyorsa (göç edilmemiş eski kurulum) aynı bulgular uyarıdır ve
+sync `team-builder-upgrade`'in "Rol dosyalarını sahiplikten arındır" göçünü önerir.
 
 ## Standart satır (koşullu)
 
@@ -107,7 +150,7 @@ Yol→rol satırları **jenerik varsayılmaz**. Sihirbaz şu akışı izler:
 3. **Kullanıcı onayı:** kullanıcı taslağı onaylar, düzeltir veya satır ekler/siler.
    Hiçbir satır kullanıcı onayı olmadan kesinleşmez.
 4. **Yazım:** onaylanan tablo hem `project/instructions.md`'nin routing bölümüne
-   **hem de** `manifest.routing[]`'e yazılır. Routing **ortak** metindir; hedefe özgü
+   **hem de** `manifest.routing[]`'e yazılır — rol dosyalarına yazılmaz. Routing **ortak** metindir; hedefe özgü
    dosyalara (`project/CLAUDE.md`, `project/AGENTS.md`) yazılmaz — onlar
    `instructions.md`'ye referans verir.
 
@@ -139,4 +182,7 @@ Bu kurallar projeye özel routing satırlarıyla **çelişmez, onları tamamlar*
 - Kaynak: `manifest.routing[]` (`.agent-source/agents/manifest.json`).
 - Yazıldığı yer: `.agent-source/project/instructions.md`'nin routing bölümü (hedefe özgü dosyalara değil).
 - Doğrulama: `validate-manifest.mjs` — `path` ve `role` dolu, `role` ∈ agent adları.
-- Senkron: `sync-agent-config.mjs` her iki çıktıyı tek kaynaktan üretir (drift yok).
+- Kayma: `sync-agent-config.mjs` tabloyu manifest'le karşılaştırır, rol dosyalarında ve
+  manifest kurallarında kopyalanmış routing satırını arar (yukarıda *Kayma kontrolleri*).
+- Codex: `developer_instructions`'daki yol satırları her sync'te `manifest.routing[]`'ten
+  üretilir.

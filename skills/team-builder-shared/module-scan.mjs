@@ -119,14 +119,14 @@ async function selftest() {
   }
   try {
     const project = path.join(tmp, 'p')
-    for (const d of ['product/api', 'company', 'apps/web', 'apps/mobile', 'lib/auth', 'src/auth', 'node_modules/x', '.cache']) {
+    for (const d of ['orders/api', 'billing', 'apps/web', 'apps/mobile', 'lib/auth', 'src/auth', 'node_modules/x', '.cache']) {
       await fs.mkdir(path.join(project, d), { recursive: true })
     }
     await fs.writeFile(path.join(project, 'lib', 'main.js'), '')
     await fs.mkdir(path.join(project, '.agent-source', 'agents'), { recursive: true })
     const manifest = {
       routing: [
-        { path: 'product/**', role: 'backend-developer' },
+        { path: 'orders/**', role: 'backend-developer' },
         { path: 'apps/web/**', role: 'frontend-developer' },
         { path: 'src/**', role: 'backend-developer' },
         { path: 'src/auth/**', role: 'security-developer' },
@@ -138,13 +138,13 @@ async function selftest() {
     const unowned = await unownedFolders(project)
     const expected = [
       { folder: 'apps/mobile', partial: false },
-      { folder: 'company', partial: false },
+      { folder: 'billing', partial: false },
       { folder: 'lib', partial: true },
     ]
     assert(JSON.stringify(unowned) === JSON.stringify(expected), `unowned folders, got ${JSON.stringify(unowned)}`)
     assert((await folderOwner(project, 'src/auth/tokens')).role === 'security-developer', 'the most specific owner must win')
     assert((await folderOwner(project, 'src/billing')).role === 'backend-developer', 'a nested folder takes its parent route')
-    assert((await folderOwner(project, 'company')) === null, 'an unowned folder has no owner')
+    assert((await folderOwner(project, 'billing')) === null, 'an unowned folder has no owner')
     assert(await rejects(() => folderOwner(project, '../x'), 'not a plain'), 'a .. argument must be refused')
     assert(await rejects(() => folderOwner(project, 'src/*'), 'not a plain'), 'a wildcard argument must be refused')
 

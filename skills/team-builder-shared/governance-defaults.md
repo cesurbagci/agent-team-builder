@@ -10,14 +10,23 @@
 
 ## Genel İlke
 
-Önerilen çekirdek roster: **architect (lead, doc-only)** + **developer(lar, domain-split)** + **reviewer**. "Her zaman" değil **varsayılan**: kullanıcı architect'i eklemeyebilir. Eklemezse `docs/` sahipliği, danışma hedefi, developer yasakları ve `lead` seçimi koşullu olarak değişir (bu dosyada ve `routing.md` / `agent-md-rich.md`'de işaretli).
+Önerilen çekirdek roster: **architect (lead, doc-only)** + **developer(lar, domain-split)** + **reviewer**. "Her zaman" değil **varsayılan**: kullanıcı architect'i eklemeyebilir. Eklemezse `docs/` sahipliği (routing), danışma hedefi ve `lead` seçimi koşullu olarak değişir (bu dosyada ve `routing.md` / `agent-md-rich.md`'de işaretli).
 `qa` / `security` / `doc-writer` opsiyoneldir. Developer rolleri generic değildir; sihirbaz
 projeyi analiz eder ve gerçek domain'lere göre böler (aşağıya bakın).
 
 `sandbox_mode` değerleri (Codex hedefi için anlamlı; Claude tarafında okuma/yazma sınırı
-agent md gövdesindeki "Çalışma/Yasak klasörleri" ile uygulanır):
+agent md gövdesinin `instructions.md`'deki routing tablosuna yaptığı atıfla uygulanır):
 - `read-only` — yalnız okur, dosya yazmaz (architect production koduna, reviewer her şeye).
 - `workspace-write` — kendi domain'inde yazar.
+
+> **Kurallar yol taşımaz.** Aşağıdaki kurallar manifest `rules[]`'a ve rol dosyasına gider;
+> ikisine de **routing satırı yazılmaz** (`apps/api/**`, `docs/`). Yol sahipliğinin tek
+> kaynağı `manifest.routing[]` ve onun `instructions.md`'deki routing tablosudur; kurallar
+> "routing tablosunda sana atanmış yollar" diye ona atıf yapar (`agent-md-rich.md`). Bu
+> dosyada geçen yol örnekleri (`docs/**`, `prisma/**`, `e2e/**` …) **routing'e** ne
+> yazılacağını anlatır, kural metnine değil. Sync kural ve rol dosyalarında routing satırı
+> görürse kayma sayar. Rolün işini tarif eden daha derin bir yol (`docs/<api>/sources/`)
+> serbesttir.
 
 ---
 
@@ -25,13 +34,13 @@ agent md gövdesindeki "Çalışma/Yasak klasörleri" ile uygulanır):
 
 - `writesCode`: **false** (doc-only). Production kodu yalnız **okur**.
 - Claude önerisi: **opus** · effort: **high** · `sandbox_mode`: **workspace-write**
-  — sahiplendiği `docs/` dizinine yazması gerektiği için `read-only` olamaz; production
+  — routing'de kendisine verilen doküman yollarına yazması gerektiği için `read-only` olamaz; production
   koduna yazma yasağı talimatla uygulanır (reviewer'dan farkı budur).
-- **Yazma yetkisi: routing'de kendisine verilen doküman yolları.** Varsayılan tek satır `docs/**`'tir — o zaman "tüm `docs/` dizini" doğru ifadedir ve alt klasörleri (`docs/architecture/adr` vb.) tek tek sayma. Doküman **bölünmüşse** (doc-writer'a `docs/guides/**` verildiyse) ya da per-module satır varsa yetkiyi **tablodaki kendi yollarıyla** ifade et; "tüm `docs/`" demek başka bir rolün alanını da sahiplenmek olur. Production koduna hiçbir durumda yazamaz.
+- **Yazma yetkisi: routing'de kendisine verilen doküman yolları.** Routing'e varsayılan tek satır `docs/**` yazılır (alt klasörler — `docs/architecture/adr` vb. — ayrı satır olmaz). Doküman **bölünmüşse** (doc-writer'a `docs/guides/**` verildiyse) ya da per-module satır varsa bunlar da routing'e satır olarak girer. Kural metni ve rol dosyası bu yolları **saymaz**, routing tablosuna atıf yapar; böylece tablo bölündüğünde kural değişmez. Production koduna hiçbir durumda yazamaz.
 - `consults`: [] (son mercii kendisidir).
 - Topolojide genelde `lead`.
 - Kurallar:
-  - "Production kod yazma; **yazma alanın routing'de sana verilen yollardır**" (tek satır `docs/**` ise: "tüm `docs/` dizinidir"; mimari dokümanlar `docs/<arch-root>/` altında).
+  - "Production kod yazma; **yazma alanın `instructions.md`'deki routing tablosunda sana atanmış yollardır**; diğer yolları yalnız oku." (Yol sayılmaz — `docs/**` routing'de yazar, kuralda değil.)
   - "Kod tabanını birincil kaynak olarak oku; dokümanları kod kontratlarının tamamlayıcısı olarak güncelle."
   - "ADR / mimari kısıt / tasarım kararı üret; gerekçe ve sonucu kalıcı doküman olarak bırak."
   - "Mimari soruların son mercii sensin."
@@ -56,16 +65,17 @@ Her developer rolü için varsayılan:
 - Claude önerisi: **sonnet** · effort: **medium** · `sandbox_mode`: **workspace-write**.
   (Karmaşık projelerde effort=high tercih edilebilir; sihirbaz proje karmaşıklığına göre yükseltebilir.)
 - `consults`: **[architect]** — architect takımda **yoksa boş `[]`**.
-- Kurallar (her developer'a, kendi domain'i doldurularak):
-  - Dokümantasyonu sahiplenen bir rol **varsa** — ölçü routing'dir, rol adı değil: kod yazmayan (`writesCode: false`) bir role verilmiş her yol o rolün yazma alanıdır — "Sadece kendi domain'inde (`<paths>`) kod yaz. `<o yol>` altına yazma — orası `<o rol>`ün; gerekiyorsa ona işaret et." Sahip architect ise yasak **tüm `docs/`**'tur, yalnız mimari kök değil. Doküman birden çok role bölündüyse her yol için ayrı satır yazılır. Böyle bir rol **yoksa** bu cümle **yazılmaz** — `docs/` özel sahipliği olmayan sıradan bir dizindir.
+- Kurallar (her developer'a; domain sözle anılır, yol yazılmaz):
+  - "Yalnız `instructions.md`'deki routing tablosunda rolüne atanmış yollarda kod yaz; bir dosya birden çok satıra uyarsa en özgül yol kazanır. Diğer yolları — doküman sahibinin yolları dahil — yalnız oku; değişiklik gerekiyorsa lider üzerinden sahibine yönlendir." Doküman rolünün hangi yolları aldığı (tüm `docs/**`, bölünmüş alt yollar ya da hiç) routing'de yazar; bu cümle her durumda aynı kalır. Dokümantasyonu sahiplenen rol **varsa** kod–doküman eşleşmesinde onu bilgilendirmek `agent-md-rich.md`'deki kod–doküman cümlesiyle yazılır (yol yok).
   - "Mimari etkili kararda (yeni bağımlılık, modül sınırı, yeni IPC/public API yüzeyi, şema/breaking change, güvenlik etkisi) implementasyonu durdurup **architect'e danış**." Architect **yoksa** danışma hedefi **kullanıcıdır**: "…implementasyonu durdurup kullanıcıya sor."
-  - "Diğer domain'lerin kodunu okuyabilirsin ama yazamazsın."
+  - "Diğer rollerin yollarını okuyabilirsin ama yazamazsın."
   - "Kendi kodunun testlerini sen yazar ve çalıştırırsın: yeni davranışta ya da hata
     düzeltmesinde önce doğru nedenle başarısız olan testi yaz, sonra kodu, sonra projenin test
     komutunu çalıştır."
 - **Testler kodun sahibinindir.** Bir domain'in test yolları (`src/test/**`, `__tests__/**`,
-  `*_test.go` vb.) o domain'in developer'ına aittir; ayrı bir role verilmez. Developer'ın
-  routing satırı test yollarını zaten kapsıyorsa ayrı satır gerekmez. Kullanıcı testleri
+  `*_test.go` vb.) routing'de o domain'in developer'ına verilir; ayrı bir role verilmez.
+  Developer'ın routing satırı test yollarını zaten kapsıyorsa ayrı satır gerekmez. (Bu yollar
+  routing satırıdır; kural metnine yazılmaz.) Kullanıcı testleri
   reviewer'a yazdırmak isterse şunu söyle: kod yazan bir rol kapı sahibi olamaz; kod
   denetimi o zaman başka bir role kalır.
 - **Skill:** her developer'a TDD skill'i (`test-driven-development` — superpowers, ya da
@@ -95,11 +105,12 @@ Her developer rolü için varsayılan:
 
 ### QA / Test Engineer  (opsiyonel)
 - `writesCode`: true (yalnız test) · Claude önerisi: **sonnet** · effort: **medium** · `sandbox_mode`: **workspace-write**.
-- **Kapsam:** yalnız ayrı duran uçtan uca / kabul testleri (ör. `e2e/**`, `tests/acceptance/**`).
-  Birim ve entegrasyon testleri kodun sahibi developer'ındır — QA'ya verilmez. Ayrı bir e2e
+- **Kapsam:** yalnız ayrı duran uçtan uca / kabul testleri. Routing'de ona bu yollar verilir
+  (ör. `e2e/**`, `tests/acceptance/**`); kural metni yolları saymaz. Birim ve entegrasyon
+  testleri kodun sahibi developer'ındır — QA'ya verilmez. Ayrı bir e2e
   alanı yoksa bu rolü önerme. Kod yazdığı için kapı sahibi olamaz.
 - `consults`: [architect] — architect takımda **yoksa boş `[]`**.
-- Kurallar: "Uçtan uca test stratejisini sen belirlersin; testleri kodun gerçek davranışına göre yaz; developer'ların birim ve entegrasyon testlerine yazma."
+- Kurallar: "Uçtan uca test stratejisini sen belirlersin; testleri kodun gerçek davranışına göre yaz. Yalnız routing tablosunda sana atanmış yollara yaz; developer'ların birim ve entegrasyon testlerine yazma."
 
 ### Security Reviewer  (opsiyonel)
 - `writesCode`: false · Claude önerisi: **opus** · effort: **high** · `sandbox_mode`: **read-only**.
@@ -119,8 +130,9 @@ Her developer rolü için varsayılan:
   (`src/db/**`), sonra `db/migrate/**` gibi düzeltilebileceğini söyle.
 - `name`: `database-engineer` · `writesCode`: **true** (şema, entity, migration, sorgu katmanı) ·
   Claude önerisi: **opus** · effort: **high** · `sandbox_mode`: **workspace-write**.
-- **Routing:** entity/şema/migration yolları ona verilir (ör. `prisma/**`, `src/db/**`,
-  `apps/api/src/entities/**`, `db/migrate/**`). Bu yollar çoğu zaman bir developer'ın alanının
+- **Routing** (manifest `routing[]`'e yazılır, kural metnine değil): entity/şema/migration
+  yolları ona verilir (ör. `prisma/**`, `src/db/**`, `apps/api/src/entities/**`,
+  `db/migrate/**`). Bu yollar çoğu zaman bir developer'ın alanının
   içindedir; routing kuralı gereği ya iç içe (dar yol database-engineer'ın) ya da tamamen ayrı
   olmalıdır.
 - `consults`: [architect] — architect takımda **yoksa boş `[]`**. Developer'lar şema, index ya da
@@ -139,14 +151,16 @@ Her developer rolü için varsayılan:
     danış; architect yoksa kullanıcıya sor."
   - "Kendi kodunun (entity, repository, migration, sorgu) testlerini sen yazar ve
     çalıştırırsın; önce başarısız test."
-- **Test yolları:** kendi yollarının test karşılıkları da ona verilir (ör.
-  `src/main/.../domain/**` → `src/test/.../domain/**`), iç içe satırla. Skill olarak TDD ve
+  - "Yalnız `instructions.md`'deki routing tablosunda rolüne atanmış yollara yaz; diğer
+    yolları yalnız oku."
+- **Test yolları (routing):** kendi yollarının test karşılıkları da routing'de ona verilir
+  (ör. `src/main/.../domain/**` → `src/test/.../domain/**`), iç içe satırla. Skill olarak TDD ve
   stack'in test skill'i **gerektiğinde** önerilir.
 
 ### Doc Writer  (opsiyonel)
-- `writesCode`: false (yalnız doküman) · Claude önerisi: **haiku** · effort: **low** · `sandbox_mode`: **workspace-write** (yalnız `docs/`).
+- `writesCode`: false (yalnız doküman) · Claude önerisi: **haiku** · effort: **low** · `sandbox_mode`: **workspace-write** (yalnız routing'de ona verilen doküman yolları).
 - `consults`: [architect] — architect takımda **yoksa boş `[]`**.
-- Kurallar: Architect **varsa** — "Mimari kararları architect üretir; sen kullanıcı-bakış dokümanını/README'leri yazar ve günceltirsin. ADR yazma." **İkisi birlikte seçildiyse routing tablosu böler:** architect `docs/**`'in sahibidir, doc-writer'a yazacağı alt yol (örn. `docs/guides/**`) **mutlaka** verilir. Yol vermemek "yazamaz" demek değildir — `workspace-write` bir role routing'de yol verilmemesi manifest'i **geçersiz** kılar (yazma izni var, yazacağı yer yok; bkz. `manifest-schema.md` doğrulama kuralları). Doc-writer'a yol verilmeyecekse doc-writer'ı **ekleme**. Architect **yoksa** — "Kullanıcı-bakış dokümanını ve README'leri sen yazar ve günceltirsin. Mimari karar gerekiyorsa kullanıcıya sor." (ADR yasağı kalkar: yazacak başka rol yoktur.)
+- Kurallar: Her durumda — "Yalnız `instructions.md`'deki routing tablosunda rolüne atanmış yollara yaz; kod yazma." Architect **varsa** — "Mimari kararları architect üretir; sen kullanıcı-bakış dokümanını/README'leri yazar ve günceltirsin. ADR yazma." **İkisi birlikte seçildiyse routing tablosu böler** (routing'e yazılır, kurala değil): architect `docs/**`'in sahibidir, doc-writer'a yazacağı alt yol (örn. `docs/guides/**`) **mutlaka** verilir. Yol vermemek "yazamaz" demek değildir — `workspace-write` bir role routing'de yol verilmemesi manifest'i **geçersiz** kılar (yazma izni var, yazacağı yer yok; bkz. `manifest-schema.md` doğrulama kuralları). Doc-writer'a yol verilmeyecekse doc-writer'ı **ekleme**. Architect **yoksa** — "Kullanıcı-bakış dokümanını ve README'leri sen yazar ve günceltirsin. Mimari karar gerekiyorsa kullanıcıya sor." (ADR yasağı kalkar: yazacak başka rol yoktur.)
 
 ---
 
@@ -164,8 +178,9 @@ Her rol, `manifest.json` `agents[]` içine şu metadata ile yazılır:
 }
 ```
 
-Model ve effort bu nesnede yoktur — `llm.json`'a gider. `writesCode: false` her ikisinde de vardır ama sandbox ayrışır: reviewer hiçbir şey
-yazmadığı için `read-only`, architect sahiplendiği `docs/` dizinine yazdığı için
+Model ve effort bu nesnede yoktur — `llm.json`'a gider. `rules[]` yol taşımaz (yukarıdaki
+not); yollar kök `routing[]`'tedir. `writesCode: false` her ikisinde de vardır ama sandbox ayrışır: reviewer hiçbir şey
+yazmadığı için `read-only`, architect routing'de kendisine verilen doküman yollarına yazdığı için
 `workspace-write`'dır (production kodu yasağı talimattadır). Developer'larda
 `workspace-write` + `writesCode: true`. Domain → developer eşlemesi projeye özeldir ve
 sihirbaz tarafından kullanıcıya onaylatılır.
