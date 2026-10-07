@@ -1,6 +1,6 @@
 ---
 name: team-builder-upgrade
-description: Kurulmuş bir projede anayasa preset'lerini (geçici çözüm yok, kod-doküman senkronizasyonu, rol başına hafıza, dil standardı, plan kapısı) açar veya kapatır; plan kapısının artefaktlarını kurar ya da bırakır; eski yapıdaki projeleri tek talimat dosyasına göç ettirir; rol dosyalarındaki kopyalanmış yol sahipliğini routing tablosuna atıf yapan genel metne çevirir. Tetikleyiciler — "plan kapısını aç", "preset aç", "preset kapat", "anayasa değiştir", "takımı yükselt", "talimatları tek dosyaya taşı", "projeyi yeni yapıya geçir", "plan kapısı skill'ini güncelle", "çapraz denetimi aç/kapat", "kod-doküman kuralını gevşet", "belge etkisi yok kuralı", "rol dosyalarını genelleştir", "rol dosyalarını sahiplikten arındır", "sahipliği tek kaynağa taşı", "sync ownership uyarısı veriyor". Yeni rol/routing/ekosistem eklemek için kullanma; kurulu projede bunlar elle yapılır (manifest — silinen rolün routing/consults/lead atıfları dahil —, rol dosyası ve `llm.json` girdileri, sonra sync). Model ya da effort değiştirmek için de kullanma; o team-builder-models'in işidir.
+description: Kurulmuş bir projede anayasa preset'lerini (geçici çözüm yok, kod-doküman senkronizasyonu, rol başına hafıza, dil standardı, plan kapısı) açar veya kapatır; plan kapısının artefaktlarını kurar ya da bırakır; eski yapıdaki projeleri tek talimat dosyasına göç ettirir; rol dosyalarındaki kopyalanmış yol sahipliğini routing tablosuna atıf yapan genel metne çevirir. Tetikleyiciler — "plan kapısını aç", "preset aç", "preset kapat", "anayasa değiştir", "takımı yükselt", "talimatları tek dosyaya taşı", "projeyi yeni yapıya geçir", "plan kapısı skill'ini güncelle", "çapraz denetimi aç/kapat", "kod-doküman kuralını gevşet", "belge etkisi yok kuralı", "görev etiketini ekle", "arka planda rol adını göster", "rol dosyalarını genelleştir", "rol dosyalarını sahiplikten arındır", "sahipliği tek kaynağa taşı", "sync ownership uyarısı veriyor". Yeni rol/routing/ekosistem eklemek için kullanma; kurulu projede bunlar elle yapılır (manifest — silinen rolün routing/consults/lead atıfları dahil —, rol dosyası ve `llm.json` girdileri, sonra sync). Model ya da effort değiştirmek için de kullanma; o team-builder-models'in işidir.
 ---
 
 # team-builder-upgrade
@@ -495,6 +495,18 @@ Kullanıcıya söyle: göç tek seferliktir, git ile geri alınabilir; makine iz
 6. **Raporla:** hangi rol dosyaları değişti, hangi bölümler korundu, hangi manifest
    maddeleri değişti ya da çıktı. Commit'i **sen yapma**; `--no-local` kullandıysan commit'ten
    sonra normal sync gerektiğini ekle.
+
+## Görev etiketi
+
+Arka plan görevlerinde rolün adı, aracı ve modeli görünsün diye kurulumlar
+`instructions.md`'ye kısa bir **görev etiketi** bölümü yazar (biçim: `<rol> - <araç>
+<model> <effort> - <iş>`; `team-builder-setup` Adım 8a). Eski bir projede bu bölüm yoksa ve
+kullanıcı isterse ("görev etiketini ekle", "arka planda rol adını göster"): bölümü
+`docLanguage`'de `instructions.md`'nin sonuna **ekle** — var olan metne dokunma
+(*Projenin metnini koru*), farkı göster, onay al. Sonra plan kapısı açık olsun olmasın
+sync ve `--check` çalıştır (`llm.local.json` varsa `--no-local`): Codex takma adlarını sync
+bu biçimde yeniden üretir — çalıştırılmazsa eski adlar kalır. Plan kapısı açıksa *Plan
+kapısı skill'ini güncelle* de çalışsın — dış çağrıların etiketi oradadır.
 
 ## Referans eksikse
 

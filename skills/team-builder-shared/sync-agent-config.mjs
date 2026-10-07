@@ -558,6 +558,17 @@ function renderDeveloperInstructions(agent, manifest) {
 }
 
 // `settings` is the resolved { model?, effort? } for this agent in Codex — the
+// Codex shows a spawned agent by its nickname. Built from the role and its
+// resolved model so the background list reads "architect - codex gpt-6 max".
+// Codex accepts only ASCII letters, digits, spaces, hyphens and underscores
+// there, so anything else (a dot, a slash) becomes a hyphen. Numbered copies
+// keep parallel instances of one role apart.
+export function codexNicknames(agent, settings = {}) {
+  const parts = [agent.name, '- codex', settings.model, settings.effort].filter(Boolean)
+  const label = parts.join(' ').replace(/[^A-Za-z0-9 _-]/g, '-').replace(/\s+/g, ' ').trim()
+  return [label, `${label} 2`, `${label} 3`]
+}
+
 // codex entry only. The claude entry never reaches this file.
 function renderCodexAgentToml(agent, manifest, settings = {}) {
   const modelLine = settings.model ? `model = ${tomlString(settings.model)}\n` : ''
@@ -578,7 +589,7 @@ function renderCodexAgentToml(agent, manifest, settings = {}) {
     modelLine +
     effortLine +
     sandboxLine +
-    `nickname_candidates = ${tomlArray(agent.nickname_candidates)}\n` +
+    `nickname_candidates = ${tomlArray(codexNicknames(agent, settings))}\n` +
     '\n' +
     'developer_instructions = """\n' +
     developerInstructions +
@@ -1500,9 +1511,18 @@ async function runSelftest() {
     !/=\s*""/.test(bareToml.split('developer_instructions')[0]),
     'no TOML key may be emitted with an empty value'
   )
+  // Nicknames come from the role and its resolved model, not the manifest:
+  // that is what Codex shows in its background list. The dot in the model
+  // name is not allowed there and becomes a hyphen.
   assert(
-    toml.includes('nickname_candidates = ["Architect", "ADR Lead"]'),
-    'toml missing nickname_candidates'
+    toml.includes(
+      'nickname_candidates = ["architect - codex gpt-5-6-terra high", "architect - codex gpt-5-6-terra high 2", "architect - codex gpt-5-6-terra high 3"]'
+    ),
+    `toml must carry role-and-model nicknames, got ${toml.split('\n').find(l => l.startsWith('nickname_candidates'))}`
+  )
+  assert(
+    bareToml.includes('nickname_candidates = ["bare - codex", "bare - codex 2", "bare - codex 3"]'),
+    'without a resolved model the nickname is the role and the tool'
   )
   assert(toml.includes('developer_instructions = """'), 'toml missing developer_instructions')
   assert(

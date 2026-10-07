@@ -289,7 +289,14 @@ Tüm cevaplar toplandı; şimdi kaynağı yaz, doğrula ve generate et. Sırayla
   anayasa preset'inin işaretli bloğu**. Bloklar
   `${CLAUDE_SKILL_DIR}/../team-builder-shared/templates/constitution-blocks.md`'den render
   edilir — verbatim kopyalanmaz, `docLanguage`'e çevrilir ve yer tutucular projenin
-  cevaplarıyla doldurulur. **Kapalı preset'in bloğu yazılmaz.**
+  cevaplarıyla doldurulur. **Kapalı preset'in bloğu yazılmaz.** Ayrıca her zaman kısa bir
+  **görev etiketi** bölümü: "Bir rolü alt ajan olarak ya da başka bir araçta çalıştırırken
+  görev açıklaması `<rol> - <araç> <model> <effort> - <iş>` biçimindedir (ör. `architect -
+  claude opus max - ödeme akışı tasarımı`). Model ve effort rolün o araçtaki üretilmiş
+  dosyasından okunur; harf, rakam ve tire dışındaki karakterler tire olur, parantez
+  kullanılmaz, değer yoksa yazılmaz; başka bir araçtan yapılan OpenCode çağrısında effort
+  uygulanmadığı için yazılmaz." Codex alt ajanlarının takma adı sync'te aynı biçimde
+  üretilir.
 - **Claude hedefi seçildiyse:** `.agent-source/project/CLAUDE.md` — **ilk satırı
   referans olmalı:** `@.agent-source/project/instructions.md`. Altına yalnız Claude'a
   özgü olan gelir: **`topology: native` ise** "Takımı başlatma" bölümü (takımın doğal

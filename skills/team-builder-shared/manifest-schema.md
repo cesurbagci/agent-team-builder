@@ -58,7 +58,7 @@ Generated dosyalar **elle değiştirilmez**; kaynak burasıdır.
 | `sandbox_mode` | `string` | Hayır | Sandbox modu: **yalnız `read-only` ya da `workspace-write`**. Reviewer gibi salt-okunur roller `read-only`; sahiplendiği dizine yazan doc-only roller (architect, doc-writer) `workspace-write`. Codex'in `danger-full-access` değeri **kabul edilmez** — bu alan OpenCode'un `permission.edit` iznini de belirler ve `read-only` dışındaki her değer "yazabilir" demektir; sandbox disiplinini bütünüyle kaldıran bir mod bu araçta üretilmez. |
 | `writesCode` | `boolean` | Hayır | Agent kod yazar mı. `false` → agent md'de "Kod yazma" net kuralı (architect, reviewer). Default: `true`. |
 | `color` | `string` | Hayır | Claude frontmatter rengi (örn. `purple`, `blue`). |
-| `nickname_candidates` | `string[]` | Hayır | Kullanıcı dostu takma ad önerileri (örn. `["Architect","ADR Lead"]`). |
+| `nickname_candidates` | `string[]` | Hayır | **Kullanılmaz** (eski kurulumlarda bulunabilir, kabul edilir). Codex takma adlarını sync rol adı ve çözülen modelden üretir: `<rol> - codex <model> <effort>` (+ ` 2`, ` 3`) — `codex-target.md`. |
 | `skills` | `object[]` | Hayır | Bu agent'a bağlı skill'ler ve zorunluluk seviyesi. |
 | `skills[].name` | `string` | Evet (satır içinde) | Skill adı (örn. `frontend-design`). |
 | `skills[].enforcement` | `string` | Evet (satır içinde) | `mandatory` (MUTLAKA oku/uygula) veya `when-needed` (gerektiğinde). |

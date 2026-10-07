@@ -40,7 +40,7 @@ Her codex hedefli agent için bir TOML üretilir. Üst satıra "bu dosya `.agent
 | `model` | `llm.json` → `codex` girdisi | Çözümlenmiş model (bkz. `llm-config.md`). Yoksa satır yazılmaz, Codex varsayılanı geçerli. |
 | `model_reasoning_effort` | `llm.json` → `codex` girdisi | Çözümlenmiş effort. Yoksa satır yazılmaz. Geçerli seviyeler modele bağlı — `codex debug models`. |
 | `sandbox_mode` | `agents[].sandbox_mode` | Yalnız `read-only\|workspace-write` (`danger-full-access` kabul edilmez — bkz. `manifest-schema.md`). Reviewer gibi salt-okunur roller `read-only`; sahiplendiği dizine yazan doc-only roller `workspace-write`. |
-| `nickname_candidates` | `agents[].nickname_candidates` | Kullanıcı dostu takma adlar. |
+| `nickname_candidates` | sync üretir: `<rol> - codex <model> <effort>`, ` 2`, ` 3` | Codex arka plan listesinde alt ajanı bu adla gösterir. Codex burada yalnız ASCII harf, rakam, boşluk, tire ve alt çizgiyi kabul eder; başka karakterler tire olur. Manifest'teki `nickname_candidates` kullanılmaz. |
 | `developer_instructions` | manifest + project'ten **derlenir** | Çok satırlı `"""..."""` blok. Aşağıdaki template. |
 
 > Claude'a özgü frontmatter alanları (`tools`, `memory`, `color`) Codex TOML'una

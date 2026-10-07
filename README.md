@@ -227,7 +227,11 @@ The single source of truth is `.agent-source/`:
   `<!-- ownership -->` markers and refer to the table instead of copying it. `sync --check`
   fails when the routing or code–doc table differs from the manifest, or when a role file's
   ownership section or a manifest rule copies a routing row. Projects set up before this get
-  warnings instead; `/team-builder-upgrade` migrates their role files. Codex and OpenCode
+  warnings instead; `/team-builder-upgrade` migrates their role files.
+- **Role labels in background tasks.** A role started as a subagent or in another tool is
+  labelled `<role> - <tool> <model> <effort> - <task>` (e.g. `reviewer - codex gpt-6-1-sol max
+  - code review`), so the background list shows who runs where. Codex shows its subagents by
+  nickname; sync generates that nickname in the same form, without the task. Codex and OpenCode
   permissions, and the path lines generated into Codex `developer_instructions`, are unchanged.
 - Each generated file starts with the header
   `# This file is generated from .agent-source. Run sync.`
@@ -330,6 +334,10 @@ tanımlar ve takımın uyması gereken kuralları (anayasa) her agent'ın talima
 - **Tek kaynak:** her şey `.agent-source/`'tan üretilir; generated dosyalar elle düzenlenmez.
   Yol sahipliği tek yerde yazar — manifest'in routing'inde ve onun `instructions.md`'deki
   tablosunda. Rol dosyaları yol saymaz, o tabloya atıf yapar; sahip değişince onlara dokunulmaz.
+- **Arka planda rol etiketi:** alt ajan olarak ya da başka bir araçta çalışan rolün görevi
+  `<rol> - <araç> <model> <effort> - <iş>` diye görünür (ör. `reviewer - codex gpt-6-1-sol max
+  - kod denetimi`). Codex alt ajanlarını takma adıyla gösterir; sync o adı aynı biçimde, iş
+  kısmı olmadan üretir.
 
 ## Skill'ler
 

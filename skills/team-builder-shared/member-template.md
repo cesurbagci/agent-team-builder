@@ -45,8 +45,8 @@ Bir rol için "ekleyelim mi?" → EVET ise sırayla:
 
 6. **Manifest'e agent ekle.**
    `manifest.agents[]`'a `manifest-schema.md`'ye uygun obje ekle. Codex metadata dahil:
-   `name, description, targets, sandbox_mode, writesCode, color, nickname_candidates,
-   skills, consults, rules, extra_instructions`. **`model`, `model_reasoning_effort`,
+   `name, description, targets, sandbox_mode, writesCode, color, skills, consults, rules,
+   extra_instructions`. `nickname_candidates` yazma — Codex takma adını sync üretir. **`model`, `model_reasoning_effort`,
    `opencode_model` yazma** — eski alanlardır, doğrulayıcı reddeder; model `llm.json`'a gider.
 
 7. **Agent-source md yaz.**

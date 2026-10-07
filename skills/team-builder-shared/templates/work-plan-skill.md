@@ -63,6 +63,16 @@ gerçekte hedeflenmiyor olabilir.
 
 - **`.agent-work/` altına yalnız sen yazarsın.** Denetleyiciler dosya değiştirmez; sana
   sonuç döndürür, kaydı sen yazarsın.
+- **Görev etiketi.** Bir rolü çalıştırdığın her çağrının görev açıklaması — alt ajan
+  aracı (Agent/Task) ya da dış CLI çağrısını başlatan komutun açıklaması — şu biçimdedir:
+  `<rol> - <araç> <model> <effort> - <iş>`; ör. `reviewer - codex gpt-6-1-sol max - kod
+  denetimi`. Araç, rolün çalıştığı araçtır; model ve effort o aracın üretilmiş rol
+  dosyasından gelir (`.claude/agents/<rol>.md` frontmatter, `.codex/agents/<rol>.toml`,
+  `.opencode/agents/<rol>.md`). Harf, rakam ve tire dışındaki karakterler (nokta, `/`) tire
+  olur; parantez kullanılmaz; değer yoksa yazılmaz. Dış OpenCode çağrısında effort
+  uygulanamadığı için etikete **yazılmaz** — etiket gerçekte çalışan ayarı gösterir. Arka plan görevleri listesi rolü bu
+  etiketle gösterir. Codex kendi alt ajanlarını takma adıyla gösterir; sync o adı aynı
+  biçimde, iş kısmı olmadan üretir.
 - **Durum = dosyanın bulunduğu klasör.** Frontmatter'da `status` alanı **yoktur**; ekleme.
 - **Bölümler işaretle bulunur.** `<!-- s:what -->`, `<!-- s:how -->`,
   `<!-- s:questions -->`, `<!-- s:review-notes -->`, `<!-- s:progress -->`. Başlık
@@ -448,7 +458,8 @@ dizi aynıdır.
        başlattıysa bilmeyebilirsin. Bilmiyorsan **uydurma**: prompt'ta "temel referans
        bilinmiyor, değişen dosya listesi plandan daraltılmıştır" diye yaz. Denetleyici
        neyi görmediğini bilerek karar versin.
-5. CLI'ı **proje kökünde** çalıştır. Hedefin depoyu okuması gerekir: kapı 1'in reddetme
+5. CLI'ı **proje kökünde** çalıştır; komutun açıklaması *Görev etiketi* biçimindedir
+   (*Ortak kurallar*). Hedefin depoyu okuması gerekir: kapı 1'in reddetme
    ölçütlerinden biri "yaklaşım mevcut bir ADR'ye aykırı"dır.
 
    | Ekosistem | Komut |
@@ -613,7 +624,8 @@ Bu çağrı projeye **yazar**; o yüzden:
    ekosisteme bakma, kodu sen yaz." Devam çağrısında ayrıca danışma cevabını, o ana kadarki değişiklik
    listesini ve `s:progress`'i ekle. Prompt'u *Başka ekosistemdeki kapı sahibi*'ndeki gibi **geçici
    bir dosyadan stdin'e** ver; kabuk dizesine koyma.
-4. CLI'ı **proje kökünde** çalıştır (`planGate.cli` varsa o yolu kullan):
+4. CLI'ı **proje kökünde** çalıştır (`planGate.cli` varsa o yolu kullan); komutun açıklaması
+   *Görev etiketi* biçimindedir:
 
    | Ekosistem | Komut |
    |---|---|
