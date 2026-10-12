@@ -16,25 +16,29 @@ sahibi `plan-gate.md` ve projedeki `work-plan` skill'idir.
 1. **Proje kökünü bul:** çalışılan dizinden yukarı doğru `.agent-work/` içeren ilk dizin.
    Yoksa dur ve kullanıcıya söyle: plan kapısı bu projede kapalı ya da kurulmamış;
    açmak için `team-builder-upgrade`.
-2. **Canlı pano (varsayılan):** yerel sunucuyu **arka planda** başlat, oturumu bloklama:
+2. **Canlı pano (varsayılan):**
    ```bash
-   node "${CLAUDE_SKILL_DIR}/../team-builder-shared/work-board.mjs" --root "<proje>" --serve --open
+   node "${CLAUDE_SKILL_DIR}/../team-builder-shared/work-board.mjs" --root "<proje>" --detach --open
    ```
-   Sunucu yalnız `127.0.0.1`'i dinler, `.agent-work/`'ü izler ve bir plan eklenince,
-   taşınınca ya da düzenlenince açık sayfaya hemen gönderir. Hiçbir şey değişmezken
-   üretmez, göndermez. Çıktıdaki `http://127.0.0.1:<port>/` adresini al (varsayılan 4780,
-   doluysa sıradaki boş port). Kullanıcı bir port isterse `--port <n>`.
+   Komut sunucuyu **bu oturumdan ayrı** arka planda başlatır ve hemen döner — oturumu
+   bloklamaz, oturum ya da araç kapansa da pano açık kalır. Aynı proje için zaten
+   çalışan bir pano varsa yenisini açmaz, onu gösterir. Sunucu yalnız `127.0.0.1`'i
+   dinler, `.agent-work/`'ü izler ve bir plan eklenince, taşınınca ya da düzenlenince açık
+   sayfaya hemen gönderir; hiçbir şey değişmezken çalışmaz. `--open` tarayıcıyı açar.
+   Kullanıcı bir port isterse `--port <n>`.
+   - **Durdurmak istenirse** ("panoyu kapat", "durdur"): aynı komutu `--stop` ile çalıştır.
+   - Komut "5 sn içinde başlamadı" der ya da çalışma ortamı arka plan işine veya port
+     dinlemeye izin vermezse: kullanıcıya bunu söyle ve aynı komutu kendi terminalinde
+     çalıştırmasını öner — komutu `CLAUDE_SKILL_DIR` çözülmüş, **mutlak yolla** ver.
 3. **Anlık görüntü istenirse** (canlı değil, tek dosya — paylaşmak ya da arşivlemek için):
    ```bash
    node "${CLAUDE_SKILL_DIR}/../team-builder-shared/work-board.mjs" --root "<proje>"
    ```
    Çıktı `<proje>/agent-work-board.html`; başka bir yer için `--out <dosya>`. Bu dosya
    kendiliğinden güncellenmez.
-4. **Raporla:** adresi (ya da dosyanın mutlak yolunu) ve sütun başına plan sayısını ver.
-   `--open` tarayıcıyı kendisi açar. Canlı panoda kullanıcıya **mutlaka** söyle: sunucu bu
-   oturumun arka plan işidir, oturum kapanınca durur ve sayfa "Bağlantı koptu" der. Kalıcı
-   açık kalsın istiyorsa kendi terminalinde çalıştırmasını öner: bir kez
-   `npm i -g github:cesurbagci/agent-team-builder`, sonra proje içinde `work-board --serve --open`.
+4. **Raporla:** adresi (ya da dosyanın mutlak yolunu) ver; canlı panoda pano kapatılana
+   kadar açık kalacağını ve `$team-builder-board` ile "panoyu kapat" diyerek
+   durdurulabileceğini söyle.
 5. Anlık görüntü ürettiysen ve `agent-work-board.html` projenin `.gitignore`'unda yoksa
    eklemeyi **teklif et** — yerel bir görünümdür, proje durumu değildir. Kendiliğinden ekleme.
 

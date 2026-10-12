@@ -17,11 +17,15 @@
 //     board to open pages over Server-Sent Events the moment a plan file is added,
 //     moved or edited. Nothing is re-rendered or sent while nothing changes.
 //
-// CLI: node work-board.mjs [--root <project>] [--out <file>] [--serve] [--port <n>] [--open] [--selftest]
+// CLI: node work-board.mjs [--root <project>] [--out <file>] [--serve | --detach | --stop]
+//                          [--port <n>] [--open] [--selftest]
 //   (also installed as `work-board` by `npm i -g github:cesurbagci/agent-team-builder`)
 //   --root   project root holding .agent-work/ (default: nearest one from cwd upwards)
 //   --out    file mode output (default: <root>/agent-work-board.html)
 //   --port   --serve port (default 4780; the next free one is taken when busy)
+//   --detach start the live server in the background, detached from this terminal or
+//            agent session, and return; a running server for the same project is reused
+//   --stop   stop the detached server of this project
 //   --open   open the board (URL or file) in the default browser
 
 import { promises as fs } from 'node:fs'
@@ -30,6 +34,8 @@ import os from 'node:os'
 import http from 'node:http'
 import { watch } from 'node:fs'
 import { spawn } from 'node:child_process'
+import { createHash } from 'node:crypto'
+import { fileURLToPath } from 'node:url'
 
 const COLUMNS = [
   { key: 'inbox', title: 'Gelen kutusu' },
@@ -705,6 +711,7 @@ async function selftest() {
   assert(await findRoot(os.tmpdir()) === path.resolve(os.tmpdir()), 'falls back to the start dir')
 
   await serveSelftest(root, w)
+  await detachSelftest(root)
 
   await fs.rm(root, { recursive: true, force: true })
   console.log('work-board selftest: OK')
@@ -752,6 +759,28 @@ async function serveSelftest(root, w) {
   }
 }
 
+// Starts a detached server through the real CLI, checks the second start reuses it and
+// --stop ends it.
+async function detachSelftest(root) {
+  const { execFileSync } = await import('node:child_process')
+  const self = fileURLToPath(import.meta.url)
+  const run = (...args) => execFileSync(process.execPath, [self, '--root', root, ...args], { encoding: 'utf8' })
+  try {
+    const first = run('--detach', '--port', '0')
+    const url = /http:\/\/127\.0\.0\.1:\d+\//.exec(first)?.[0]
+    assert(url && first.includes('arka planda başladı'), 'detach starts a server')
+    assert(await alive(url), 'detached server answers')
+    assert(run('--detach').includes('zaten çalışıyordu'), 'second detach reuses the server')
+    assert(run('--stop').includes('durduruldu'), 'stop stops it')
+    let down = false
+    for (let i = 0; i < 30 && !down; i++) { await new Promise(r => setTimeout(r, 100)); down = !(await alive(url)) }
+    assert(down, 'server is gone after stop')
+    assert(run('--stop').includes('çalışan pano yok'), 'stop without a server')
+  } finally {
+    await stop(root)
+  }
+}
+
 // ---------------------------------------------------------------------------
 // cli
 // ---------------------------------------------------------------------------
@@ -779,13 +808,66 @@ function openInBrowser(target) {
   }
 }
 
+// One detached server per project; its address lives in a per-user temp file.
+function stateFile(root) {
+  return path.join(os.tmpdir(), `work-board-${createHash('sha1').update(root).digest('hex').slice(0, 12)}.json`)
+}
+
+async function readState(root) {
+  try {
+    return JSON.parse(await fs.readFile(stateFile(root), 'utf8'))
+  } catch {
+    return null
+  }
+}
+
+async function alive(url) {
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(1000) })
+    return res.ok
+  } catch {
+    return false
+  }
+}
+
+async function detach(opts) {
+  const existing = await readState(opts.root)
+  if (existing && await alive(existing.url)) return { url: existing.url, reused: true }
+  await fs.rm(stateFile(opts.root), { force: true })
+  const args = [fileURLToPath(import.meta.url), '--serve', '--root', opts.root, '--state']
+  if (opts.strictPort) args.push('--port', String(opts.port))
+  const child = spawn(process.execPath, args, { detached: true, stdio: 'ignore', windowsHide: true })
+  child.unref()
+  for (const until = Date.now() + 5000; Date.now() < until;) {
+    await new Promise(r => setTimeout(r, 100))
+    const state = await readState(opts.root)
+    if (state && state.pid === child.pid) return { url: state.url, reused: false }
+  }
+  throw new Error('arka plan sunucusu 5 sn içinde başlamadı; --serve ile ön planda deneyin')
+}
+
+async function stop(root) {
+  const state = await readState(root)
+  await fs.rm(stateFile(root), { force: true })
+  if (!state) return false
+  try {
+    process.kill(state.pid)
+    return true
+  } catch {
+    return false
+  }
+}
+
 function parseArgs(argv) {
-  const opts = { root: '', out: '', serve: false, port: 4780, strictPort: false, open: false, selftest: false }
+  const opts = { root: '', out: '', serve: false, detach: false, stop: false, state: false, port: 4780, strictPort: false, open: false, selftest: false }
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i]
     if (arg === '--root') opts.root = path.resolve(argv[++i])
     else if (arg === '--out') opts.out = path.resolve(argv[++i])
     else if (arg === '--serve') opts.serve = true
+    else if (arg === '--detach') opts.detach = true
+    else if (arg === '--stop') opts.stop = true
+    else if (arg === '--state') opts.state = true // internal: the detached child records its address
     else if (arg === '--port') { opts.port = Number(argv[++i]); opts.strictPort = true }
     else if (arg === '--open') opts.open = true
     else if (arg === '--selftest') opts.selftest = true
@@ -800,10 +882,31 @@ async function main() {
   if (opts.selftest) return selftest()
   opts.root ||= await findRoot(process.cwd())
   opts.out ||= path.join(opts.root, 'agent-work-board.html')
+  if (opts.stop) {
+    console.log(await stop(opts.root) ? `[work-board] durduruldu (${opts.root})` : '[work-board] bu proje için çalışan pano yok')
+    return
+  }
   const board = await loadBoard(opts.root)
   if (!board) console.warn(`[work-board] ${path.join(opts.root, '.agent-work')} bulunamadı`)
+  if (opts.detach) {
+    const { url, reused } = await detach(opts)
+    console.log(`[work-board] canlı pano: ${url}  (${reused ? 'zaten çalışıyordu' : 'arka planda başladı'}; durdurmak için --stop)`)
+    if (opts.open) openInBrowser(url)
+    return
+  }
   if (opts.serve) {
     const srv = await startServer(opts)
+    if (opts.state) {
+      const file = stateFile(opts.root)
+      await fs.writeFile(file, JSON.stringify({ pid: process.pid, url: srv.url, root: opts.root }))
+      const quit = async () => {
+        const state = await readState(opts.root)
+        if (state && state.pid === process.pid) await fs.rm(file, { force: true })
+        process.exit(0)
+      }
+      process.on('SIGTERM', quit)
+      process.on('SIGINT', quit)
+    }
     console.log(`[work-board] canlı pano: ${srv.url}  (${opts.root}, ${board ? board.plans.length : 0} plan; Ctrl+C ile çık)`)
     if (opts.open) openInBrowser(srv.url)
     return

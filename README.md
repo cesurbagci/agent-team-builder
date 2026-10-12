@@ -266,26 +266,25 @@ Enter) to read the whole plan. Because it reads only files, it shows the same bo
 Codex or OpenCode moved them.
 
 Ask for it with the `/team-builder-board` skill (Claude plugin: `/team-builder:team-builder-board`,
-Codex plugin: `$team-builder-board`) — it finds the script itself — or, to keep it open in your
-own terminal, install the `work-board` command once (Node ≥ 18):
+Codex plugin: `$team-builder-board`). It starts the live board in the background — detached, so it
+stays up after the session ends — and opens it in your browser; running it again shows the same
+board, and asking it to stop the board stops it. Nothing else to install.
+
+The script behind it takes these options (`node <skills-dir>/team-builder-shared/work-board.mjs`,
+or `work-board` after an optional `npm i -g github:cesurbagci/agent-team-builder`):
 
 ```bash
-npm i -g github:cesurbagci/agent-team-builder        # #<branch-or-tag> pins a version
-```
-
-```bash
-work-board --serve --open        # live board → http://127.0.0.1:4780/, opened in your browser
+work-board --detach --open       # live board in the background → http://127.0.0.1:4780/
+work-board --stop                # stop this project's background board
+work-board --serve               # live board in the foreground (Ctrl+C stops it)
 work-board                       # one snapshot → <project>/agent-work-board.html
-work-board --root ../app --out board.html
 ```
 
-Run it anywhere inside the project: it finds the nearest `.agent-work/` upwards. Without the
-command, `node <skills-dir>/team-builder-shared/work-board.mjs` takes the same options.
+It finds the nearest `.agent-work/` from the working directory upwards; `--root` overrides it.
 
-`--serve` starts a local server (127.0.0.1 only) that watches `.agent-work/` and pushes the board
+The live board is a local server (127.0.0.1 only) that watches `.agent-work/` and pushes the board
 to the open page the moment a plan is added, moved or edited — no reloads, an open plan stays open
-and updates in place, and nothing runs while nothing changes. It lives as long as the command
-does; Ctrl+C stops it. `--port <n>` picks the port (default 4780, the next free one when busy).
+and updates in place, and nothing runs while nothing changes. `--port <n>` picks the port (default 4780, the next free one when busy).
 The snapshot file is a local view, not project state — add `agent-work-board.html` to `.gitignore`.
 
 ## Distribution methods
@@ -589,26 +588,25 @@ planın tamamı açılır. Yalnız dosyaları okuduğu için dosyaları Claude, 
 taşımış olsun, aynı panoyu gösterir.
 
 `/team-builder-board` skill'iyle isteyin (Claude plugin'i: `/team-builder:team-builder-board`,
-Codex plugin'i: `$team-builder-board`) — betiği kendisi bulur — ya da kendi terminalinizde açık
-tutmak için `work-board` komutunu bir kez kurun (Node ≥ 18):
+Codex plugin'i: `$team-builder-board`). Canlı panoyu arka planda — oturumdan ayrı, yani oturum
+bitince de açık kalacak şekilde — başlatır ve tarayıcıda açar; yeniden çalıştırınca aynı panoyu
+gösterir, "panoyu kapat" deyince durdurur. Başka bir şey kurmanız gerekmez.
+
+Arkasındaki betik şu seçenekleri alır (`node <skills-dir>/team-builder-shared/work-board.mjs`,
+ya da isteğe bağlı `npm i -g github:cesurbagci/agent-team-builder` sonrası `work-board`):
 
 ```bash
-npm i -g github:cesurbagci/agent-team-builder        # #<dal-ya-da-etiket> bir sürüme sabitler
-```
-
-```bash
-work-board --serve --open        # canlı pano → http://127.0.0.1:4780/, tarayıcıda açılır
+work-board --detach --open       # arka planda canlı pano → http://127.0.0.1:4780/
+work-board --stop                # bu projenin arka plandaki panosunu durdurur
+work-board --serve               # ön planda canlı pano (Ctrl+C durdurur)
 work-board                       # tek anlık görüntü → <proje>/agent-work-board.html
-work-board --root ../app --out board.html
 ```
 
-Projenin içinde herhangi bir yerde çalıştırın: en yakın `.agent-work/`'ü yukarı doğru bulur.
-Komut kurulu değilse `node <skills-dir>/team-builder-shared/work-board.mjs` aynı seçenekleri alır.
+Çalışma dizininden yukarı doğru en yakın `.agent-work/`'ü bulur; `--root` bunu değiştirir.
 
-`--serve` yerel bir sunucu başlatır (yalnız 127.0.0.1): `.agent-work/`'ü izler ve bir plan
+Canlı pano yerel bir sunucudur (yalnız 127.0.0.1): `.agent-work/`'ü izler ve bir plan
 eklendiği, taşındığı ya da düzenlendiği an panoyu açık sayfaya gönderir — sayfa yenilenmez, açık
-bir plan açık kalır ve yerinde güncellenir, hiçbir şey değişmezken de çalışmaz. Komut açık
-kaldıkça yaşar; Ctrl+C durdurur. `--port <n>` portu seçer (varsayılan 4780, doluysa sıradaki
+bir plan açık kalır ve yerinde güncellenir, hiçbir şey değişmezken de çalışmaz. `--port <n>` portu seçer (varsayılan 4780, doluysa sıradaki
 boş port). Anlık görüntü dosyası yerel bir görünümdür, proje durumu değildir —
 `agent-work-board.html`'i `.gitignore`'a ekleyin.
 
