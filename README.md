@@ -57,6 +57,7 @@ and bakes the rules the team must follow (the "constitution") into each agent's 
 | `/team-builder-upgrade` | Turns constitution presets (including the plan gate) on or off after setup, and migrates older projects: to the single instructions file, and role files that still copy path ownership to the generic wording that points at the routing table. |
 | `/team-builder-models` | Chooses the model and effort each agent runs with, per ecosystem: the shared `.agent-source/llm.json`, this machine's `llm.local.json`, refreshing new or retiring models, and migrating older projects. |
 | `/team-builder-module` | Adds a new folder (module) to an installed team: gives it to an existing role that can write, or opens a new role for it (skills, model, who consults it), and updates the routing and its table in the instructions. Existing role files stay as they are. |
+| `/team-builder-board` | Renders the plan gate's `.agent-work/` plans as an HTML kanban board; click a card to read the whole plan. Read-only. |
 | `/architecture-advisor` | Analyzes the project, proposes ADR / architecture constraints / design, and writes them with you step by step under `docs/<arch-root>/`. Also works standalone. |
 
 `skills/team-builder-shared/` holds the shared references the skills depend on, plus the
@@ -179,6 +180,7 @@ plugin as `$<name>`):
 /team-builder-upgrade
 /team-builder-models
 /team-builder-module
+/team-builder-board
 /architecture-advisor
 ```
 
@@ -259,15 +261,19 @@ With the plan gate on, every piece of work is a plan file in `.agent-work/`, and
 its state. `work-board.mjs` reads those folders (read-only) and renders a self-contained HTML
 kanban board — **Inbox · Draft · Approved · In progress · Done** — with the executor, revision,
 the latest plan / code review verdict (flagged when it was given on an older revision), the
-progress checklist and the touched paths. Cancelled work is struck through. Because it reads
-only files, it shows the same board whether Claude, Codex or OpenCode moved them.
+progress checklist and the touched paths. Cancelled work is struck through; click a card (or press
+Enter) to read the whole plan. Because it reads only files, it shows the same board whether Claude,
+Codex or OpenCode moved them.
+
+Ask for it with the `/team-builder-board` skill (Claude plugin: `/team-builder:team-builder-board`,
+Codex plugin: `$team-builder-board`) — it finds the script itself — or run the script directly:
 
 ```bash
 # run in the project root; shared dir: ~/.claude/skills, ~/.codex/skills or
 # ~/.config/opencode/skills (or .agent-source/skills if team-builder travels with the repo)
 node <skills-dir>/team-builder-shared/work-board.mjs                 # → ./agent-work-board.html
 node <skills-dir>/team-builder-shared/work-board.mjs --root ../app --out board.html
-node <skills-dir>/team-builder-shared/work-board.mjs --watch 5       # re-render every 5 s; page auto-refreshes
+node <skills-dir>/team-builder-shared/work-board.mjs --watch 5       # re-render every 5 s; page reloads (not while a plan is open)
 ```
 
 The output is a local view, not project state — add `agent-work-board.html` to `.gitignore`.
@@ -303,12 +309,12 @@ skill folders from your global directory:
 
 ```bash
 # macOS / Linux
-rm -rf ~/.claude/skills/{team-builder-setup,team-builder-sync,team-builder-upgrade,team-builder-models,team-builder-module,architecture-advisor,team-builder-shared}
+rm -rf ~/.claude/skills/{team-builder-setup,team-builder-sync,team-builder-upgrade,team-builder-models,team-builder-module,team-builder-board,architecture-advisor,team-builder-shared}
 ```
 
 ```powershell
 # Windows
-'team-builder-setup','team-builder-sync','team-builder-upgrade','team-builder-models','team-builder-module','architecture-advisor','team-builder-shared' |
+'team-builder-setup','team-builder-sync','team-builder-upgrade','team-builder-models','team-builder-module','team-builder-board','architecture-advisor','team-builder-shared' |
   ForEach-Object { Remove-Item -Recurse -Force "$HOME\.claude\skills\$_" }
 ```
 
@@ -368,6 +374,7 @@ tanımlar ve takımın uyması gereken kuralları (anayasa) her agent'ın talima
 | `/team-builder-upgrade` | Kurulumdan sonra anayasa preset'lerini (plan kapısı dahil) açar ya da kapatır; eski projeleri göç ettirir: tek talimat dosyasına, ve yol sahipliğini hâlâ kopyalayan rol dosyalarını routing tablosuna atıf yapan genel metne ("rol dosyalarını sahiplikten arındır"). |
 | `/team-builder-models` | Her agent'ın hangi model ve effort'la çalışacağını ekosistem başına ayarlar: ortak `.agent-source/llm.json`, bu makinenin `llm.local.json`'u, yeni çıkan ya da kalkan modellerin yenilenmesi ve eski projelerin göçü. |
 | `/team-builder-module` | Kurulu takıma yeni bir klasör (modül) ekler: yazabilen mevcut bir role verir ya da onun için yeni bir rol açar (skill'ler, model, kim ona danışır); routing'i ve talimatlardaki routing tablosunu günceller. Mevcut rol dosyalarına dokunmaz. |
+| `/team-builder-board` | Plan kapısının `.agent-work/` planlarını HTML kanban panosu olarak üretir; karta tıklayınca planın tamamı açılır. Salt okunur. |
 | `/architecture-advisor` | Projeyi analiz edip ADR / mimari kısıt / tasarım önerir ve kullanıcıyla adım adım `docs/<arch-root>/` altına yazar. Takımdan bağımsız da çalışır. |
 
 `skills/team-builder-shared/`, skill'lerin dayandığı paylaşılan referansları + generator'ı
@@ -490,6 +497,7 @@ olarak gösterir):
 /team-builder-upgrade
 /team-builder-models
 /team-builder-module
+/team-builder-board
 /architecture-advisor
 ```
 
@@ -566,15 +574,19 @@ Plan kapısı açıkken her iş `.agent-work/` altında bir plan dosyasıdır ve
 durumudur. `work-board.mjs` bu klasörleri (salt okunur) okuyup tek dosyalık bir HTML kanban
 panosu üretir — **Gelen kutusu · Taslak · Onaylı · Devam ediyor · Bitti** — executor, revizyon,
 son plan / kod denetimi kararı (eski bir revizyona verildiyse işaretli), ilerleme listesi ve
-etkilenen yollarla. İptal edilen işler üstü çizili görünür. Yalnız dosyaları okuduğu için
-dosyaları Claude, Codex ya da OpenCode taşımış olsun, aynı panoyu gösterir.
+etkilenen yollarla. İptal edilen işler üstü çizili görünür; karta tıklayınca (ya da Enter)
+planın tamamı açılır. Yalnız dosyaları okuduğu için dosyaları Claude, Codex ya da OpenCode
+taşımış olsun, aynı panoyu gösterir.
+
+`/team-builder-board` skill'iyle isteyin (Claude plugin'i: `/team-builder:team-builder-board`,
+Codex plugin'i: `$team-builder-board`) — betiği kendisi bulur — ya da betiği doğrudan çalıştırın:
 
 ```bash
 # proje kökünde çalıştırın; shared dizini: ~/.claude/skills, ~/.codex/skills ya da
 # ~/.config/opencode/skills (team-builder repoyla taşınıyorsa .agent-source/skills)
 node <skills-dir>/team-builder-shared/work-board.mjs                 # → ./agent-work-board.html
 node <skills-dir>/team-builder-shared/work-board.mjs --root ../app --out board.html
-node <skills-dir>/team-builder-shared/work-board.mjs --watch 5       # 5 sn'de bir yeniden üretir; sayfa kendini yeniler
+node <skills-dir>/team-builder-shared/work-board.mjs --watch 5       # 5 sn'de bir yeniden üretir; sayfa yenilenir (plan açıkken değil)
 ```
 
 Çıktı yerel bir görünümdür, proje durumu değildir — `agent-work-board.html`'i `.gitignore`'a ekleyin.
@@ -609,12 +621,12 @@ dizinden sil:
 
 ```bash
 # macOS / Linux
-rm -rf ~/.claude/skills/{team-builder-setup,team-builder-sync,team-builder-upgrade,team-builder-models,team-builder-module,architecture-advisor,team-builder-shared}
+rm -rf ~/.claude/skills/{team-builder-setup,team-builder-sync,team-builder-upgrade,team-builder-models,team-builder-module,team-builder-board,architecture-advisor,team-builder-shared}
 ```
 
 ```powershell
 # Windows
-'team-builder-setup','team-builder-sync','team-builder-upgrade','team-builder-models','team-builder-module','architecture-advisor','team-builder-shared' |
+'team-builder-setup','team-builder-sync','team-builder-upgrade','team-builder-models','team-builder-module','team-builder-board','architecture-advisor','team-builder-shared' |
   ForEach-Object { Remove-Item -Recurse -Force "$HOME\.claude\skills\$_" }
 ```
 

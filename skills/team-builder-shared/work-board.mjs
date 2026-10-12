@@ -124,6 +124,7 @@ export async function loadPlan(file, column) {
     planReview: lastReview(data.reviews?.['plan-review'], revision),
     codeReview: lastReview(data.reviews?.['code-review'], revision),
     progress: parseProgress(body),
+    body,
   }
 }
 
@@ -160,6 +161,74 @@ function esc(text) {
     .replace(/'/g, '&#39;')
 }
 
+function inlineMd(text) {
+  return esc(text)
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/(^|[^*])\*([^*\s][^*]*)\*/g, '$1<em>$2</em>')
+}
+
+// Just enough Markdown for plan bodies: headings, lists, checkboxes, fenced code,
+// paragraphs. Everything is escaped first; HTML comments (the s:* markers) are dropped.
+export function renderMarkdown(md) {
+  const lines = md.replace(/<!--[\s\S]*?-->/g, '').replace(/\r\n/g, '\n').split('\n')
+  const out = []
+  let list = null
+  let para = []
+  const flushPara = () => { if (para.length) out.push(`<p>${para.map(inlineMd).join('<br>')}</p>`); para = [] }
+  const closeList = () => { if (list) out.push(`</${list}>`); list = null }
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]
+    if (/^\s*```/.test(line)) {
+      flushPara(); closeList()
+      const code = []
+      while (i + 1 < lines.length && !/^\s*```/.test(lines[i + 1])) code.push(lines[++i])
+      i++
+      out.push(`<pre><code>${esc(code.join('\n'))}</code></pre>`)
+      continue
+    }
+    const heading = /^(#{1,6})\s+(.*)$/.exec(line)
+    if (heading) {
+      flushPara(); closeList()
+      const level = Math.min(heading[1].length + 2, 6)
+      out.push(`<h${level}>${inlineMd(heading[2])}</h${level}>`)
+      continue
+    }
+    const item = /^\s*(?:([-*+])|(\d+)[.)])\s+(.*)$/.exec(line)
+    if (item) {
+      flushPara()
+      const tag = item[1] ? 'ul' : 'ol'
+      if (list !== tag) { closeList(); out.push(`<${tag}>`); list = tag }
+      const check = /^\[([ xX])\]\s*(.*)$/.exec(item[3])
+      out.push(check
+        ? `<li class="task"><input type="checkbox" disabled${check[1] === ' ' ? '' : ' checked'}> ${inlineMd(check[2])}</li>`
+        : `<li>${inlineMd(item[3])}</li>`)
+      continue
+    }
+    if (!line.trim()) { flushPara(); closeList(); continue }
+    closeList()
+    para.push(line.trim())
+  }
+  flushPara(); closeList()
+  return out.join('\n')
+}
+
+function renderDetail(plan, n) {
+  const review = (label, list) => list
+    ? `<tr><th>${label}</th><td>${esc(VERDICT_TEXT[list.verdict] || list.verdict)}${list.revision ? ` (r${list.revision}${list.stale ? ', güncel değil' : ''})` : ''}</td></tr>`
+    : ''
+  const rows = [
+    ['Durum', COLUMNS.find(c => c.key === plan.column).title + (plan.cancelled ? ' · iptal' : '')],
+    ['Executor', plan.executor], ['Revizyon', plan.revision || ''], ['Alan', plan.domain],
+    ['Kaynak', plan.source], ['Oluşturuldu', plan.created], ['ADR', plan.adr],
+    ['Yollar', plan.paths.join(', ')], ['Dosya', `.agent-work/${plan.column}/${plan.file}`],
+  ].filter(([, v]) => v).map(([k, v]) => `<tr><th>${k}</th><td>${esc(v)}</td></tr>`).join('')
+  const body = renderMarkdown(plan.body).trim()
+  return `<template id="plan-${n}"><header class="d-head"><span class="id">${esc(plan.id)}</span><h2>${esc(plan.title)}</h2></header>
+<table class="meta-table">${rows}${review('Plan denetimi', plan.planReview)}${review('Kod denetimi', plan.codeReview)}</table>
+<div class="md">${body || '<p class="muted">Plan gövdesi yok.</p>'}</div></template>`
+}
+
 // `executor` may be `<agent>` or the older `<ecosystem>/<agent>` form.
 function agentOf(executor) {
   return executor.includes('/') ? executor.split('/').pop() : executor
@@ -181,7 +250,7 @@ function reviewBadge(label, review) {
   return `<span class="badge v-${esc(review.verdict)}${review.stale ? ' stale' : ''}" title="${label}: ${esc(review.verdict)}${stale}">${label}: ${esc(VERDICT_TEXT[review.verdict] || review.verdict)}${review.stale ? ' ⟲' : ''}</span>`
 }
 
-function renderCard(plan) {
+function renderCard(plan, n) {
   const agent = agentOf(plan.executor)
   const owner = agent
     ? `<span class="agent" style="${agentStyle(agent)}">${esc(plan.executor)}</span>`
@@ -207,7 +276,7 @@ function renderCard(plan) {
     ? `<details><summary>${plan.paths.length} yol</summary><p class="pre">${plan.paths.map(esc).join('\n')}</p></details>`
     : ''
   const search = esc(`${plan.id} ${plan.title} ${plan.executor} ${plan.domain} ${plan.paths.join(' ')}`.toLowerCase())
-  return `<article class="card${plan.cancelled ? ' cancelled' : ''}" data-agent="${esc(agent)}" data-search="${search}" title="${esc(plan.file)}">
+  return `<article class="card${plan.cancelled ? ' cancelled' : ''}" data-plan="${n}" tabindex="0" data-agent="${esc(agent)}" data-search="${search}" title="Ayrıntı için tıklayın — ${esc(plan.file)}">
   <header><span class="id">${esc(plan.id)}</span>${owner}</header>
   <h3>${esc(plan.title)}</h3>
   ${meta ? `<p class="meta">${meta}</p>` : ''}
@@ -217,15 +286,14 @@ function renderCard(plan) {
 }
 
 export function renderHtml(board, { generatedAt = new Date(), refreshSeconds = 0, root = '' } = {}) {
-  const refresh = refreshSeconds ? `<meta http-equiv="refresh" content="${refreshSeconds}">` : ''
   let body
   if (!board) {
     body = `<p class="empty-state"><code>${esc(path.join(root, '.agent-work'))}</code> bulunamadı.<br>
 Plan kapısı açık bir projenin kökünde çalıştırın ya da <code>--root</code> verin.</p>`
   } else {
     const buckets = Object.fromEntries(COLUMNS.map(c => [c.key, []]))
-    for (const plan of board.plans) buckets[plan.column].push(plan)
-    const finished = buckets.done.filter(p => !p.cancelled).length
+    board.plans.forEach((plan, n) => buckets[plan.column].push({ plan, n }))
+    const finished = buckets.done.filter(({ plan }) => !plan.cancelled).length
     const active = board.plans.filter(p => !p.cancelled).length
     const pct = active ? Math.round((finished / active) * 100) : 0
     const agents = [...new Set(board.plans.map(p => agentOf(p.executor)).filter(Boolean))].sort()
@@ -241,16 +309,17 @@ Plan kapısı açık bir projenin kökünde çalıştırın ya da <code>--root</
 <div class="board">
 ${COLUMNS.map(col => `<section class="col col-${col.key}">
   <h2>${col.title} <span class="count">${buckets[col.key].length}</span></h2>
-  ${buckets[col.key].map(renderCard).join('\n') || '<p class="empty">—</p>'}
+  ${buckets[col.key].map(({ plan, n }) => renderCard(plan, n)).join('\n') || '<p class="empty">—</p>'}
 </section>`).join('\n')}
-</div>`
+</div>
+${board.plans.map(renderDetail).join('\n')}
+<dialog id="detail"><button class="close" aria-label="Kapat">×</button><div id="detail-body"></div></dialog>`
   }
   return `<!doctype html>
 <html lang="tr">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-${refresh}
 <title>Agent Work Board</title>
 <style>
 :root {
@@ -308,6 +377,23 @@ summary { cursor: pointer; }
 .empty { color: var(--muted); text-align: center; }
 .empty-state { color: var(--muted); text-align: center; margin-top: 15vh; }
 .hidden { display: none; }
+.card { cursor: pointer; }
+.card:hover, .card:focus-visible { border-color: var(--accent); outline: none; }
+dialog { width: min(760px, calc(100vw - 32px)); max-height: calc(100vh - 48px); border: 1px solid var(--line);
+  border-radius: 10px; padding: 20px 24px; background: var(--card); color: var(--text); }
+dialog::backdrop { background: rgb(0 0 0 / .45); }
+.close { position: sticky; top: 0; float: right; border: 0; background: none; color: var(--muted); font-size: 24px; line-height: 1; cursor: pointer; }
+.d-head h2 { margin: 2px 0 12px; font-size: 18px; }
+.meta-table { border-collapse: collapse; font-size: 13px; margin-bottom: 12px; width: 100%; }
+.meta-table th { text-align: left; color: var(--muted); font-weight: 500; padding: 3px 12px 3px 0; white-space: nowrap; vertical-align: top; width: 1%; }
+.meta-table td { padding: 3px 0; overflow-wrap: anywhere; }
+.md { border-top: 1px solid var(--line); padding-top: 4px; }
+.md h3, .md h4, .md h5, .md h6 { margin: 16px 0 6px; font-size: 15px; }
+.md p, .md ul, .md ol { margin: 6px 0; }
+.md li.task { list-style: none; margin-left: -18px; }
+.md code { background: var(--panel); border-radius: 4px; padding: 0 4px; font-size: 12px; }
+.md pre { background: var(--panel); border-radius: 6px; padding: 10px; overflow-x: auto; }
+.md pre code { background: none; padding: 0; }
 @media (max-width: 720px) { .board { grid-template-columns: 1fr; } }
 </style>
 </head>
@@ -319,6 +405,7 @@ summary { cursor: pointer; }
 ${body}
 <script>
 (() => {
+  const refreshSeconds = ${Number(refreshSeconds) || 0}
   const store = {
     get(k) { try { return localStorage.getItem(k) } catch { return null } },
     set(k, v) { try { localStorage.setItem(k, v) } catch {} },
@@ -339,7 +426,24 @@ ${body}
     q.value = saved.q || ''
     if ([...document.querySelectorAll('.chip')].some(c => c.dataset.agentFilter === saved.agent)) agent = saved.agent
   } catch {}
+  const dialog = document.getElementById('detail')
+  function open(card) {
+    const tpl = document.getElementById('plan-' + card.dataset.plan)
+    if (!dialog || !tpl) return
+    document.getElementById('detail-body').replaceChildren(tpl.content.cloneNode(true))
+    dialog.showModal()
+  }
+  if (dialog) {
+    dialog.querySelector('.close').addEventListener('click', () => dialog.close())
+    dialog.addEventListener('click', e => { if (e.target === dialog) dialog.close() })
+  }
+  document.addEventListener('keydown', e => {
+    const card = e.target.closest && e.target.closest('.card')
+    if (card && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); open(card) }
+  })
   document.addEventListener('click', e => {
+    const card = e.target.closest('.card')
+    if (card && !e.target.closest('details')) return open(card)
     const chip = e.target.closest('.chip')
     if (!chip) return
     agent = chip.dataset.agentFilter
@@ -347,6 +451,8 @@ ${body}
   })
   q.addEventListener('input', apply)
   apply()
+  // --watch: reload for fresh data, but never under an open detail view.
+  if (refreshSeconds) setInterval(() => { if (!dialog || !dialog.open) location.reload() }, refreshSeconds * 1000)
 })()
 </script>
 </body>
@@ -427,6 +533,11 @@ async function selftest() {
   assert(html.includes('Fikir &lt;b&gt;') && !html.includes('Fikir <b>'), 'escapes plan text')
   assert(html.includes('data-agent="frontend-developer"'), 'legacy ecosystem/agent executor filters by agent')
   assert(html.includes('0/3 bitti') && html.includes('1 iptal'), 'progress excludes cancelled work')
+  assert(html.includes('<template id="plan-') && html.includes('<dialog id="detail">'), 'detail view per plan')
+  const md = renderMarkdown('<!-- s:what -->\n## Ne\n\n**Kabul** `x<y>`\n\n- [x] bitti\n- [ ] kaldı\n\n```\n<b>\n```\n')
+  assert(md.includes('<h4>Ne</h4>') && md.includes('<strong>Kabul</strong>') && md.includes('<code>x&lt;y&gt;</code>'), 'markdown inline')
+  assert(md.includes('checked> bitti') && md.includes('disabled> kaldı') && md.includes('<pre><code>&lt;b&gt;'), 'markdown blocks')
+  assert(!md.includes('s:what'), 'markers hidden')
   assert(renderHtml(await loadBoard(path.join(root, 'missing')), { root: 'x' }).includes('bulunamadı'), 'empty state')
 
   await fs.rm(root, { recursive: true, force: true })
