@@ -29,6 +29,9 @@
   okur ve ekosistem dizinlerine yansıtır. Generated olan **mirror'lardır**.
   (`.agent-source/` içindeki tek generated dosya `generated-files.json`'dır —
   `canonical-source.md`.)
+- `.agent-work/`'ü **salt okunur** gösteren bir görüntüleyici vardır:
+  `team-builder-shared/work-board.mjs` klasörleri HTML kanban panosuna çevirir. Kural
+  denetlemez, dosya yazmaz; değişmezlerin sahibi bu dosya ve `work-plan` skill'idir.
 
 ## Makine işaretleri
 

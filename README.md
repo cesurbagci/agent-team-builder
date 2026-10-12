@@ -24,6 +24,7 @@ in the project.
 - [Verify the install](#verify-the-install)
 - [Quick start](#quick-start)
 - [How it works (canonical → generate → drift)](#how-it-works-canonical--generate--drift)
+- [Work board (plan gate)](#work-board-plan-gate)
 - [Distribution methods](#distribution-methods)
 - [Update & uninstall](#update--uninstall)
 - [License](#license)
@@ -251,6 +252,25 @@ The single source of truth is `.agent-source/`:
 - **Models live in `.agent-source/llm.json`** (committed): the model and effort each agent runs
   with, per ecosystem. A machine can override them in `.agent-source/llm.local.json`.
   `/team-builder-models` sets both up.
+
+## Work board (plan gate)
+
+With the plan gate on, every piece of work is a plan file in `.agent-work/`, and its folder is
+its state. `work-board.mjs` reads those folders (read-only) and renders a self-contained HTML
+kanban board — **Inbox · Draft · Approved · In progress · Done** — with the executor, revision,
+the latest plan / code review verdict (flagged when it was given on an older revision), the
+progress checklist and the touched paths. Cancelled work is struck through. Because it reads
+only files, it shows the same board whether Claude, Codex or OpenCode moved them.
+
+```bash
+# run in the project root; shared dir: ~/.claude/skills, ~/.codex/skills or
+# ~/.config/opencode/skills (or .agent-source/skills if team-builder travels with the repo)
+node <skills-dir>/team-builder-shared/work-board.mjs                 # → ./agent-work-board.html
+node <skills-dir>/team-builder-shared/work-board.mjs --root ../app --out board.html
+node <skills-dir>/team-builder-shared/work-board.mjs --watch 5       # re-render every 5 s; page auto-refreshes
+```
+
+The output is a local view, not project state — add `agent-work-board.html` to `.gitignore`.
 
 ## Distribution methods
 
@@ -539,6 +559,25 @@ Tek gerçek kaynak `.agent-source/`'tur:
 - **Modeller `.agent-source/llm.json`'dadır** (commit edilir): her agent'ın ekosistem başına
   hangi model ve effort'la çalışacağı. Bir makine bunları `.agent-source/llm.local.json`'da
   ezebilir. İkisini de `/team-builder-models` kurar.
+
+## İş panosu (plan kapısı)
+
+Plan kapısı açıkken her iş `.agent-work/` altında bir plan dosyasıdır ve bulunduğu klasör
+durumudur. `work-board.mjs` bu klasörleri (salt okunur) okuyup tek dosyalık bir HTML kanban
+panosu üretir — **Gelen kutusu · Taslak · Onaylı · Devam ediyor · Bitti** — executor, revizyon,
+son plan / kod denetimi kararı (eski bir revizyona verildiyse işaretli), ilerleme listesi ve
+etkilenen yollarla. İptal edilen işler üstü çizili görünür. Yalnız dosyaları okuduğu için
+dosyaları Claude, Codex ya da OpenCode taşımış olsun, aynı panoyu gösterir.
+
+```bash
+# proje kökünde çalıştırın; shared dizini: ~/.claude/skills, ~/.codex/skills ya da
+# ~/.config/opencode/skills (team-builder repoyla taşınıyorsa .agent-source/skills)
+node <skills-dir>/team-builder-shared/work-board.mjs                 # → ./agent-work-board.html
+node <skills-dir>/team-builder-shared/work-board.mjs --root ../app --out board.html
+node <skills-dir>/team-builder-shared/work-board.mjs --watch 5       # 5 sn'de bir yeniden üretir; sayfa kendini yeniler
+```
+
+Çıktı yerel bir görünümdür, proje durumu değildir — `agent-work-board.html`'i `.gitignore`'a ekleyin.
 
 ## Dağıtım yöntemleri
 
