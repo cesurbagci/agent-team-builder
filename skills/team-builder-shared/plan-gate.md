@@ -30,7 +30,8 @@
   (`.agent-source/` içindeki tek generated dosya `generated-files.json`'dır —
   `canonical-source.md`.)
 - `.agent-work/`'ü **salt okunur** gösteren bir görüntüleyici vardır:
-  `team-builder-shared/work-board.mjs` klasörleri HTML kanban panosuna çevirir. Kural
+  `team-builder-shared/work-board.mjs` klasörleri HTML kanban panosuna çevirir (`--serve` ile
+  klasörü izleyen canlı bir yerel sunucu). Kural
   denetlemez, dosya yazmaz; değişmezlerin sahibi bu dosya ve `work-plan` skill'idir.
 
 ## Makine işaretleri

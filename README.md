@@ -259,7 +259,7 @@ The single source of truth is `.agent-source/`:
 
 With the plan gate on, every piece of work is a plan file in `.agent-work/`, and its folder is
 its state. `work-board.mjs` reads those folders (read-only) and renders a self-contained HTML
-kanban board — **Inbox · Draft · Approved · In progress · Done** — with the executor, revision,
+kanban board (live with `--serve`) — **Inbox · Draft · Approved · In progress · Done** — with the executor, revision,
 the latest plan / code review verdict (flagged when it was given on an older revision), the
 progress checklist and the touched paths. Cancelled work is struck through; click a card (or press
 Enter) to read the whole plan. Because it reads only files, it shows the same board whether Claude,
@@ -271,12 +271,16 @@ Codex plugin: `$team-builder-board`) — it finds the script itself — or run t
 ```bash
 # run in the project root; shared dir: ~/.claude/skills, ~/.codex/skills or
 # ~/.config/opencode/skills (or .agent-source/skills if team-builder travels with the repo)
-node <skills-dir>/team-builder-shared/work-board.mjs                 # → ./agent-work-board.html
+node <skills-dir>/team-builder-shared/work-board.mjs --serve         # live board → http://127.0.0.1:4780/
+node <skills-dir>/team-builder-shared/work-board.mjs                 # one snapshot → ./agent-work-board.html
 node <skills-dir>/team-builder-shared/work-board.mjs --root ../app --out board.html
-node <skills-dir>/team-builder-shared/work-board.mjs --watch 5       # re-render every 5 s; page reloads (not while a plan is open)
 ```
 
-The output is a local view, not project state — add `agent-work-board.html` to `.gitignore`.
+`--serve` starts a local server (127.0.0.1 only) that watches `.agent-work/` and pushes the board
+to the open page the moment a plan is added, moved or edited — no reloads, an open plan stays open
+and updates in place, and nothing runs while nothing changes. It lives as long as the command
+does; Ctrl+C stops it. `--port <n>` picks the port (default 4780, the next free one when busy).
+The snapshot file is a local view, not project state — add `agent-work-board.html` to `.gitignore`.
 
 ## Distribution methods
 
@@ -572,7 +576,7 @@ Tek gerçek kaynak `.agent-source/`'tur:
 
 Plan kapısı açıkken her iş `.agent-work/` altında bir plan dosyasıdır ve bulunduğu klasör
 durumudur. `work-board.mjs` bu klasörleri (salt okunur) okuyup tek dosyalık bir HTML kanban
-panosu üretir — **Gelen kutusu · Taslak · Onaylı · Devam ediyor · Bitti** — executor, revizyon,
+panosu üretir (`--serve` ile canlı) — **Gelen kutusu · Taslak · Onaylı · Devam ediyor · Bitti** — executor, revizyon,
 son plan / kod denetimi kararı (eski bir revizyona verildiyse işaretli), ilerleme listesi ve
 etkilenen yollarla. İptal edilen işler üstü çizili görünür; karta tıklayınca (ya da Enter)
 planın tamamı açılır. Yalnız dosyaları okuduğu için dosyaları Claude, Codex ya da OpenCode
@@ -584,12 +588,17 @@ Codex plugin'i: `$team-builder-board`) — betiği kendisi bulur — ya da beti�
 ```bash
 # proje kökünde çalıştırın; shared dizini: ~/.claude/skills, ~/.codex/skills ya da
 # ~/.config/opencode/skills (team-builder repoyla taşınıyorsa .agent-source/skills)
-node <skills-dir>/team-builder-shared/work-board.mjs                 # → ./agent-work-board.html
+node <skills-dir>/team-builder-shared/work-board.mjs --serve         # canlı pano → http://127.0.0.1:4780/
+node <skills-dir>/team-builder-shared/work-board.mjs                 # tek anlık görüntü → ./agent-work-board.html
 node <skills-dir>/team-builder-shared/work-board.mjs --root ../app --out board.html
-node <skills-dir>/team-builder-shared/work-board.mjs --watch 5       # 5 sn'de bir yeniden üretir; sayfa yenilenir (plan açıkken değil)
 ```
 
-Çıktı yerel bir görünümdür, proje durumu değildir — `agent-work-board.html`'i `.gitignore`'a ekleyin.
+`--serve` yerel bir sunucu başlatır (yalnız 127.0.0.1): `.agent-work/`'ü izler ve bir plan
+eklendiği, taşındığı ya da düzenlendiği an panoyu açık sayfaya gönderir — sayfa yenilenmez, açık
+bir plan açık kalır ve yerinde güncellenir, hiçbir şey değişmezken de çalışmaz. Komut açık
+kaldıkça yaşar; Ctrl+C durdurur. `--port <n>` portu seçer (varsayılan 4780, doluysa sıradaki
+boş port). Anlık görüntü dosyası yerel bir görünümdür, proje durumu değildir —
+`agent-work-board.html`'i `.gitignore`'a ekleyin.
 
 ## Dağıtım yöntemleri
 

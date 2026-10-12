@@ -11,14 +11,22 @@
 // (validate-plan-gate.mjs and the work-plan skill own the rules). A file it cannot
 // read still shows up as a card with its file name.
 //
-// CLI: node work-board.mjs [--root <project>] [--out <file>] [--watch [seconds]] [--selftest]
+// Two modes:
+//   - file (default): writes one snapshot HTML file.
+//   - --serve: a local server (127.0.0.1 only) that watches .agent-work/ and pushes the
+//     board to open pages over Server-Sent Events the moment a plan file is added,
+//     moved or edited. Nothing is re-rendered or sent while nothing changes.
+//
+// CLI: node work-board.mjs [--root <project>] [--out <file>] [--serve] [--port <n>] [--selftest]
 //   --root   project root holding .agent-work/ (default: cwd)
-//   --out    default: <root>/agent-work-board.html
-//   --watch  re-render every N seconds (default 3); the page auto-refreshes.
+//   --out    file mode output (default: <root>/agent-work-board.html)
+//   --port   --serve port (default 4780; the next free one is taken when busy)
 
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import os from 'node:os'
+import http from 'node:http'
+import { watch } from 'node:fs'
 
 const COLUMNS = [
   { key: 'inbox', title: 'Gelen kutusu' },
@@ -213,7 +221,7 @@ export function renderMarkdown(md) {
   return out.join('\n')
 }
 
-function renderDetail(plan, n) {
+function renderDetail(plan) {
   const review = (label, list) => list
     ? `<tr><th>${label}</th><td>${esc(VERDICT_TEXT[list.verdict] || list.verdict)}${list.revision ? ` (r${list.revision}${list.stale ? ', güncel değil' : ''})` : ''}</td></tr>`
     : ''
@@ -224,7 +232,7 @@ function renderDetail(plan, n) {
     ['Yollar', plan.paths.join(', ')], ['Dosya', `.agent-work/${plan.column}/${plan.file}`],
   ].filter(([, v]) => v).map(([k, v]) => `<tr><th>${k}</th><td>${esc(v)}</td></tr>`).join('')
   const body = renderMarkdown(plan.body).trim()
-  return `<template id="plan-${n}"><header class="d-head"><span class="id">${esc(plan.id)}</span><h2>${esc(plan.title)}</h2></header>
+  return `<template data-id="${esc(plan.id)}"><header class="d-head"><span class="id">${esc(plan.id)}</span><h2>${esc(plan.title)}</h2></header>
 <table class="meta-table">${rows}${review('Plan denetimi', plan.planReview)}${review('Kod denetimi', plan.codeReview)}</table>
 <div class="md">${body || '<p class="muted">Plan gövdesi yok.</p>'}</div></template>`
 }
@@ -250,7 +258,7 @@ function reviewBadge(label, review) {
   return `<span class="badge v-${esc(review.verdict)}${review.stale ? ' stale' : ''}" title="${label}: ${esc(review.verdict)}${stale}">${label}: ${esc(VERDICT_TEXT[review.verdict] || review.verdict)}${review.stale ? ' ⟲' : ''}</span>`
 }
 
-function renderCard(plan, n) {
+function renderCard(plan) {
   const agent = agentOf(plan.executor)
   const owner = agent
     ? `<span class="agent" style="${agentStyle(agent)}">${esc(plan.executor)}</span>`
@@ -276,7 +284,7 @@ function renderCard(plan, n) {
     ? `<details><summary>${plan.paths.length} yol</summary><p class="pre">${plan.paths.map(esc).join('\n')}</p></details>`
     : ''
   const search = esc(`${plan.id} ${plan.title} ${plan.executor} ${plan.domain} ${plan.paths.join(' ')}`.toLowerCase())
-  return `<article class="card${plan.cancelled ? ' cancelled' : ''}" data-plan="${n}" tabindex="0" data-agent="${esc(agent)}" data-search="${search}" title="Ayrıntı için tıklayın — ${esc(plan.file)}">
+  return `<article class="card${plan.cancelled ? ' cancelled' : ''}" data-id="${esc(plan.id)}" tabindex="0" data-agent="${esc(agent)}" data-search="${search}" title="Ayrıntı için tıklayın — ${esc(plan.file)}">
   <header><span class="id">${esc(plan.id)}</span>${owner}</header>
   <h3>${esc(plan.title)}</h3>
   ${meta ? `<p class="meta">${meta}</p>` : ''}
@@ -285,19 +293,19 @@ function renderCard(plan, n) {
 </article>`
 }
 
-export function renderHtml(board, { generatedAt = new Date(), refreshSeconds = 0, root = '' } = {}) {
-  let body
+// The part of the page that changes with the plans; --serve pushes only this.
+export function renderBoard(board, root = '') {
   if (!board) {
-    body = `<p class="empty-state"><code>${esc(path.join(root, '.agent-work'))}</code> bulunamadı.<br>
+    return `<p class="empty-state"><code>${esc(path.join(root, '.agent-work'))}</code> bulunamadı.<br>
 Plan kapısı açık bir projenin kökünde çalıştırın ya da <code>--root</code> verin.</p>`
-  } else {
-    const buckets = Object.fromEntries(COLUMNS.map(c => [c.key, []]))
-    board.plans.forEach((plan, n) => buckets[plan.column].push({ plan, n }))
-    const finished = buckets.done.filter(({ plan }) => !plan.cancelled).length
-    const active = board.plans.filter(p => !p.cancelled).length
-    const pct = active ? Math.round((finished / active) * 100) : 0
-    const agents = [...new Set(board.plans.map(p => agentOf(p.executor)).filter(Boolean))].sort()
-    body = `<div class="head">
+  }
+  const buckets = Object.fromEntries(COLUMNS.map(c => [c.key, []]))
+  for (const plan of board.plans) buckets[plan.column].push(plan)
+  const finished = buckets.done.filter(p => !p.cancelled).length
+  const active = board.plans.filter(p => !p.cancelled).length
+  const pct = active ? Math.round((finished / active) * 100) : 0
+  const agents = [...new Set(board.plans.map(p => agentOf(p.executor)).filter(Boolean))].sort()
+  return `<div class="head">
   <h1>${esc(path.basename(path.resolve(board.root)))}</h1>
   <div class="progress" title="${finished}/${active} bitti"><span style="width:${pct}%"></span></div>
   <span class="muted">${finished}/${active} bitti${board.plans.length - active ? ` · ${board.plans.length - active} iptal` : ''}</span>
@@ -309,12 +317,17 @@ Plan kapısı açık bir projenin kökünde çalıştırın ya da <code>--root</
 <div class="board">
 ${COLUMNS.map(col => `<section class="col col-${col.key}">
   <h2>${col.title} <span class="count">${buckets[col.key].length}</span></h2>
-  ${buckets[col.key].map(({ plan, n }) => renderCard(plan, n)).join('\n') || '<p class="empty">—</p>'}
+  ${buckets[col.key].map(renderCard).join('\n') || '<p class="empty">—</p>'}
 </section>`).join('\n')}
 </div>
-${board.plans.map(renderDetail).join('\n')}
-<dialog id="detail"><button class="close" aria-label="Kapat">×</button><div id="detail-body"></div></dialog>`
-  }
+${board.plans.map(renderDetail).join('\n')}`
+}
+
+function stamp(date) {
+  return date.toLocaleString('tr-TR')
+}
+
+export function renderHtml(board, { generatedAt = new Date(), root = '', live = false } = {}) {
   return `<!doctype html>
 <html lang="tr">
 <head>
@@ -376,6 +389,9 @@ summary { cursor: pointer; }
 .pre { white-space: pre-wrap; margin: 4px 0 0; overflow-wrap: anywhere; }
 .empty { color: var(--muted); text-align: center; }
 .empty-state { color: var(--muted); text-align: center; margin-top: 15vh; }
+.live::before { content: "●"; margin-right: 4px; color: var(--muted); }
+.live.on::before { color: var(--ok); }
+.live.off::before { color: var(--bad); }
 .hidden { display: none; }
 .card { cursor: pointer; }
 .card:hover, .card:focus-visible { border-color: var(--accent); outline: none; }
@@ -400,43 +416,54 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
 <body>
 <div class="top">
   <input id="q" type="search" placeholder="Plan ara…" aria-label="Plan ara">
-  <span class="muted">Oluşturuldu: ${esc(generatedAt.toLocaleString('tr-TR'))}${refreshSeconds ? ` · ${refreshSeconds} sn'de bir yenilenir` : ''}</span>
+  ${live
+    ? `<span id="live" class="muted live">Bağlanıyor…</span>`
+    : `<span class="muted">Anlık görüntü: ${esc(stamp(generatedAt))} · canlı pano için <code>--serve</code></span>`}
 </div>
-${body}
+<div id="app">${renderBoard(board, root)}</div>
+<dialog id="detail"><button class="close" aria-label="Kapat">×</button><div id="detail-body"></div></dialog>
 <script>
 (() => {
-  const refreshSeconds = ${Number(refreshSeconds) || 0}
   const store = {
     get(k) { try { return localStorage.getItem(k) } catch { return null } },
     set(k, v) { try { localStorage.setItem(k, v) } catch {} },
   }
+  const app = document.getElementById('app')
   const q = document.getElementById('q')
+  const dialog = document.getElementById('detail')
   let agent = ''
+  let openId = null
   function apply() {
     const term = q.value.trim().toLowerCase()
-    for (const card of document.querySelectorAll('.card')) {
+    for (const card of app.querySelectorAll('.card')) {
       const ok = (!agent || card.dataset.agent === agent) && (!term || card.dataset.search.includes(term))
       card.classList.toggle('hidden', !ok)
     }
-    for (const chip of document.querySelectorAll('.chip')) chip.classList.toggle('on', chip.dataset.agentFilter === agent)
+    for (const chip of app.querySelectorAll('.chip')) chip.classList.toggle('on', chip.dataset.agentFilter === agent)
     store.set('tb-work-board', JSON.stringify({ q: q.value, agent }))
+  }
+  function template(id) {
+    return [...app.querySelectorAll('template')].find(t => t.dataset.id === id)
+  }
+  function showDetail(id) {
+    const tpl = template(id)
+    if (!tpl) return false
+    document.getElementById('detail-body').replaceChildren(tpl.content.cloneNode(true))
+    return true
+  }
+  function open(card) {
+    if (!showDetail(card.dataset.id)) return
+    openId = card.dataset.id
+    dialog.showModal()
   }
   try {
     const saved = JSON.parse(store.get('tb-work-board') || '{}')
     q.value = saved.q || ''
-    if ([...document.querySelectorAll('.chip')].some(c => c.dataset.agentFilter === saved.agent)) agent = saved.agent
+    agent = saved.agent || ''
   } catch {}
-  const dialog = document.getElementById('detail')
-  function open(card) {
-    const tpl = document.getElementById('plan-' + card.dataset.plan)
-    if (!dialog || !tpl) return
-    document.getElementById('detail-body').replaceChildren(tpl.content.cloneNode(true))
-    dialog.showModal()
-  }
-  if (dialog) {
-    dialog.querySelector('.close').addEventListener('click', () => dialog.close())
-    dialog.addEventListener('click', e => { if (e.target === dialog) dialog.close() })
-  }
+  dialog.querySelector('.close').addEventListener('click', () => dialog.close())
+  dialog.addEventListener('click', e => { if (e.target === dialog) dialog.close() })
+  dialog.addEventListener('close', () => { openId = null })
   document.addEventListener('keydown', e => {
     const card = e.target.closest && e.target.closest('.card')
     if (card && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); open(card) }
@@ -451,13 +478,142 @@ ${body}
   })
   q.addEventListener('input', apply)
   apply()
-  // --watch: reload for fresh data, but never under an open detail view.
-  if (refreshSeconds) setInterval(() => { if (!dialog || !dialog.open) location.reload() }, refreshSeconds * 1000)
+
+  // --serve: the server pushes the new board on every change; an open plan stays open
+  // and shows its new content.
+  const live = document.getElementById('live')
+  if (!live) return
+  const events = new EventSource('events')
+  events.addEventListener('board', e => {
+    const msg = JSON.parse(e.data)
+    app.innerHTML = msg.html
+    apply()
+    if (openId && dialog.open) showDetail(openId)
+    live.className = 'muted live on'
+    live.textContent = 'Canlı · son değişiklik ' + msg.at
+  })
+  events.onerror = () => {
+    live.className = 'muted live off'
+    live.textContent = 'Bağlantı koptu — sunucu çalışıyor mu? Yeniden deneniyor…'
+  }
 })()
 </script>
 </body>
 </html>
 `
+}
+
+// ---------------------------------------------------------------------------
+// serve
+// ---------------------------------------------------------------------------
+
+// Cheap change detector: names, sizes and mtimes of the plan files. The board is only
+// re-read and re-rendered when this changes.
+async function signature(root) {
+  const parts = []
+  for (const col of COLUMNS) {
+    const dir = path.join(root, '.agent-work', col.key)
+    let files = []
+    try {
+      files = (await fs.readdir(dir)).filter(f => f.endsWith('.md')).sort()
+    } catch {
+      parts.push(`${col.key}:-`)
+      continue
+    }
+    for (const f of files) {
+      try {
+        const st = await fs.stat(path.join(dir, f))
+        parts.push(`${col.key}/${f}:${st.size}:${st.mtimeMs}`)
+      } catch {
+        // moved between readdir and stat; the next check sees where it went
+      }
+    }
+  }
+  return parts.join('|')
+}
+
+export async function startServer({ root, port = 4780, strictPort = false, pollMs = 2000 }) {
+  const clients = new Set()
+  let fragment = renderBoard(await loadBoard(root), root)
+  let changedAt = stamp(new Date())
+  let sig = await signature(root)
+  let checking = null
+
+  const send = res => res.write(`event: board\ndata: ${JSON.stringify({ html: fragment, at: changedAt })}\n\n`)
+
+  async function check() {
+    const next = await signature(root)
+    if (next === sig) return
+    sig = next
+    fragment = renderBoard(await loadBoard(root), root)
+    changedAt = stamp(new Date())
+    for (const res of clients) send(res)
+  }
+  // Serialize checks; a burst of fs events collapses into one.
+  function schedule() {
+    if (checking) return
+    checking = new Promise(r => setTimeout(r, 100))
+      .then(check)
+      .catch(err => console.error(`[work-board] ${err.message}`))
+      .finally(() => { checking = null })
+  }
+
+  // fs.watch gives the instant reaction; the slow poll covers platforms or folders
+  // (created later, network drives) where it stays silent.
+  const watchers = []
+  const workDir = path.join(root, '.agent-work')
+  for (const dir of [workDir, ...COLUMNS.map(c => path.join(workDir, c.key))]) {
+    try {
+      watchers.push(watch(dir, schedule))
+    } catch {
+      // folder missing; the poll picks it up once it exists
+    }
+  }
+  const poll = setInterval(schedule, pollMs)
+  const heartbeat = setInterval(() => { for (const res of clients) res.write(': ping\n\n') }, 25000)
+
+  const server = http.createServer((req, res) => {
+    const url = new URL(req.url, 'http://localhost')
+    if (req.method === 'GET' && url.pathname === '/') {
+      loadBoard(root).then(board => {
+        res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' })
+        res.end(renderHtml(board, { root, live: true }))
+      }).catch(err => { res.writeHead(500); res.end(err.message) })
+    } else if (req.method === 'GET' && url.pathname === '/events') {
+      res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-store', connection: 'keep-alive' })
+      clients.add(res)
+      send(res)
+      req.on('close', () => clients.delete(res))
+    } else {
+      res.writeHead(404)
+      res.end()
+    }
+  })
+
+  // Only this machine: the board shows plan contents.
+  const listen = p => new Promise((resolve, reject) => {
+    server.once('error', reject)
+    server.listen(p, '127.0.0.1', () => { server.off('error', reject); resolve() })
+  })
+  for (let p = port, tries = 0; ; p++, tries++) {
+    try {
+      await listen(p)
+      break
+    } catch (err) {
+      if (err.code !== 'EADDRINUSE' || strictPort || port === 0 || tries >= 20) throw err
+    }
+  }
+
+  return {
+    url: `http://127.0.0.1:${server.address().port}/`,
+    async close() {
+      clearInterval(poll)
+      clearInterval(heartbeat)
+      for (const w of watchers) w.close()
+      for (const res of clients) res.end()
+      await new Promise(r => server.close(r))
+    },
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -533,15 +689,60 @@ async function selftest() {
   assert(html.includes('Fikir &lt;b&gt;') && !html.includes('Fikir <b>'), 'escapes plan text')
   assert(html.includes('data-agent="frontend-developer"'), 'legacy ecosystem/agent executor filters by agent')
   assert(html.includes('0/3 bitti') && html.includes('1 iptal'), 'progress excludes cancelled work')
-  assert(html.includes('<template id="plan-') && html.includes('<dialog id="detail">'), 'detail view per plan')
+  assert(html.includes('<template data-id="20261001-03">') && html.includes('<dialog id="detail">'), 'detail view per plan')
+  assert(!html.includes('id="live"'), 'file mode has no live stream')
   const md = renderMarkdown('<!-- s:what -->\n## Ne\n\n**Kabul** `x<y>`\n\n- [x] bitti\n- [ ] kaldı\n\n```\n<b>\n```\n')
   assert(md.includes('<h4>Ne</h4>') && md.includes('<strong>Kabul</strong>') && md.includes('<code>x&lt;y&gt;</code>'), 'markdown inline')
   assert(md.includes('checked> bitti') && md.includes('disabled> kaldı') && md.includes('<pre><code>&lt;b&gt;'), 'markdown blocks')
   assert(!md.includes('s:what'), 'markers hidden')
   assert(renderHtml(await loadBoard(path.join(root, 'missing')), { root: 'x' }).includes('bulunamadı'), 'empty state')
 
+  await serveSelftest(root, w)
+
   await fs.rm(root, { recursive: true, force: true })
   console.log('work-board selftest: OK')
+}
+
+// Opens the event stream, moves a plan draft → approved and expects the pushed board
+// to show it in the new column.
+async function serveSelftest(root, w) {
+  const srv = await startServer({ root, port: 0, pollMs: 200 })
+  try {
+    const page = await (await fetch(srv.url)).text()
+    assert(page.includes('id="live"') && page.includes("EventSource('events')"), 'served page is live')
+    const events = []
+    let wake = () => {}
+    const req = http.get(srv.url + 'events', res => {
+      let buf = ''
+      res.setEncoding('utf8')
+      res.on('data', chunk => {
+        buf += chunk
+        let i
+        while ((i = buf.indexOf('\n\n')) !== -1) {
+          const block = buf.slice(0, i)
+          buf = buf.slice(i + 2)
+          const data = block.split('\n').find(l => l.startsWith('data: '))
+          if (data) { events.push(JSON.parse(data.slice(6))); wake() }
+        }
+      })
+    })
+    const waitFor = async (n, ms) => {
+      const until = Date.now() + ms
+      while (events.length < n && Date.now() < until) await new Promise(r => { wake = r; setTimeout(r, 50) })
+      return events.length >= n
+    }
+    assert(await waitFor(1, 2000), 'current board is sent on connect')
+    const approvedCount = html => /col-approved">\s*<h2>[^<]*<span class="count">(\d+)/.exec(html)[1]
+    assert(approvedCount(events[0].html) === '0', 'nothing approved yet')
+    await fs.rename(path.join(w('draft'), '20261001-02-cart.md'), path.join(w('approved'), '20261001-02-cart.md'))
+    assert(await waitFor(2, 3000), 'move is pushed')
+    assert(approvedCount(events[1].html) === '1', 'pushed board shows the moved plan')
+    await new Promise(r => setTimeout(r, 500))
+    assert(events.length === 2, 'no pushes while nothing changes')
+    req.destroy()
+  } finally {
+    await srv.close()
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -549,35 +750,33 @@ async function selftest() {
 // ---------------------------------------------------------------------------
 
 function parseArgs(argv) {
-  const opts = { root: process.cwd(), out: '', watch: 0, selftest: false }
+  const opts = { root: process.cwd(), out: '', serve: false, port: 4780, strictPort: false, selftest: false }
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i]
     if (arg === '--root') opts.root = path.resolve(argv[++i])
     else if (arg === '--out') opts.out = path.resolve(argv[++i])
-    else if (arg === '--watch') opts.watch = /^\d+$/.test(argv[i + 1] ?? '') ? Number(argv[++i]) : 3
+    else if (arg === '--serve') opts.serve = true
+    else if (arg === '--port') { opts.port = Number(argv[++i]); opts.strictPort = true }
     else if (arg === '--selftest') opts.selftest = true
     else throw new Error(`unknown argument: ${arg}`)
   }
+  if (!Number.isInteger(opts.port) || opts.port < 0 || opts.port > 65535) throw new Error('--port must be 0-65535')
   opts.out ||= path.join(opts.root, 'agent-work-board.html')
   return opts
-}
-
-async function build(opts) {
-  const board = await loadBoard(opts.root)
-  await fs.writeFile(opts.out, renderHtml(board, { refreshSeconds: opts.watch, root: opts.root }))
-  return board
 }
 
 async function main() {
   const opts = parseArgs(process.argv.slice(2))
   if (opts.selftest) return selftest()
-  const board = await build(opts)
+  const board = await loadBoard(opts.root)
   if (!board) console.warn(`[work-board] ${path.join(opts.root, '.agent-work')} bulunamadı`)
-  console.log(`[work-board] ${board ? board.plans.length : 0} plan → ${opts.out}`)
-  if (opts.watch) {
-    console.log(`[work-board] ${opts.watch} sn'de bir yeniden üretiliyor (Ctrl+C ile çık)`)
-    setInterval(() => build(opts).catch(err => console.error(`[work-board] ${err.message}`)), opts.watch * 1000)
+  if (opts.serve) {
+    const srv = await startServer(opts)
+    console.log(`[work-board] canlı pano: ${srv.url}  (${board ? board.plans.length : 0} plan; Ctrl+C ile çık)`)
+    return
   }
+  await fs.writeFile(opts.out, renderHtml(board, { root: opts.root }))
+  console.log(`[work-board] ${board ? board.plans.length : 0} plan → ${opts.out}`)
 }
 
 main().catch(err => {
