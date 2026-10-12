@@ -266,15 +266,21 @@ Enter) to read the whole plan. Because it reads only files, it shows the same bo
 Codex or OpenCode moved them.
 
 Ask for it with the `/team-builder-board` skill (Claude plugin: `/team-builder:team-builder-board`,
-Codex plugin: `$team-builder-board`) — it finds the script itself — or run the script directly:
+Codex plugin: `$team-builder-board`) — it finds the script itself — or, to keep it open in your
+own terminal, install the `work-board` command once (Node ≥ 18):
 
 ```bash
-# run in the project root; shared dir: ~/.claude/skills, ~/.codex/skills or
-# ~/.config/opencode/skills (or .agent-source/skills if team-builder travels with the repo)
-node <skills-dir>/team-builder-shared/work-board.mjs --serve         # live board → http://127.0.0.1:4780/
-node <skills-dir>/team-builder-shared/work-board.mjs                 # one snapshot → ./agent-work-board.html
-node <skills-dir>/team-builder-shared/work-board.mjs --root ../app --out board.html
+npm i -g github:cesurbagci/agent-team-builder        # #<branch-or-tag> pins a version
 ```
+
+```bash
+work-board --serve --open        # live board → http://127.0.0.1:4780/, opened in your browser
+work-board                       # one snapshot → <project>/agent-work-board.html
+work-board --root ../app --out board.html
+```
+
+Run it anywhere inside the project: it finds the nearest `.agent-work/` upwards. Without the
+command, `node <skills-dir>/team-builder-shared/work-board.mjs` takes the same options.
 
 `--serve` starts a local server (127.0.0.1 only) that watches `.agent-work/` and pushes the board
 to the open page the moment a plan is added, moved or edited — no reloads, an open plan stays open
@@ -286,7 +292,7 @@ The snapshot file is a local view, not project state — add `agent-work-board.h
 
 - **Plugin (Claude Code, Codex):** the repo is its own marketplace for both tools
   (`.claude-plugin/`; `.agents/plugins/marketplace.json` + `.codex-plugin/`). The version lives
-  in `.claude-plugin/plugin.json` and `.codex-plugin/plugin.json` — keep the two equal and in line with the branch: a release branch `X.Y.Z` carries `X.Y.Z-dev.N` while in development (N goes up with every push, so the marketplaces pick the change up) and `X.Y.Z` when released.
+  in `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json` and `package.json` (the `work-board` command) — keep the three equal and in line with the branch: a release branch `X.Y.Z` carries `X.Y.Z-dev.N` while in development (N goes up with every push, so the marketplaces pick the change up) and `X.Y.Z` when released.
 - **Script install:** clone + `install.sh` / `install.ps1`, for all three tools. The skills find
   their scripts next to themselves; the script writes in the absolute path.
 
@@ -583,15 +589,21 @@ planın tamamı açılır. Yalnız dosyaları okuduğu için dosyaları Claude, 
 taşımış olsun, aynı panoyu gösterir.
 
 `/team-builder-board` skill'iyle isteyin (Claude plugin'i: `/team-builder:team-builder-board`,
-Codex plugin'i: `$team-builder-board`) — betiği kendisi bulur — ya da betiği doğrudan çalıştırın:
+Codex plugin'i: `$team-builder-board`) — betiği kendisi bulur — ya da kendi terminalinizde açık
+tutmak için `work-board` komutunu bir kez kurun (Node ≥ 18):
 
 ```bash
-# proje kökünde çalıştırın; shared dizini: ~/.claude/skills, ~/.codex/skills ya da
-# ~/.config/opencode/skills (team-builder repoyla taşınıyorsa .agent-source/skills)
-node <skills-dir>/team-builder-shared/work-board.mjs --serve         # canlı pano → http://127.0.0.1:4780/
-node <skills-dir>/team-builder-shared/work-board.mjs                 # tek anlık görüntü → ./agent-work-board.html
-node <skills-dir>/team-builder-shared/work-board.mjs --root ../app --out board.html
+npm i -g github:cesurbagci/agent-team-builder        # #<dal-ya-da-etiket> bir sürüme sabitler
 ```
+
+```bash
+work-board --serve --open        # canlı pano → http://127.0.0.1:4780/, tarayıcıda açılır
+work-board                       # tek anlık görüntü → <proje>/agent-work-board.html
+work-board --root ../app --out board.html
+```
+
+Projenin içinde herhangi bir yerde çalıştırın: en yakın `.agent-work/`'ü yukarı doğru bulur.
+Komut kurulu değilse `node <skills-dir>/team-builder-shared/work-board.mjs` aynı seçenekleri alır.
 
 `--serve` yerel bir sunucu başlatır (yalnız 127.0.0.1): `.agent-work/`'ü izler ve bir plan
 eklendiği, taşındığı ya da düzenlendiği an panoyu açık sayfaya gönderir — sayfa yenilenmez, açık
@@ -604,7 +616,7 @@ boş port). Anlık görüntü dosyası yerel bir görünümdür, proje durumu de
 
 - **Plugin (Claude Code, Codex):** repo iki araç için de kendi marketplace'idir
   (`.claude-plugin/`; `.agents/plugins/marketplace.json` + `.codex-plugin/`). Sürüm
-  `.claude-plugin/plugin.json` ve `.codex-plugin/plugin.json`'dadır — ikisini eşit ve dalla uyumlu tut: `X.Y.Z` dalı geliştirme sırasında `X.Y.Z-dev.N` taşır (her push'ta N artar, marketplace'ler değişikliği görür), yayında `X.Y.Z` olur.
+  `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json` ve `package.json`'dadır (`work-board` komutu) — üçünü eşit ve dalla uyumlu tut: `X.Y.Z` dalı geliştirme sırasında `X.Y.Z-dev.N` taşır (her push'ta N artar, marketplace'ler değişikliği görür), yayında `X.Y.Z` olur.
 - **Script ile kurulum:** clone + `install.sh` / `install.ps1`, üç araç için de. Skill'ler
   betiklerini kendi yanlarında bulur; script mutlak yolu yazar.
 

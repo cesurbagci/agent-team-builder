@@ -1,0 +1,17 @@
+{
+  "name": "team-builder",
+  "version": "1.1.19",
+  "private": true,
+  "description": "team-builder command-line tools; the skills themselves install as a plugin or with install.sh.",
+  "license": "MIT",
+  "repository": "github:cesurbagci/agent-team-builder",
+  "bin": {
+    "work-board": "skills/team-builder-shared/work-board.mjs"
+  },
+  "files": [
+    "skills/"
+  ],
+  "engines": {
+    "node": ">=18"
+  }
+}

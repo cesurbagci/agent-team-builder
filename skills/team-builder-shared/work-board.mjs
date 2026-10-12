@@ -17,16 +17,19 @@
 //     board to open pages over Server-Sent Events the moment a plan file is added,
 //     moved or edited. Nothing is re-rendered or sent while nothing changes.
 //
-// CLI: node work-board.mjs [--root <project>] [--out <file>] [--serve] [--port <n>] [--selftest]
-//   --root   project root holding .agent-work/ (default: cwd)
+// CLI: node work-board.mjs [--root <project>] [--out <file>] [--serve] [--port <n>] [--open] [--selftest]
+//   (also installed as `work-board` by `npm i -g github:cesurbagci/agent-team-builder`)
+//   --root   project root holding .agent-work/ (default: nearest one from cwd upwards)
 //   --out    file mode output (default: <root>/agent-work-board.html)
 //   --port   --serve port (default 4780; the next free one is taken when busy)
+//   --open   open the board (URL or file) in the default browser
 
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import os from 'node:os'
 import http from 'node:http'
 import { watch } from 'node:fs'
+import { spawn } from 'node:child_process'
 
 const COLUMNS = [
   { key: 'inbox', title: 'Gelen kutusu' },
@@ -697,6 +700,10 @@ async function selftest() {
   assert(!md.includes('s:what'), 'markers hidden')
   assert(renderHtml(await loadBoard(path.join(root, 'missing')), { root: 'x' }).includes('bulunamadı'), 'empty state')
 
+  await fs.mkdir(path.join(root, 'src', 'deep'), { recursive: true })
+  assert(await findRoot(path.join(root, 'src', 'deep')) === root, 'finds .agent-work upwards')
+  assert(await findRoot(os.tmpdir()) === path.resolve(os.tmpdir()), 'falls back to the start dir')
+
   await serveSelftest(root, w)
 
   await fs.rm(root, { recursive: true, force: true })
@@ -749,34 +756,61 @@ async function serveSelftest(root, w) {
 // cli
 // ---------------------------------------------------------------------------
 
+// Nearest directory holding .agent-work/, from `start` upwards; `start` itself if none.
+export async function findRoot(start) {
+  for (let dir = path.resolve(start); ; dir = path.dirname(dir)) {
+    try {
+      if ((await fs.stat(path.join(dir, '.agent-work'))).isDirectory()) return dir
+    } catch {
+      // keep walking
+    }
+    if (path.dirname(dir) === dir) return path.resolve(start)
+  }
+}
+
+function openInBrowser(target) {
+  const [cmd, args] = process.platform === 'darwin' ? ['open', [target]]
+    : process.platform === 'win32' ? ['cmd', ['/c', 'start', '', target]]
+    : ['xdg-open', [target]]
+  try {
+    spawn(cmd, args, { stdio: 'ignore', detached: true }).on('error', () => {}).unref()
+  } catch {
+    // no browser launcher; the address is printed anyway
+  }
+}
+
 function parseArgs(argv) {
-  const opts = { root: process.cwd(), out: '', serve: false, port: 4780, strictPort: false, selftest: false }
+  const opts = { root: '', out: '', serve: false, port: 4780, strictPort: false, open: false, selftest: false }
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i]
     if (arg === '--root') opts.root = path.resolve(argv[++i])
     else if (arg === '--out') opts.out = path.resolve(argv[++i])
     else if (arg === '--serve') opts.serve = true
     else if (arg === '--port') { opts.port = Number(argv[++i]); opts.strictPort = true }
+    else if (arg === '--open') opts.open = true
     else if (arg === '--selftest') opts.selftest = true
     else throw new Error(`unknown argument: ${arg}`)
   }
   if (!Number.isInteger(opts.port) || opts.port < 0 || opts.port > 65535) throw new Error('--port must be 0-65535')
-  opts.out ||= path.join(opts.root, 'agent-work-board.html')
   return opts
 }
 
 async function main() {
   const opts = parseArgs(process.argv.slice(2))
   if (opts.selftest) return selftest()
+  opts.root ||= await findRoot(process.cwd())
+  opts.out ||= path.join(opts.root, 'agent-work-board.html')
   const board = await loadBoard(opts.root)
   if (!board) console.warn(`[work-board] ${path.join(opts.root, '.agent-work')} bulunamadı`)
   if (opts.serve) {
     const srv = await startServer(opts)
-    console.log(`[work-board] canlı pano: ${srv.url}  (${board ? board.plans.length : 0} plan; Ctrl+C ile çık)`)
+    console.log(`[work-board] canlı pano: ${srv.url}  (${opts.root}, ${board ? board.plans.length : 0} plan; Ctrl+C ile çık)`)
+    if (opts.open) openInBrowser(srv.url)
     return
   }
   await fs.writeFile(opts.out, renderHtml(board, { root: opts.root }))
   console.log(`[work-board] ${board ? board.plans.length : 0} plan → ${opts.out}`)
+  if (opts.open) openInBrowser(opts.out)
 }
 
 main().catch(err => {

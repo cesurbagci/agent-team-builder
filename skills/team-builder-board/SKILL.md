@@ -18,7 +18,7 @@ sahibi `plan-gate.md` ve projedeki `work-plan` skill'idir.
    açmak için `team-builder-upgrade`.
 2. **Canlı pano (varsayılan):** yerel sunucuyu **arka planda** başlat, oturumu bloklama:
    ```bash
-   node "${CLAUDE_SKILL_DIR}/../team-builder-shared/work-board.mjs" --root "<proje>" --serve
+   node "${CLAUDE_SKILL_DIR}/../team-builder-shared/work-board.mjs" --root "<proje>" --serve --open
    ```
    Sunucu yalnız `127.0.0.1`'i dinler, `.agent-work/`'ü izler ve bir plan eklenince,
    taşınınca ya da düzenlenince açık sayfaya hemen gönderir. Hiçbir şey değişmezken
@@ -31,10 +31,10 @@ sahibi `plan-gate.md` ve projedeki `work-plan` skill'idir.
    Çıktı `<proje>/agent-work-board.html`; başka bir yer için `--out <dosya>`. Bu dosya
    kendiliğinden güncellenmez.
 4. **Raporla:** adresi (ya da dosyanın mutlak yolunu) ve sütun başına plan sayısını ver.
-   Tarayıcıyı açabiliyorsan (`open` / `xdg-open` / `start`) aç. Canlı panoda kullanıcıya
-   **mutlaka** söyle: sunucu bu oturumun arka plan işidir, oturum kapanınca durur ve
-   sayfa "Bağlantı koptu" der. Kalıcı açık kalsın istiyorsa aynı `--serve` komutunu kendi
-   terminalinde çalıştırmasını öner — komutu mutlak yollarla ver.
+   `--open` tarayıcıyı kendisi açar. Canlı panoda kullanıcıya **mutlaka** söyle: sunucu bu
+   oturumun arka plan işidir, oturum kapanınca durur ve sayfa "Bağlantı koptu" der. Kalıcı
+   açık kalsın istiyorsa kendi terminalinde çalıştırmasını öner: bir kez
+   `npm i -g github:cesurbagci/agent-team-builder`, sonra proje içinde `work-board --serve --open`.
 5. Anlık görüntü ürettiysen ve `agent-work-board.html` projenin `.gitignore`'unda yoksa
    eklemeyi **teklif et** — yerel bir görünümdür, proje durumu değildir. Kendiliğinden ekleme.
 
