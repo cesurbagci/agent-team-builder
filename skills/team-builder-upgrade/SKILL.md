@@ -1,6 +1,6 @@
 ---
 name: team-builder-upgrade
-description: Kurulmuş bir projede anayasa preset'lerini (geçici çözüm yok, kod-doküman senkronizasyonu, rol başına hafıza, dil standardı, plan kapısı) açar veya kapatır; plan kapısının artefaktlarını kurar ya da bırakır; eski yapıdaki projeleri tek talimat dosyasına göç ettirir; rol dosyalarındaki kopyalanmış yol sahipliğini routing tablosuna atıf yapan genel metne çevirir. Tetikleyiciler — "plan kapısını aç", "preset aç", "preset kapat", "anayasa değiştir", "takımı yükselt", "talimatları tek dosyaya taşı", "projeyi yeni yapıya geçir", "plan kapısı skill'ini güncelle", "çapraz denetimi aç/kapat", "kod-doküman kuralını gevşet", "belge etkisi yok kuralı", "görev etiketini ekle", "arka planda rol adını göster", "rol dosyalarını genelleştir", "rol dosyalarını sahiplikten arındır", "sahipliği tek kaynağa taşı", "sync ownership uyarısı veriyor". Yeni rol/routing/ekosistem eklemek için kullanma; kurulu projede bunlar elle yapılır (manifest — silinen rolün routing/consults/lead atıfları dahil —, rol dosyası ve `llm.json` girdileri, sonra sync). Model ya da effort değiştirmek için de kullanma; o team-builder-models'in işidir.
+description: Kurulmuş bir projede anayasa preset'lerini (geçici çözüm yok, kod-doküman senkronizasyonu, rol başına hafıza, dil standardı, plan kapısı) açar veya kapatır; plan kapısının artefaktlarını kurar ya da bırakır; eski yapıdaki projeleri tek talimat dosyasına göç ettirir; rol dosyalarındaki kopyalanmış yol sahipliğini routing tablosuna atıf yapan genel metne çevirir. Tetikleyiciler — "plan kapısını aç", "preset aç", "preset kapat", "anayasa değiştir", "takımı yükselt", "talimatları tek dosyaya taşı", "projeyi yeni yapıya geçir", "plan kapısı skill'ini güncelle", "çapraz denetimi aç/kapat", "kod-doküman kuralını gevşet", "belge etkisi yok kuralı", "görev etiketini ekle", "arka planda rol adını göster", "yeniden review kuralını ekle", "review bulgularını körü körüne kabul etme", "rol dosyalarını genelleştir", "rol dosyalarını sahiplikten arındır", "sahipliği tek kaynağa taşı", "sync ownership uyarısı veriyor". Yeni rol/routing/ekosistem eklemek için kullanma; kurulu projede bunlar elle yapılır (manifest — silinen rolün routing/consults/lead atıfları dahil —, rol dosyası ve `llm.json` girdileri, sonra sync). Model ya da effort değiştirmek için de kullanma; o team-builder-models'in işidir.
 ---
 
 # team-builder-upgrade
@@ -507,6 +507,17 @@ kullanıcı isterse ("görev etiketini ekle", "arka planda rol adını göster")
 sync ve `--check` çalıştır (`llm.local.json` varsa `--no-local`): Codex takma adlarını sync
 bu biçimde yeniden üretir — çalıştırılmazsa eski adlar kalır. Plan kapısı açıksa *Plan
 kapısı skill'ini güncelle* de çalışsın — dış çağrıların etiketi oradadır.
+
+## Yeniden review kuralı
+
+Kurulumlar, kod review kapısı olan projelerde `instructions.md`'nin kapı maddesine
+**Bulgular ve yeniden review** alt maddesini yazar (`routing.md` → *Kod review kapısı*):
+bulgular değerlendirilir; net çözümü uygun bulunup uygulanan, etkisi sınırlı düzeltmelerden
+sonra yeniden review istenmez. Eski bir projede bu alt madde yoksa ve kullanıcı isterse
+("yeniden review kuralını ekle"): kapı maddesinin altına `docLanguage`'de **ekle** — var olan
+metne dokunma (*Projenin metnini koru*), farkı göster, onay al, sonra sync ve `--check`.
+Kapı yoksa (plan kapısı açık ve `codeReviewer: null`) ekleme. Plan kapısı açıksa *Plan
+kapısı skill'ini güncelle* de çalışsın — kapıların kayıtlı kuralı oradadır.
 
 ## Referans eksikse
 

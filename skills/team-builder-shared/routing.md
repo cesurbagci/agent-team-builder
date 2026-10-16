@@ -176,7 +176,17 @@ kapısı) yazılmaz — var olmayan bir role işaret eden bir kural, kuralsızl�
 - **Kod review kapısı.** Plan kapısı kapalıysa: her kod değişikliği tamamlandıktan sonra
   `reviewer` çağrılır (review olmadan iş "tamam" sayılmaz). Plan kapısı açıksa tek otorite
   `planGate.codeReviewer`'dır — bir ad verildiyse kural o adla yazılır, `null` ise
-  **bu madde hiç yazılmaz** ve projede kod review kapısı yoktur.
+  **bu madde hiç yazılmaz** ve projede kod review kapısı yoktur. Kapı yazıldığında şu alt
+  madde de yazılır:
+  - **Bulgular ve yeniden review.** "Bulguları körü körüne kabul etme: her birini
+    değerlendir, haklıysa düzelt, değilse gerekçesiyle reddet. Düzeltmeden sonra yeniden
+    review **gerekmez**, her bulgu için: reviewer net bir çözüm vermiş, sen uygun bulup
+    öyle uyguladın, ve düzeltmenin etkisi bulgunun yeriyle sınırlı — başka yerlerin
+    davranışını, arayüzünü ya da şemasını değiştirmiyor; Kritik/Yüksek bulguda ayrıca az
+    yere dokunuyor. Net çözümü olmayan, farklı çözdüğün ya da reddettiğin bir bulgu
+    varsa, ya da düzeltmenin başka yerleri etkilediğini düşünüyorsan review'a geri dön."
+    Plan kapısı açıkken bu kuralın kayıtlı hâli `work-plan` skill'indedir (*Bulgular ve
+    yeniden denetim*); talimata yine aynı cümle yazılır.
 - **No-workaround → architect:** belirsizlikte kestirme yol aranmaz; architect'e
   gidilir (bkz. `constitution.md` KARAR 1). **Architect yoksa kullanıcıya sorulur.**
 

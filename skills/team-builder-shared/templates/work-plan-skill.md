@@ -140,7 +140,7 @@ Her kapı sonucu `reviews.plan-review` ya da `reviews.code-review` dizisine **ta
     Yalnız `skipped`. Ad **zorunludur**: feragat o sahibe verilmiştir, sahip sonradan
     değişirse feragat düşmelidir — tıpkı onay gibi.
   - `self/<agent-adı>` — adı geçen kapı sahibinin son kararından sonra yapılan değişiklikler
-    yalnız onun önerdiği küçük düzeltmeler olduğu için yeniden denetimi **sen** atladın
+    yalnız onun önerdiği, etkisi sınırlı düzeltmeler olduğu için yeniden denetimi **sen** atladın
     (*Bulgular ve yeniden denetim*). Yalnız `skipped`; ad zorunlu, `user/` gibi güncel
     sahibe bağlıdır.
   - `approved` ve `rejected` kayıtlarında `system`, `user/` ve `self/` **asla** bulunmaz.
@@ -202,18 +202,21 @@ gerekçesiyle reddet. Kararları ve yaptıklarını madde madde `s:review-notes`
 `approved` ile gelen notlar için de aynısı.
 
 **Yeniden denetim gerekir mi?** Sahibin son kararından (`approved` ya da `rejected`)
-sonra yaptığın değişiklikler için:
-- **Atla** — üçü **birlikte** sağlanıyorsa: (1) her bulgu için denetçi somut bir düzeltme
-  önermiş; (2) hepsini kabul edip önerildiği gibi uyguladın, hiçbirini reddetmedin; (3)
-  her düzeltme küçük ve yerel — bulgunun gösterdiği yerde birkaç satır; yeni dosya, yeni
-  davranış, arayüz ya da şema değişikliği yok. Kullanıcıya sorma; şu kaydı yaz ve tek
-  satırla bildir: `{ by: self/<sahibin adı>, at: <bugün>, revision: <plan.revision>,
+sonra yaptığın değişiklikler için; yeniden denetimi de körü körüne isteme:
+- **Atla** — her bulgu için **ikisi birlikte** sağlanıyorsa: (1) denetçi net bir çözüm
+  önermiş, sen değerlendirip uygun buldun ve önerildiği gibi uyguladın — hiçbir bulguyu
+  reddetmedin; (2) düzeltmenin etkisi bulgunun gösterdiği yerle sınırlı — başka yerlerin
+  davranışını, arayüzünü ya da şemasını değiştirmiyor. **Kritik/Yüksek** bir bulguda
+  ayrıca düzeltme az yere dokunmalı. Kullanıcıya sorma; şu kaydı yaz ve tek satırla
+  bildir: `{ by: self/<sahibin adı>, at: <bugün>, revision: <plan.revision>,
   verdict: skipped, reasons: [<bulgu → yapılan düzeltme>, ...] }`. Kapı 3'te sahip
   `approved` kaydını **bu turda** verdiyse ek kayıt gerekmez — kod değişikliği
   `revision`'ı artırmaz ve onay bu turundur. Onay önceki bir turdansa `self/` kaydını
   yaz.
-- **Gönder** — biri bile sağlanmıyorsa (önerisiz bir bulgu, öneriden farklı bir çözüm,
-  reddettiğin bir bulgu, kritik ya da büyük bir değişiklik): kapıyı **yeniden** çalıştır.
+- **Gönder** — biri bile sağlanmıyorsa (net çözümü olmayan bir bulgu, öneriden farklı bir
+  çözüm, reddettiğin bir bulgu, başka yerleri etkileyen ya da çok yere dokunan bir
+  düzeltme), ya da düzeltmenin başka yerleri etkilediğini ve yeniden bakılması
+  gerektiğini düşünüyorsan: kapıyı **yeniden** çalıştır.
   Prompt'a son karardan bu yana yaptığın **bütün** değişiklikleri ve her bulguya
   cevabını ekle.
 

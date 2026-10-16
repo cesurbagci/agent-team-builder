@@ -96,7 +96,7 @@ içindir.
   `system`, `user/` ve `self/` **yalnız** `skipped` kayıtlarında bulunur, **ve** her
   `skipped` kaydı bunlardan birini taşır; `approved`/`rejected` hiçbirini asla taşımaz.
   Çıplak `user` ya da `self` geçersiz: feragat bir sahibe bağlıdır, sahip değişirse düşer.
-  `self/` — sahibin son kararından sonra yalnız onun önerdiği küçük düzeltmeler yapıldığı
+  `self/` — sahibin son kararından sonra yalnız onun önerdiği, etkisi sınırlı düzeltmeler yapıldığı
   için yeniden denetimi çalışan oturum atladı; yalnız sahibin `approved`/`rejected`
   kaydının hemen ardından, bir kez.
 - `reasons`: **her zaman dizi**; `rejected` boş olamaz, `skipped` + `by: user/<agent-adı>`
@@ -117,7 +117,7 @@ olmalıdır; denetleyici projenin başka bir ekosisteminde üretilmiş olabilir.
 |---|---|---|
 | Bir agent adı | `approved` | `<denetimin ekosistemi>/<güncel sahip>` — ekosistem sahibin etkin hedeflerinden biri |
 | Bir agent adı | `skipped` | `user/<güncel sahip>` — kullanıcı feragati |
-| Bir agent adı | `skipped` | `self/<güncel sahip>` — sahibin önerdiği küçük düzeltmeler uygulandı, yeniden denetim atlandı; hemen önceki kayıt güncel sahibin `approved`/`rejected` kaydı |
+| Bir agent adı | `skipped` | `self/<güncel sahip>` — sahibin önerdiği, etkisi sınırlı düzeltmeler uygulandı, yeniden denetim atlandı; hemen önceki kayıt güncel sahibin `approved`/`rejected` kaydı |
 | `null` | `skipped` | `system`, sahip hâlâ `null` |
 
 Hepsinde `kayıt.revision === plan.revision`. Ad karşılaştırması **güncel** sahibe
